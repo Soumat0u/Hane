@@ -1,0 +1,265 @@
+import 'package:flutter/material.dart';
+import 'package:hano/views/dashboard_view.dart';
+import 'package:hano/views/kasa_view.dart';
+import 'package:hano/views/profil_view.dart';
+import 'package:hano/views/projeler_view.dart';
+import 'package:hano/views/yeni_islem_view.dart';
+import 'package:hano/views/bildirimler_view.dart' as hano_bildirimler;
+import 'package:hano/views/widgets/bottom_navbar.dart';
+import 'package:hano/views/widgets/zeynep_drawer.dart';
+import 'package:hano/views/widgets/new_transaction_panel.dart';
+import 'package:hano/views/yeni_proje_view.dart';
+
+class MainNavigationPage extends StatefulWidget {
+  const MainNavigationPage({super.key});
+
+  @override
+  State<MainNavigationPage> createState() => _MainNavigationPageState();
+}
+
+class _MainNavigationPageState extends State<MainNavigationPage> {
+  int _currentTabIndex = 0;
+  String _selectedTransactionType = 'Ödeme';
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _navbarToPageViewIndex(_currentTabIndex));
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  int _navbarToPageViewIndex(int navbarIndex) {
+    if (navbarIndex < 2) return navbarIndex;
+    if (navbarIndex > 2) return navbarIndex - 1;
+    return 0; // fallback
+  }
+
+  String _getHeaderTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'Anasayfa';
+      case 1:
+        return 'Kasa';
+      case 3:
+        return 'Projeler';
+      case 4:
+        return 'Profil';
+      default:
+        return 'Anasayfa';
+    }
+  }
+
+  // Methods to change tabs from the sidebar drawer or sub-pages
+  void _selectTab(int index) {
+    final int oldIndex = _currentTabIndex;
+    setState(() {
+      _currentTabIndex = index;
+    });
+    if (_pageController.hasClients) {
+      if (index == 2) {
+        // Overlay will slide in, no need to slide PageView
+      } else if (oldIndex == 2) {
+        // Coming back from YeniIslem, jump to target page instantly
+        _pageController.jumpToPage(_navbarToPageViewIndex(index));
+      } else {
+        // Regular tab animation
+        _pageController.animateToPage(
+          _navbarToPageViewIndex(index),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
+  }
+
+  void _showNewTransactionOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => NewTransactionPanel(
+        onTypeSelected: (type) {
+          setState(() {
+            _selectedTransactionType = type;
+          });
+          _selectTab(2);
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Scaffold screens list
+    final List<Widget> screens = [
+      const DashboardScreen(),
+      KasaScreen(onBack: () => _selectTab(0)),
+      const ProjelerScreen(),
+      const ProfilScreen(),
+    ];
+
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF8FAFC),
+      drawer: ZeynepDrawer(
+        selectedIndex: _currentTabIndex,
+        onItemSelected: (index) {
+          _selectTab(index);
+        },
+      ),
+      body: Stack(
+        children: [
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                if (_currentTabIndex != 2)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 12.0, bottom: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.menu_rounded, color: Color(0xFF032B5E), size: 28),
+                              onPressed: () {
+                                _scaffoldKey.currentState?.openDrawer();
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _getHeaderTitle(_currentTabIndex),
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                          ],
+                        ),
+                        _currentTabIndex == 3
+                            ? TextButton(
+                                onPressed: () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) => const YeniProjeView()));
+                                },
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFF032B5E),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                ),
+                                child: const Text(
+                                  '+ Yeni Proje Ekle',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              )
+                            : Stack(
+                                alignment: Alignment.topRight,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF64748B), size: 28),
+                                    onPressed: () {
+                                      showGeneralDialog(
+                                        context: context,
+                                        barrierDismissible: true,
+                                        barrierLabel: 'Dismiss',
+                                        barrierColor: Colors.black.withOpacity(0.4),
+                                        transitionDuration: const Duration(milliseconds: 300),
+                                        pageBuilder: (context, anim1, anim2) {
+                                          return Align(
+                                            alignment: Alignment.topCenter,
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: const hano_bildirimler.BildirimlerView(),
+                                            ),
+                                          );
+                                        },
+                                        transitionBuilder: (context, anim1, anim2, child) {
+                                          return SlideTransition(
+                                            position: Tween<Offset>(
+                                              begin: const Offset(0, -1),
+                                              end: const Offset(0, 0),
+                                            ).animate(CurvedAnimation(
+                                              parent: anim1,
+                                              curve: Curves.easeOutCubic,
+                                            )),
+                                            child: child,
+                                          );
+                                        },
+                                      );
+                                    },
+                                  ),
+                                  Positioned(
+                                    right: 10,
+                                    top: 10,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ],
+                    ),
+                  ),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      int navbarIndex = index;
+                      if (index >= 2) {
+                        navbarIndex = index + 1;
+                      }
+                      setState(() {
+                        _currentTabIndex = navbarIndex;
+                      });
+                    },
+                    physics: const BouncingScrollPhysics(),
+                    children: screens,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          AnimatedSlide(
+            offset: _currentTabIndex == 2 ? Offset.zero : const Offset(1.0, 0.0),
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: IgnorePointer(
+              ignoring: _currentTabIndex != 2,
+              child: YeniIslemScreen(
+                initialType: _selectedTransactionType,
+                onBack: () => _selectTab(0),
+              ),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: _currentTabIndex == 2
+          ? null
+          : CustomBottomNavbar(
+              selectedIndex: _currentTabIndex,
+              onTabSelected: (index) {
+                if (index == 2) {
+                  _showNewTransactionOptions(context);
+                } else {
+                  _selectTab(index);
+                }
+              },
+            ),
+    );
+  }
+}
