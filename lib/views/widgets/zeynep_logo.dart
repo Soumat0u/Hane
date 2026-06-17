@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+
+import 'package:hane/theme/app_theme.dart';
 class ZeynepLogo extends StatelessWidget {
   const ZeynepLogo({super.key});
 
@@ -10,11 +12,11 @@ class ZeynepLogo extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 48,
             height: 48,
             child: CustomPaint(
-              painter: LogoPainter(),
+              painter: LogoPainter(brandColor: Theme.of(context).extension<AppColors>()!.brand),
             ),
           ),
           const SizedBox(width: 14),
@@ -50,7 +52,8 @@ class ZeynepLogo extends StatelessWidget {
 }
 
 class LogoPainter extends CustomPainter {
-  const LogoPainter();
+  final Color brandColor;
+  const LogoPainter({required this.brandColor});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -65,13 +68,13 @@ class LogoPainter extends CustomPainter {
       ..close();
 
     final leftPaint = Paint()
-      ..shader = const LinearGradient(
+      ..shader = LinearGradient(
         begin: Alignment.bottomCenter,
         end: Alignment.topCenter,
         colors: [
-          Color(0xFF021B3A),
-          Color(0xFF032B5E),
-          Color(0xFF5A9BD5),
+          const Color(0xFF021B3A),
+          brandColor,
+          const Color(0xFF5A9BD5),
         ],
       ).createShader(Rect.fromLTWH(0, 0, w * 0.32, h));
     canvas.drawPath(leftPath, leftPaint);
@@ -84,12 +87,12 @@ class LogoPainter extends CustomPainter {
       ..close();
 
     final midPaint = Paint()
-      ..shader = const LinearGradient(
+      ..shader = LinearGradient(
         begin: Alignment.bottomCenter,
         end: Alignment.topCenter,
         colors: [
-          Color(0xFF032B5E),
-          Color(0xFF94A3B8),
+          brandColor,
+          const Color(0xFF94A3B8),
         ],
       ).createShader(Rect.fromLTWH(w * 0.38, 0, w * 0.3, h));
     canvas.drawPath(midPath, midPaint);

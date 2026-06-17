@@ -1,42 +1,58 @@
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:hano/views/main_navigation_view.dart';
-import 'package:hano/providers/finance_provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:hane/views/root_screen.dart';
+import 'package:hane/views/auth/login_view.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/providers/settings_provider.dart';
+import 'package:hane/services/api_service.dart';
+import 'package:hane/services/notification_service.dart';
+import 'package:hane/theme/app_theme.dart';
 
-void main() {
-  if (Platform.isWindows || Platform.isLinux) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  }
-  
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('tr_TR', null);
+  await NotificationService.instance.init();
+
+  final token = await ApiService.instance.getToken();
+  final bool loggedIn = token != null;
+
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => FinanceProvider()),
       ],
-      child: const MyApp(),
+      child: MyApp(loggedIn: loggedIn),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool loggedIn;
+  const MyApp({super.key, required this.loggedIn});
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
+    // Giriş yapılmışsa biyometrik kilit kapısının arkasında ana ekran.
+    final Widget home = loggedIn ? const RootScreen() : const LoginView();
+
     return MaterialApp(
-      title: 'Zeynep İnşaat Finans Paneli',
+      title: 'Hano Finans',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF032B5E),
-          primary: const Color(0xFF032B5E),
-        ),
-        useMaterial3: true,
-      ),
-      home: const MainNavigationPage(),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: settings.themeMode,
+      locale: settings.locale,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('tr'), Locale('en')],
+      home: home,
     );
   }
 }

@@ -1,182 +1,199 @@
 import 'package:flutter/material.dart';
+import 'package:hane/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/models/finance_entities.dart';
+import 'package:intl/intl.dart';
+
+final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 
 class BildirimlerView extends StatelessWidget {
   const BildirimlerView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Dummy notification data
-    final List<Map<String, dynamic>> notifications = [
-      {
-        'title': 'Ödeme Hatırlatması',
-        'message': 'Akpınar Projesi için C25 beton ödemesinin vadesi yarın doluyor.',
-        'time': '10 Dk Önce',
-        'icon': Icons.warning_amber_rounded,
-        'color': const Color(0xFFF59E0B),
-        'bg': const Color(0xFFFFF7ED),
-        'isRead': false,
-      },
-      {
-        'title': 'Yeni Tahsilat',
-        'message': 'Mehmet Yılmaz\'dan 1.200.000 ₺ tahsilat alındı.',
-        'time': '2 Saat Önce',
-        'icon': Icons.check_circle_outline,
-        'color': const Color(0xFF10B981),
-        'bg': const Color(0xFFF0FDF4),
-        'isRead': false,
-      },
-      {
-        'title': 'Proje Durum Güncellemesi',
-        'message': 'Sarayatik Projesi "Ruhsat Aşaması"ndan "Temel Aşamasında" durumuna geçti.',
-        'time': 'Dün',
-        'icon': Icons.info_outline,
-        'color': const Color(0xFF3B82F6),
-        'bg': const Color(0xFFEFF6FF),
-        'isRead': true,
-      },
-      {
-        'title': 'Sistem',
-        'message': 'Haftalık finansal özet raporunuz hazırlandı. Görmek için dokunun.',
-        'time': '2 Gün Önce',
-        'icon': Icons.assessment_outlined,
-        'color': const Color(0xFF6366F1),
-        'bg': const Color(0xFFEEF2FF),
-        'isRead': true,
-      },
-    ];
+    return Consumer<FinanceProvider>(
+      builder: (context, fp, child) {
+        final notifications = fp.getAllDuePayments();
 
-    return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.5,
-      ),
-      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 15,
-            offset: Offset(0, 5),
-          )
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-        child: Column(
-          children: [
-            Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Align(
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.5,
+          ),
+          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+          decoration: BoxDecoration(
+            color: context.colors.scaffold,
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(24),
+              bottomRight: Radius.circular(24),
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 15,
+                offset: Offset(0, 5),
+              )
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(24),
+              bottomRight: Radius.circular(24),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  color: context.colors.surface,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Stack(
                     alignment: Alignment.center,
-                    child: Text(
-                      'Bildirimler',
-                      style: TextStyle(
-                        color: Color(0xFF1E293B),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Tümü okundu olarak işaretlendi.')),
-                        );
-                      },
-                      child: const Text('Tümünü Oku', style: TextStyle(color: Color(0xFF032B5E), fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: notifications.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final notif = notifications[index];
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: notif['isRead'] ? Colors.white : const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: notif['isRead'] ? const Color(0xFFE2E8F0) : const Color(0xFFCBD5E1),
-                      ),
-                      boxShadow: notif['isRead'] ? null : [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.02),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        )
-                      ],
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      leading: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: notif['bg'],
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(notif['icon'], color: notif['color'], size: 22),
-                      ),
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              notif['title'],
-                              style: TextStyle(
-                                fontWeight: notif['isRead'] ? FontWeight.w600 : FontWeight.bold,
-                                fontSize: 15,
-                                color: const Color(0xFF1E293B),
-                              ),
-                            ),
-                          ),
-                          Text(
-                            notif['time'],
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: notif['isRead'] ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                              fontWeight: notif['isRead'] ? FontWeight.normal : FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                      subtitle: Padding(
-                        padding: const EdgeInsets.only(top: 6.0),
+                    children: [
+                      Align(
+                        alignment: Alignment.center,
                         child: Text(
-                          notif['message'],
+                          'Bildirimler',
                           style: TextStyle(
-                            fontSize: 13,
-                            color: notif['isRead'] ? const Color(0xFF64748B) : const Color(0xFF475569),
-                            height: 1.4,
+                            color: context.colors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
                           ),
                         ),
                       ),
-                      onTap: () {},
-                    ),
-                  );
-                },
-              ),
+                      if (notifications.isNotEmpty)
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Tümü okundu olarak işaretlendi.')),
+                              );
+                            },
+                            child: Text('Tümünü Oku', style: TextStyle(color: context.colors.brand, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, thickness: 1, color: context.colors.border),
+                Expanded(
+                  child: notifications.isEmpty
+                      ? _buildEmptyState(context)
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(16.0),
+                          itemCount: notifications.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final notif = notifications[index];
+                            final isOverdue = notif.isOverdue;
+                            final isPayable = notif.isPayable;
+                            
+                            // Determine colors and icons based on payment type and overdue status
+                            Color iconColor = isPayable ? context.colors.danger : context.colors.success;
+                            Color bgColor = isPayable ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4);
+                            IconData icon = isPayable ? Icons.payment_outlined : Icons.account_balance_wallet_outlined;
+                            
+                            if (isOverdue) {
+                              iconColor = const Color(0xFFF59E0B);
+                              bgColor = const Color(0xFFFFF7ED);
+                              icon = Icons.warning_amber_rounded;
+                            }
+
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: context.colors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: context.colors.border,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.02),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ],
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: bgColor,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(icon, color: iconColor, size: 22),
+                                ),
+                                title: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        isPayable ? 'Yaklaşan Ödeme' : 'Yaklaşan Tahsilat',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: context.colors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      notif.rawDate,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isOverdue ? context.colors.danger : context.colors.textSecondary,
+                                        fontWeight: isOverdue ? FontWeight.bold : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 6.0),
+                                  child: Text(
+                                    '${notif.title} için ${currencyFormat.format(notif.amount)} tutarında işlem bekleniyor.',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: context.colors.textSecondary,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                                onTap: () {},
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Hiç bildiriminiz yok.',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: context.colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Yaklaşan ödeme veya tahsilat vadeniz\nbulunmuyor.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: context.colors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }

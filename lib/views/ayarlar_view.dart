@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+
+import 'package:hane/theme/app_theme.dart';
 class AyarlarView extends StatefulWidget {
   const AyarlarView({super.key});
 
@@ -17,23 +19,23 @@ class _AyarlarViewState extends State<AyarlarView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: context.colors.scaffold,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Ayarlar',
           style: TextStyle(
-            color: Color(0xFF1E293B),
+            color: context.colors.textPrimary,
             fontWeight: FontWeight.w800,
             fontSize: 18,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: context.colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF032B5E)),
+        iconTheme: IconThemeData(color: context.colors.brand),
         centerTitle: true,
       ),
       body: ListView(
@@ -102,10 +104,10 @@ class _AyarlarViewState extends State<AyarlarView> {
       padding: const EdgeInsets.only(left: 8.0, bottom: 12.0),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF64748B),
+          color: context.colors.textSecondary,
           letterSpacing: 0.5,
         ),
       ),
@@ -116,23 +118,23 @@ class _AyarlarViewState extends State<AyarlarView> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.colors.border),
       ),
       child: SwitchListTile(
         value: value,
         onChanged: onChanged,
-        activeColor: const Color(0xFF032B5E),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Color(0xFF1E293B))),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        activeColor: context.colors.brand,
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: context.colors.textPrimary)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
         secondary: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
+            color: context.colors.surfaceVariant,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: const Color(0xFF032B5E), size: 20),
+          child: Icon(icon, color: context.colors.brand, size: 20),
         ),
       ),
     );
@@ -142,23 +144,23 @@ class _AyarlarViewState extends State<AyarlarView> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.colors.border),
       ),
       child: ListTile(
         onTap: onTap,
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Color(0xFF1E293B))),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: context.colors.textPrimary)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
+            color: context.colors.surfaceVariant,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: const Color(0xFF032B5E), size: 20),
+          child: Icon(icon, color: context.colors.brand, size: 20),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Color(0xFF94A3B8)),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: context.colors.textSecondary),
       ),
     );
   }
@@ -167,24 +169,24 @@ class _AyarlarViewState extends State<AyarlarView> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.colors.border),
       ),
       child: ListTile(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Color(0xFF1E293B))),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: context.colors.textPrimary)),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
+            color: context.colors.surfaceVariant,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: const Color(0xFF032B5E), size: 20),
+          child: Icon(icon, color: context.colors.brand, size: 20),
         ),
         trailing: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
             value: currentValue,
-            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8)),
+            icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary),
             items: options.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,

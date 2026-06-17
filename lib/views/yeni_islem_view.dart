@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+
+import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:hano/providers/finance_provider.dart';
-import 'package:hano/models/financial_transaction.dart';
-import 'package:hano/views/kasa_view.dart';
-import 'package:hano/views/widgets/bank_logo.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/models/financial_transaction.dart';
+import 'package:hane/models/finance_entities.dart';
+import 'package:hane/views/kasa_view.dart';
+import 'package:hane/views/widgets/bank_logo.dart';
 
 class YeniIslemScreen extends StatefulWidget {
   final String initialType;
+  final String? initialProject;
   final VoidCallback? onBack;
 
   const YeniIslemScreen({
     super.key,
     this.initialType = 'Ödeme',
+    this.initialProject,
     this.onBack,
   });
 
@@ -27,6 +32,12 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   void initState() {
     super.initState();
     _selectedType = widget.initialType;
+    if (widget.initialProject != null) {
+      if (!_projects.contains(widget.initialProject!)) {
+        _projects.add(widget.initialProject!);
+      }
+      _selectedProject = widget.initialProject!;
+    }
   }
 
   @override
@@ -52,7 +63,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   final TextEditingController _amountController = TextEditingController(text: '250.000');
   final TextEditingController _descriptionController = TextEditingController(text: 'C25 beton ödemesi');
 
-  final List<String> _projects = ['Akpınar', 'Sarayatik', 'Edibecan', 'Yenişehir', 'Güneşli', 'Beykent'];
+  List<String> _projects = ['Akpınar', 'Sarayatik', 'Edibecan', 'Yenişehir', 'Güneşli', 'Beykent'];
   final List<String> _categories = ['Beton', 'Demir', 'Hafriyat', 'İşçilik', 'Genel Gider'];
 
   // --- Transfer Form States ---
@@ -111,20 +122,11 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     'Garanti - TR55 0008 2000 1230 0035 2987 03'
   ];
 
-  // Custom Dropdown Source Items mapping to Painter/Icon
-  final List<PaymentSourceItem> _paymentSources = [
-    PaymentSourceItem(name: 'Halkbank', isBank: true),
-    PaymentSourceItem(name: 'Ziraat', isBank: true),
-    PaymentSourceItem(name: 'Garanti', isBank: true),
-    PaymentSourceItem(name: 'Akbank', isBank: true),
-    PaymentSourceItem(name: 'Visa', isBank: true),
-    PaymentSourceItem(name: 'Mastercard', isBank: true),
-    PaymentSourceItem(name: 'Troy', isBank: true),
-    PaymentSourceItem(name: 'Nakit', isBank: false, icon: Icons.money_rounded, iconColor: const Color(0xFF10B981)),
-    PaymentSourceItem(name: 'Kredi Kartı', isBank: false, icon: Icons.credit_card_rounded, iconColor: const Color(0xFF3B82F6)),
-    PaymentSourceItem(name: 'BCH Halkbank', isBank: true),
-    PaymentSourceItem(name: 'BCH Ziraat', isBank: true),
-  ];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+  }
 
   @override
   void dispose() {
@@ -181,21 +183,23 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     }
   }
 
-  // Helper to get matching widget/icon for selected source
   Widget _getSourceIcon(String name, {double size = 18}) {
-    final match = _paymentSources.firstWhere((element) => element.name == name,
-        orElse: () => _paymentSources[0]);
-    if (match.isBank) {
-      return BankLogoWidget(bankName: match.name, width: size * 4.5, height: size * 1.5);
-    } else {
-      return Icon(match.icon, color: match.iconColor, size: size);
+    final fp = Provider.of<FinanceProvider>(context, listen: false);
+    final account = fp.accounts.where((a) => a.name == name).firstOrNull;
+    if (account != null) {
+      if (account.type == 'Banka' || account.type == 'Kredi Kartı' || account.type == 'BCH' || account.type == 'Esnek') {
+        return BankLogoWidget(bankName: account.bankLogoPainter.isNotEmpty ? account.bankLogoPainter : account.name, width: size * 4.5, height: size * 1.5);
+      } else {
+        return Icon(Icons.money_rounded, color: context.colors.success, size: size);
+      }
     }
+    return Icon(Icons.account_balance_wallet, color: context.colors.textSecondary, size: size);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: context.colors.surface,
       body: SafeArea(
         child: Column(
           children: [
@@ -204,20 +208,22 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1E293B), size: 22),
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: context.colors.textPrimary, size: 22),
                     onPressed: () {
                       if (widget.onBack != null) {
                         widget.onBack!();
+                      } else {
+                        Navigator.pop(context);
                       }
                     },
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'Yeni $_selectedType',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E293B),
+                      color: context.colors.textPrimary,
                     ),
                   ),
                 ],
@@ -276,6 +282,25 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     if (p != null) projectId = p.id;
                   }
 
+                  if (_selectedType == 'Ödeme' && !_isIncome) {
+                    final selectedAcc = fp.accounts.where((a) => a.name == _selectedSource).firstOrNull;
+                    if (selectedAcc != null) {
+                      double limit = (selectedAcc.type == 'Kredi Kartı' || selectedAcc.type == 'BCH' || selectedAcc.type == 'Esnek')
+                          ? selectedAcc.availableLimit
+                          : selectedAcc.balance;
+                      
+                      if (amount > limit) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Yetersiz bakiye veya limit! İşlem tutarı mevcut bakiyeden/limitten büyük olamaz.'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return; // Stop save
+                      }
+                    }
+                  }
+
                   String category = '';
                   String type = _selectedType;
                   String source = '';
@@ -287,6 +312,72 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                      category = _selectedCategory;
                      source = _selectedSource;
                      date = _dateController.text;
+                  } else if (_selectedType == 'Kredi Kullanımı') {
+                     category = 'Kredi Kullanımı';
+                     source = _krediBanka;
+                     date = _krediTarih;
+                     
+                     // Ayrıca bir Kredi (Loan) kaydı oluştur
+                     final l = Loan(
+                       name: '$_krediBanka Kredisi',
+                       principal: amount,
+                       totalPayable: amount,
+                     );
+                     await fp.addLoan(l);
+                  } else if (_selectedType == 'Borçlanma') {
+                     category = 'Borçlanma';
+                     source = _borclanilanKisiController.text;
+                     date = _borclanmaVade;
+                     
+                     // Önce tedarikçiyi bul veya yarat
+                     Contact? contact = fp.contacts.where((c) => c.name.toLowerCase() == _borclanilanKisiController.text.toLowerCase()).firstOrNull;
+                     if (contact == null) {
+                       final c = Contact(
+                         name: _borclanilanKisiController.text.isEmpty ? 'Yeni Tedarikçi/Taşeron' : _borclanilanKisiController.text,
+                         kind: 'supplier',
+                       );
+                       contact = await fp.addContact(c);
+                     }
+                     
+                     // Backend'in balance hesaplaması "Gider - Gelir" şeklindedir (bizim borcumuz için Gider).
+                     // İşlem tipini Gider yaparak balance'ı doğrudan yükseltiyoruz.
+                     type = 'Gider';
+                     
+                     final t = FinancialTransaction(
+                       projectId: projectId,
+                       type: type,
+                       amount: amount,
+                       date: DateTime.now().toIso8601String().split('T').first,
+                       dueDate: date, // _borclanmaVade is stored in date variable
+                       category: category,
+                       contactId: contact.id, // Cari bağlantısı
+                       sourceName: source,
+                       description: _borclanmaAciklamaController.text,
+                     );
+
+                     await fp.addTransaction(t);
+
+                     ScaffoldMessenger.of(context).showSnackBar(
+                       SnackBar(
+                         content: Row(
+                           children: [
+                             Icon(Icons.check_circle_rounded, color: context.colors.surface, size: 20),
+                             const SizedBox(width: 10),
+                             Expanded(
+                               child: Text(
+                                 '$_selectedType başarıyla kaydedildi!',
+                                 style: const TextStyle(fontWeight: FontWeight.w600),
+                               ),
+                             ),
+                           ],
+                         ),
+                         backgroundColor: context.colors.success,
+                       ),
+                     );
+                     if (widget.onBack != null) {
+                       widget.onBack!();
+                     }
+                     return; // Metottan çık
                   } else if (_selectedType == 'Tahsilat') {
                      category = 'Satış';
                      source = _tahsilatBankaHesabi.split(' - ').first;
@@ -317,7 +408,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     SnackBar(
                       content: Row(
                         children: [
-                          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                          Icon(Icons.check_circle_rounded, color: context.colors.surface, size: 20),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
@@ -327,7 +418,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                           ),
                         ],
                       ),
-                      backgroundColor: const Color(0xFF10B981),
+                      backgroundColor: context.colors.success,
                     ),
                   );
                   if (widget.onBack != null) {
@@ -335,8 +426,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF032B5E),
-                  foregroundColor: Colors.white,
+                  backgroundColor: context.colors.brand,
+                  foregroundColor: context.colors.surface,
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -400,16 +491,16 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: context.colors.border),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _dateController.text,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.w500),
                   ),
-                  const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 20),
+                  Icon(Icons.calendar_month_outlined, color: context.colors.textSecondary, size: 20),
                 ],
               ),
             ),
@@ -432,10 +523,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     height: 44,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: _isIncome ? const Color(0xFFECFDF5) : Colors.white,
+                      color: _isIncome ? Color(0xFFECFDF5) : context.colors.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: _isIncome ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
+                        color: _isIncome ? context.colors.success : context.colors.border,
                       ),
                     ),
                     child: Text(
@@ -443,7 +534,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: _isIncome ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                        color: _isIncome ? context.colors.success : context.colors.textSecondary,
                       ),
                     ),
                   ),
@@ -461,10 +552,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     height: 44,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: !_isIncome ? const Color(0xFFFEF2F2) : Colors.white,
+                      color: !_isIncome ? Color(0xFFFEF2F2) : context.colors.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: !_isIncome ? const Color(0xFFEF4444) : const Color(0xFFE2E8F0),
+                        color: !_isIncome ? context.colors.danger : context.colors.border,
                       ),
                     ),
                     child: Text(
@@ -472,7 +563,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: !_isIncome ? const Color(0xFFEF4444) : const Color(0xFF94A3B8),
+                        color: !_isIncome ? context.colors.danger : context.colors.textSecondary,
                       ),
                     ),
                   ),
@@ -511,116 +602,73 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
         ),
 
         // ODEME KAYNAGI Custom Dropdown
-        _buildFormRow(
-          label: 'ÖDEME KAYNAĞI',
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  InkWell(
-                    onTap: () {
-                      setState(() {
-                        _isSourceDropdownOpen = !_isSourceDropdownOpen;
-                      });
-                    },
-                    child: Container(
-                      height: 44,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: _isSourceDropdownOpen ? const Color(0xFF3B82F6) : const Color(0xFFE2E8F0),
-                          width: _isSourceDropdownOpen ? 1.5 : 1.0,
-                        ),
-                      ),
+        Consumer<FinanceProvider>(
+          builder: (context, fp, child) {
+            final accounts = fp.accounts.where((a) => a.type == 'Banka' || a.type == 'Kredi Kartı' || a.type == 'Nakit').toList();
+            if (accounts.isNotEmpty && !accounts.any((a) => a.name == _selectedSource)) {
+               WidgetsBinding.instance.addPostFrameCallback((_) {
+                 if (mounted) setState(() => _selectedSource = accounts.first.name);
+               });
+            }
+            if (accounts.isEmpty) return const SizedBox.shrink();
+
+            return _buildFormRow(
+              label: 'ÖDEME KAYNAĞI',
+              child: SizedBox(
+                height: 44,
+                child: DropdownButtonFormField<String>(
+                  value: accounts.any((a) => a.name == _selectedSource) ? _selectedSource : (accounts.isNotEmpty ? accounts.first.name : null),
+                  isExpanded: true,
+                  icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary, size: 20),
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: context.colors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: context.colors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: context.colors.accent, width: 1.5),
+                    ),
+                  ),
+                  items: accounts.map((a) => a.name).toSet().map((accountName) {
+                    return DropdownMenuItem<String>(
+                      value: accountName,
                       child: Row(
                         children: [
-                          _getSourceIcon(_selectedSource),
-                          const SizedBox(width: 10),
-                          Text(
-                            _selectedSource,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF1E293B),
+                          _getSourceIcon(accountName, size: 14),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              accountName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: context.colors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            _isSourceDropdownOpen ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                            color: const Color(0xFF94A3B8),
-                            size: 20,
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              if (_isSourceDropdownOpen)
-                Positioned(
-                  top: 48,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withAlpha(26),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    constraints: const BoxConstraints(maxHeight: 280),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.zero,
-                      itemCount: _paymentSources.length,
-                      separatorBuilder: (context, index) =>
-                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                      itemBuilder: (context, index) {
-                        final source = _paymentSources[index];
-                        return InkWell(
-                          onTap: () {
-                            setState(() {
-                              _selectedSource = source.name;
-                              _isSourceDropdownOpen = false;
-                            });
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                            child: Row(
-                              children: [
-                                if (source.isBank)
-                                  BankLogoWidget(bankName: source.name, width: 85, height: 28)
-                                else
-                                  Icon(source.icon, color: source.iconColor, size: 18),
-                                const SizedBox(width: 12),
-                                Text(
-                                  source.name,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: Color(0xFF1E293B),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _selectedSource = val;
+                      });
+                    }
+                  },
                 ),
-            ],
-          ),
+              ),
+            );
+          }
         ),
 
         // ALICI / SATICI Text Field
@@ -642,61 +690,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
 
-        // VADE TARIHI DatePicker
-        _buildFormRow(
-          label: 'VADE TARİHİ',
-          child: InkWell(
-            onTap: () async {
-              final DateTime? picked = await showDatePicker(
-                context: context,
-                initialDate: DateTime.now(),
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
-              );
-              if (picked != null) {
-                setState(() {
-                  _dueDateController.text =
-                      "${picked.day} ${[
-                    'Ocak',
-                    'Şubat',
-                    'Mart',
-                    'Nisan',
-                    'Mayıs',
-                    'Haziran',
-                    'Temmuz',
-                    'Ağustos',
-                    'Eylül',
-                    'Ekim',
-                    'Kasım',
-                    'Aralık'
-                  ][picked.month - 1]} ${picked.year}";
-                });
-              }
-            },
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _dueDateController.text,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: _dueDateController.text == 'Seçiniz' ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 20),
-                ],
-              ),
-            ),
-          ),
-        ),
 
         // AÇIKLAMA Text Field
         _buildFormRow(
@@ -711,20 +704,20 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           padding: const EdgeInsets.symmetric(vertical: 16.0),
           child: Row(
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 120,
                 child: Text(
                   'FATURA EKLE',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF64748B),
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.link_rounded, color: Color(0xFF032B5E), size: 22),
+                icon: Icon(Icons.link_rounded, color: context.colors.brand, size: 22),
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -753,27 +746,27 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             height: 58,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: context.colors.border),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16),
             alignment: Alignment.center,
             child: TextField(
               controller: _tahsilatAmountController,
               keyboardType: TextInputType.number,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
+                color: context.colors.textPrimary,
               ),
               decoration: InputDecoration(
                 prefixText: '₺ ',
-                prefixStyle: const TextStyle(
+                prefixStyle: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1E293B),
+                  color: context.colors.textPrimary,
                 ),
                 suffixIcon: IconButton(
-                  icon: const Icon(Icons.cancel_rounded, color: Color(0xFF94A3B8), size: 22),
+                  icon: Icon(Icons.cancel_rounded, color: context.colors.textSecondary, size: 22),
                   onPressed: () {
                     _tahsilatAmountController.clear();
                   },
@@ -822,22 +815,22 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: context.colors.border),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_month_outlined, color: Color(0xFF3B82F6), size: 20),
+                  Icon(Icons.calendar_month_outlined, color: context.colors.accent, size: 20),
                   const SizedBox(width: 12),
                   Text(
                     _tahsilatTarih,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF1E293B),
+                      color: context.colors.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   const Spacer(),
-                  const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8), size: 20),
+                  Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary, size: 20),
                 ],
               ),
             ),
@@ -850,7 +843,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'TAHSİLAT KAYNAĞI',
           child: _buildPrefixDropdown(
             prefixIcon: Icons.person_outline_rounded,
-            prefixColor: const Color(0xFF10B981),
+            prefixColor: context.colors.success,
             value: _tahsilatKaynagi,
             items: _tahsilatKaynaklari,
             onChanged: (val) {
@@ -867,7 +860,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'PROJE',
           child: _buildPrefixDropdown(
             prefixIcon: Icons.business_center_outlined,
-            prefixColor: const Color(0xFF3B82F6),
+            prefixColor: context.colors.accent,
             value: _tahsilatProje,
             items: _tahsilatProjeler,
             onChanged: (val) {
@@ -903,19 +896,19 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             height: 48,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: context.colors.border),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF94A3B8), size: 20),
+                Icon(Icons.chat_bubble_outline_rounded, color: context.colors.textSecondary, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
                     controller: _tahsilatAciklamaController,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF1E293B),
+                      color: context.colors.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
                     decoration: const InputDecoration(
@@ -942,12 +935,12 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'ÖDEME YÖNTEMİ',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF64748B),
+                color: context.colors.textSecondary,
                 letterSpacing: 0.5,
               ),
             ),
@@ -963,7 +956,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             label: 'BANKA HESABI',
             child: _buildPrefixDropdown(
               prefixIcon: Icons.account_balance_rounded,
-              prefixColor: const Color(0xFF3B82F6),
+              prefixColor: context.colors.accent,
               value: _tahsilatBankaHesabi,
               items: _bankAccounts,
               onChanged: (val) {
@@ -983,25 +976,25 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             height: 48,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: context.colors.border),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             alignment: Alignment.center,
             child: Row(
               children: [
-                const Icon(Icons.sticky_note_2_outlined, color: Color(0xFF94A3B8), size: 20),
+                Icon(Icons.sticky_note_2_outlined, color: context.colors.textSecondary, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
                     controller: _tahsilatNotController,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF1E293B),
+                      color: context.colors.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Not ekleyebilirsiniz...',
-                      hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                      hintStyle: TextStyle(color: context.colors.textSecondary, fontSize: 14),
                       contentPadding: EdgeInsets.zero,
                       border: InputBorder.none,
                     ),
@@ -1023,10 +1016,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF64748B),
+            color: context.colors.textSecondary,
             letterSpacing: 0.5,
           ),
         ),
@@ -1056,9 +1049,9 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
 
   Widget _buildMethodItem(String method, IconData icon) {
     final bool isSelected = _tahsilatOdemeYontemi == method;
-    final Color bgColor = isSelected ? const Color(0xFFEFF6FF) : Colors.white;
-    final Color borderColor = isSelected ? const Color(0xFF3B82F6) : const Color(0xFFE2E8F0);
-    final Color color = isSelected ? const Color(0xFF3B82F6) : const Color(0xFF64748B);
+    final Color bgColor = isSelected ? Color(0xFFEFF6FF) : context.colors.surface;
+    final Color borderColor = isSelected ? context.colors.accent : context.colors.border;
+    final Color color = isSelected ? context.colors.accent : context.colors.textSecondary;
 
     return Expanded(
       child: InkWell(
@@ -1112,9 +1105,9 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   value: item,
                   child: Text(
                     item,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF1E293B),
+                      color: context.colors.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -1126,18 +1119,18 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: BorderSide(color: context.colors.border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: BorderSide(color: context.colors.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+            borderSide: BorderSide(color: context.colors.accent, width: 1.5),
           ),
         ),
-        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8), size: 20),
+        icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary, size: 20),
       ),
     );
   }
@@ -1169,16 +1162,16 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: context.colors.border),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _transferTarih,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.w500),
                   ),
-                  const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 20),
+                  Icon(Icons.calendar_month_outlined, color: context.colors.textSecondary, size: 20),
                 ],
               ),
             ),
@@ -1253,16 +1246,16 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: context.colors.border),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _borclanmaTarih,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.w500),
                   ),
-                  const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 20),
+                  Icon(Icons.calendar_month_outlined, color: context.colors.textSecondary, size: 20),
                 ],
               ),
             ),
@@ -1329,7 +1322,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: context.colors.border),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1338,11 +1331,11 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     _borclanmaVade,
                     style: TextStyle(
                       fontSize: 14,
-                      color: _borclanmaVade == 'Seçiniz' ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
+                      color: _borclanmaVade == 'Seçiniz' ? context.colors.textSecondary : context.colors.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 20),
+                  Icon(Icons.calendar_month_outlined, color: context.colors.textSecondary, size: 20),
                 ],
               ),
             ),
@@ -1385,16 +1378,16 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: context.colors.border),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _krediTarih,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.w500),
                   ),
-                  const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 20),
+                  Icon(Icons.calendar_month_outlined, color: context.colors.textSecondary, size: 20),
                 ],
               ),
             ),
@@ -1485,16 +1478,16 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: context.colors.border),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     _satisTarih,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.w500),
                   ),
-                  const Icon(Icons.calendar_month_outlined, color: Color(0xFF94A3B8), size: 20),
+                  Icon(Icons.calendar_month_outlined, color: context.colors.textSecondary, size: 20),
                 ],
               ),
             ),
@@ -1565,10 +1558,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             width: 120,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF64748B),
+                color: context.colors.textSecondary,
               ),
             ),
           ),
@@ -1590,24 +1583,24 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+        style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+          hintStyle: TextStyle(color: context.colors.textSecondary, fontSize: 14),
           prefixText: prefixText,
-          prefixStyle: const TextStyle(color: Color(0xFF1E293B), fontSize: 14, fontWeight: FontWeight.bold),
+          prefixStyle: TextStyle(color: context.colors.textPrimary, fontSize: 14, fontWeight: FontWeight.bold),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: BorderSide(color: context.colors.border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: BorderSide(color: context.colors.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+            borderSide: BorderSide(color: context.colors.accent, width: 1.5),
           ),
         ),
       ),
@@ -1629,7 +1622,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   value: item,
                   child: Text(
                     item,
-                    style: const TextStyle(fontSize: 14, color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.w500),
                   ),
                 ))
             .toList(),
@@ -1638,18 +1631,18 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: BorderSide(color: context.colors.border),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+            borderSide: BorderSide(color: context.colors.border),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+            borderSide: BorderSide(color: context.colors.accent, width: 1.5),
           ),
         ),
-        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8), size: 20),
+        icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary, size: 20),
       ),
     );
   }

@@ -5,8 +5,12 @@
 import FlutterMacOS
 import Foundation
 
-import sqflite_darwin
+import flutter_local_notifications
+import local_auth_darwin
+import shared_preferences_foundation
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
-  SqflitePlugin.register(with: registry.registrar(forPlugin: "SqflitePlugin"))
+  FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
+  LocalAuthPlugin.register(with: registry.registrar(forPlugin: "LocalAuthPlugin"))
+  SharedPreferencesPlugin.register(with: registry.registrar(forPlugin: "SharedPreferencesPlugin"))
 }

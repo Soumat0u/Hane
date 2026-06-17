@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+
+import 'package:hane/theme/app_theme.dart';
 class PlaceholderPage extends StatelessWidget {
   final String title;
   final IconData icon;
@@ -23,7 +25,7 @@ class PlaceholderPage extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.menu_rounded, color: Color(0xFF032B5E), size: 28),
+                  icon: Icon(Icons.menu_rounded, color: context.colors.brand, size: 28),
                   onPressed: () {
                     Scaffold.of(context).openDrawer();
                   },
@@ -31,10 +33,10 @@ class PlaceholderPage extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: context.colors.textPrimary,
                   ),
                 ),
               ],
@@ -59,10 +61,10 @@ class PlaceholderPage extends StatelessWidget {
                     const SizedBox(height: 24),
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
+                        color: context.colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 10),

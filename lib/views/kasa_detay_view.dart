@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+
+import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:hano/models/financial_transaction.dart';
-import 'package:hano/providers/finance_provider.dart';
-import 'package:hano/models/account.dart';
-import 'package:hano/views/kasa_view.dart'; // For Kasa Painters (Garanti, etc)
+import 'package:hane/models/financial_transaction.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/models/account.dart';
+import 'package:hane/views/kasa_view.dart'; // For Kasa Painters (Garanti, etc)
 
 final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
@@ -17,21 +19,21 @@ class KasaDetayView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: context.colors.surfaceVariant,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: context.colors.surface,
         elevation: 0,
         centerTitle: true,
         title: Text(
           account.name,
-          style: const TextStyle(
-            color: Color(0xFF1E293B),
+          style: TextStyle(
+            color: context.colors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1E293B), size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: context.colors.textPrimary, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -51,31 +53,84 @@ class KasaDetayView extends StatelessWidget {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24.0),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+                decoration: BoxDecoration(
+                  color: context.colors.surface,
+                  border: Border(bottom: BorderSide(color: context.colors.border)),
                 ),
                 child: Column(
                   children: [
-                    Text(
-                      'GÜNCEL BAKİYE',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey[500],
-                        letterSpacing: 1.0,
+                    if (account.type == 'Kredi Kartı') ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          Column(
+                            children: [
+                              Text(
+                                'KULLANILABİLİR LİMİT',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[500],
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                currencyFormat.format(account.availableLimit),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: context.colors.brand,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(width: 1, height: 40, color: context.colors.border),
+                          Column(
+                            children: [
+                              Text(
+                                'GÜNCEL BORÇ',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[500],
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                currencyFormat.format(account.balance.abs()),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: context.colors.danger,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      currencyFormat.format(account.balance),
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF032B5E),
+                    ] else ...[
+                      Text(
+                        'GÜNCEL BAKİYE',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[500],
+                          letterSpacing: 1.0,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
+                      const SizedBox(height: 8),
+                      Text(
+                        currencyFormat.format(account.balance),
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: context.colors.brand,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
@@ -84,9 +139,9 @@ class KasaDetayView extends StatelessWidget {
                       ),
                       child: Text(
                         account.type,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF3B82F6),
+                          color: context.colors.accent,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -101,12 +156,12 @@ class KasaDetayView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Row(
                   children: [
-                    const Text(
+                    Text(
                       'Hesap Hareketleri',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
+                        color: context.colors.textPrimary,
                       ),
                     ),
                     const Spacer(),
@@ -162,7 +217,7 @@ class KasaDetayView extends StatelessWidget {
                             if (t.sourceName == account.name) isIncome = false;
                           }
 
-                          return _buildTransactionCard(t, isIncome);
+                          return _buildTransactionCard(context, t, isIncome);
                         },
                       ),
               ),
@@ -173,22 +228,22 @@ class KasaDetayView extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionCard(FinancialTransaction t, bool isIncome) {
+  Widget _buildTransactionCard(BuildContext context, FinancialTransaction t, bool isIncome) {
     IconData icon;
     Color color;
     Color bgColor;
 
     if (t.type == 'Transfer') {
       icon = Icons.sync_alt_rounded;
-      color = const Color(0xFF3B82F6);
+      color = context.colors.accent;
       bgColor = const Color(0xFFEFF6FF);
     } else if (isIncome) {
       icon = Icons.arrow_downward_rounded;
-      color = const Color(0xFF10B981);
+      color = context.colors.success;
       bgColor = const Color(0xFFF0FDF4);
     } else {
       icon = Icons.arrow_upward_rounded;
-      color = const Color(0xFFEF4444);
+      color = context.colors.danger;
       bgColor = const Color(0xFFFEF2F2);
     }
 
@@ -202,9 +257,9 @@ class KasaDetayView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.colors.border),
       ),
       child: Row(
         children: [
@@ -223,10 +278,10 @@ class KasaDetayView extends StatelessWidget {
               children: [
                 Text(
                   t.description.isNotEmpty ? t.description : t.type,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: context.colors.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

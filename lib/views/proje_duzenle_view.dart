@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+
+import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:hano/models/project.dart';
-import 'package:hano/providers/finance_provider.dart';
-import 'package:hano/services/database_helper.dart';
+import 'package:hane/models/project.dart';
+import 'package:hane/providers/finance_provider.dart';
+// // import 'package:hane/services/database_helper.dart';
 
 class ProjeDuzenleView extends StatefulWidget {
   final Project project;
@@ -82,7 +84,7 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
         imagePath: widget.project.imagePath,
       );
 
-      await DatabaseHelper.instance.updateProject(updatedProject);
+      // await DatabaseHelper.instance.updateProject(updatedProject);
       
       if (mounted) {
         Provider.of<FinanceProvider>(context, listen: false).refreshData();
@@ -97,23 +99,23 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: context.colors.surfaceVariant,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Projeyi Düzenle',
           style: TextStyle(
-            color: Color(0xFF1E293B),
+            color: context.colors.textPrimary,
             fontWeight: FontWeight.w800,
             fontSize: 18,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: context.colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF032B5E)),
+        iconTheme: IconThemeData(color: context.colors.brand),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
@@ -130,9 +132,9 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.colors.surface,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(color: context.colors.border),
                     image: const DecorationImage(
                       image: AssetImage('assets/images/modern_apartment_building.png'),
                       fit: BoxFit.cover,
@@ -146,16 +148,16 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
                         shape: BoxShape.circle,
                       ),
                       padding: const EdgeInsets.all(12),
-                      child: const Icon(Icons.add_a_photo, color: Colors.white, size: 28),
+                      child: Icon(Icons.add_a_photo, color: context.colors.surface, size: 28),
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 8),
-              const Center(
+              Center(
                 child: Text(
                   'Görsel Yükle (Opsiyonel)',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 12, color: context.colors.textSecondary, fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(height: 32),
@@ -167,32 +169,32 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
               _buildInputField('Konum (Örn: İstanbul / Başakşehir)', _locationController, TextInputType.text, icon: Icons.location_on),
               const SizedBox(height: 16),
               
-              const Text(
+              Text(
                 'Durum',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textSecondary),
               ),
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.colors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: context.colors.border),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _selectedStatus,
                     isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8)),
+                    icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary),
                     items: _statusOptions.map((option) {
                       return DropdownMenuItem<String>(
                         value: option['status'],
                         child: Text(
                           option['status']!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF1E293B),
+                            color: context.colors.textPrimary,
                           ),
                         ),
                       );
@@ -231,8 +233,8 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
               ElevatedButton(
                 onPressed: _updateProject,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF032B5E),
-                  foregroundColor: Colors.white,
+                  backgroundColor: context.colors.brand,
+                  foregroundColor: context.colors.surface,
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -260,10 +262,10 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.bold,
-        color: Color(0xFF1E293B),
+        color: context.colors.textPrimary,
       ),
     );
   }
@@ -274,18 +276,18 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF64748B),
+            color: context.colors.textSecondary,
           ),
         ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.colors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: context.colors.border),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.02),
@@ -297,15 +299,15 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
           child: TextFormField(
             controller: controller,
             keyboardType: type,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1E293B),
+              color: context.colors.textPrimary,
             ),
             decoration: InputDecoration(
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              prefixIcon: icon != null ? Icon(icon, color: const Color(0xFF94A3B8), size: 20) : null,
+              prefixIcon: icon != null ? Icon(icon, color: context.colors.textSecondary, size: 20) : null,
               hintText: '...',
               hintStyle: TextStyle(color: Colors.grey[400]),
             ),

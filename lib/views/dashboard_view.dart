@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+
+import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:hano/providers/finance_provider.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/views/kasa_view.dart';
+import 'package:hane/views/borclar_view.dart';
+import 'package:hane/views/finansman_gucu_view.dart';
 
 final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 
@@ -17,12 +22,11 @@ class DashboardScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final kasa = fp.getTotalBalance();
-          final borclar = fp.allTransactions.where((t) => t.type == 'Borçlanma').fold(0.0, (sum, t) => sum + t.amount);
-          final alacaklar = fp.getTotalSatis() - fp.getTotalTahsilat();
-          final finansmanGucu = kasa + (alacaklar > 0 ? alacaklar : 0) - borclar;
-          final projeMaliyetleri = fp.getTotalHarcama();
-          final netPozisyon = kasa - borclar;
+          final kasa = fp.getVarlikKasa();
+          final borclar = fp.getTotalBorc();
+          final alacaklar = fp.getTotalAlacak();
+          final finansmanGucu = fp.getFinansmanGucu();
+          final netPozisyon = kasa + alacaklar - borclar;
 
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -40,21 +44,27 @@ class DashboardScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildMetricCard(
+                        _buildMetricCard(context,
                           width: cardWidth,
                           title: 'KASA',
                           value: currencyFormat.format(kasa),
                           icon: Icons.account_balance_wallet_rounded,
-                          accentColor: const Color(0xFF3B82F6),
+                          accentColor: context.colors.accent,
                           bgColor: const Color(0xFFEFF6FF),
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const KasaScreen()));
+                          },
                         ),
-                        _buildMetricCard(
+                        _buildMetricCard(context,
                           width: cardWidth,
                           title: 'BORÇLAR',
                           value: currencyFormat.format(borclar),
                           icon: Icons.receipt_long_rounded,
-                          accentColor: const Color(0xFFEF4444),
+                          accentColor: Theme.of(context).extension<AppColors>()!.danger,
                           bgColor: const Color(0xFFFEF2F2),
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const BorclarView()));
+                          },
                         ),
                       ],
                     ),
@@ -62,21 +72,24 @@ class DashboardScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildMetricCard(
+                        _buildMetricCard(context,
                           width: cardWidth,
                           title: 'ALACAKLAR',
                           value: currencyFormat.format(alacaklar > 0 ? alacaklar : 0),
                           icon: Icons.assignment_returned_rounded,
-                          accentColor: const Color(0xFF10B981),
+                          accentColor: Theme.of(context).extension<AppColors>()!.success,
                           bgColor: const Color(0xFFF0FDF4),
                         ),
-                        _buildMetricCard(
+                        _buildMetricCard(context,
                           width: cardWidth,
                           title: 'FİNANSMAN GÜCÜ',
                           value: currencyFormat.format(finansmanGucu),
                           icon: Icons.shield_rounded,
                           accentColor: const Color(0xFF8B5CF6),
                           bgColor: const Color(0xFFFAF5FF),
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const FinansmanGucuView()));
+                          },
                         ),
                       ],
                     ),
@@ -86,25 +99,16 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Proje Maliyetleri (Full width card)
-            _buildMetricCard(
-              width: MediaQuery.of(context).size.width - 40,
-              title: 'PROJE MALİYETLERİ',
-              value: currencyFormat.format(projeMaliyetleri),
-              icon: Icons.business_center_rounded,
-              accentColor: const Color(0xFFF59E0B),
-              bgColor: const Color(0xFFFFF7ED),
-            ),
-            const SizedBox(height: 20),
+
 
             // Net Position Card (Degrade Lacivert + Sparkline)
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFF032B5E),
+                    context.colors.brand,
                     Color(0xFF021B3A),
                   ],
                 ),
@@ -137,8 +141,8 @@ class DashboardScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                           currencyFormat.format(netPozisyon),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: context.colors.surface,
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                           ),
@@ -164,19 +168,19 @@ class DashboardScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Nakit Akışı (Aylık)',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: Theme.of(context).extension<AppColors>()!.textPrimary,
                   ),
                 ),
                 Row(
                   children: [
-                    _buildLegendItem('Gelir', const Color(0xFF10B981)),
+                    _buildLegendItem('Gelir', Theme.of(context).extension<AppColors>()!.success),
                     const SizedBox(width: 12),
-                    _buildLegendItem('Gider', const Color(0xFFEF4444)),
+                    _buildLegendItem('Gider', Theme.of(context).extension<AppColors>()!.danger),
                   ],
                 ),
               ],
@@ -186,9 +190,9 @@ class DashboardScreen extends StatelessWidget {
             // Cash Flow Bar Chart
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.colors.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: context.colors.border),
               ),
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -218,12 +222,12 @@ class DashboardScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          _buildMonthBarColumn('Oca', 5.0, 3.8),
-                          _buildMonthBarColumn('Şub', 7.0, 3.5),
-                          _buildMonthBarColumn('Mar', 5.0, 4.6),
-                          _buildMonthBarColumn('Nis', 5.6, 3.5),
-                          _buildMonthBarColumn('May', 5.0, 2.6),
-                          _buildMonthBarColumn('Haz', 7.0, 3.9),
+                          _buildMonthBarColumn(context, 'Oca', 5.0, 3.8),
+                          _buildMonthBarColumn(context, 'Şub', 7.0, 3.5),
+                          _buildMonthBarColumn(context, 'Mar', 5.0, 4.6),
+                          _buildMonthBarColumn(context, 'Nis', 5.6, 3.5),
+                          _buildMonthBarColumn(context, 'May', 5.0, 2.6),
+                          _buildMonthBarColumn(context, 'Haz', 7.0, 3.9),
                         ],
                       ),
                     ),
@@ -241,20 +245,23 @@ class DashboardScreen extends StatelessWidget {
   }
 
   // Helper widget to build Metric Cards
-  Widget _buildMetricCard({
-    required double width,
-    required String title,
+  Widget _buildMetricCard(BuildContext context, {
+        required String title,
     required String value,
+    required double width,
     required IconData icon,
     required Color accentColor,
     required Color bgColor,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      width: width,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: width,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.colors.border),
       ),
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -280,20 +287,25 @@ class DashboardScreen extends StatelessWidget {
                     color: accentColor,
                     letterSpacing: 0.5,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (onTap != null)
+                Icon(Icons.chevron_right_rounded, size: 16, color: context.colors.textSecondary),
             ],
           ),
           const SizedBox(height: 14),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
+              color: Theme.of(context).extension<AppColors>()!.textPrimary,
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -337,7 +349,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMonthBarColumn(String month, double incomeValue, double expenseValue) {
+  Widget _buildMonthBarColumn(BuildContext context, String month, double incomeValue, double expenseValue) {
     const double maxScale = 8.0;
     const double chartMaxHeight = 110.0;
     final double incomeHeight = (incomeValue / maxScale) * chartMaxHeight;
@@ -354,7 +366,7 @@ class DashboardScreen extends StatelessWidget {
               width: 8,
               height: incomeHeight,
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981),
+                color: Theme.of(context).extension<AppColors>()!.success,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -364,7 +376,7 @@ class DashboardScreen extends StatelessWidget {
               width: 8,
               height: expenseHeight,
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444),
+                color: Theme.of(context).extension<AppColors>()!.danger,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),

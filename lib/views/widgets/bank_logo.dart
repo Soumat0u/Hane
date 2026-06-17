@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hane/theme/app_theme.dart';
 
 class BankLogoWidget extends StatelessWidget {
   final String bankName;
@@ -42,7 +43,7 @@ class BankLogoWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final path = _logoPath;
     if (path.isEmpty) {
-      return Icon(Icons.account_balance, size: height, color: const Color(0xFF94A3B8));
+      return Icon(Icons.account_balance, size: height, color: context.colors.textSecondary);
     }
     return Image.asset(
       path,
@@ -50,7 +51,7 @@ class BankLogoWidget extends StatelessWidget {
       height: height,
       fit: BoxFit.contain,
       errorBuilder: (context, error, stackTrace) {
-        return Icon(Icons.account_balance, size: height, color: const Color(0xFF94A3B8));
+        return Icon(Icons.account_balance, size: height, color: context.colors.textSecondary);
       },
     );
   }

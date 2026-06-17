@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hano/views/widgets/zeynep_logo.dart';
+import 'package:hane/theme/app_theme.dart';
+import 'package:hane/views/widgets/zeynep_logo.dart';
+import 'package:hane/views/ayarlar_view.dart';
 
 class ZeynepDrawer extends StatefulWidget {
   final int selectedIndex;
@@ -19,19 +21,16 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
   int _hoveredIndex = -1;
 
   final List<DrawerItemData> _drawerItems = [
-    DrawerItemData(title: 'Anasayfa', activeIcon: Icons.home_rounded, inactiveIcon: Icons.home_outlined, tabIndex: 0),
-    DrawerItemData(title: 'Kasa', activeIcon: Icons.account_balance_wallet_rounded, inactiveIcon: Icons.account_balance_wallet_outlined, tabIndex: 1),
-    DrawerItemData(title: 'Projeler', activeIcon: Icons.construction_rounded, inactiveIcon: Icons.construction_outlined, tabIndex: 3),
-    DrawerItemData(title: 'Borç / Alacak', activeIcon: Icons.receipt_long_rounded, inactiveIcon: Icons.receipt_long_outlined, tabIndex: 0), // maps to dashboard metric
-    DrawerItemData(title: 'Finansman Gücü', activeIcon: Icons.shield_rounded, inactiveIcon: Icons.shield_outlined, tabIndex: 0), // maps to dashboard metric
-    DrawerItemData(title: 'Raporlar', activeIcon: Icons.analytics_rounded, inactiveIcon: Icons.analytics_outlined, tabIndex: 0),
-    DrawerItemData(title: 'Ayarlar', activeIcon: Icons.settings_rounded, inactiveIcon: Icons.settings_outlined, tabIndex: 4), // maps to profile/settings tab
+    DrawerItemData(title: 'Finansal Durum', activeIcon: Icons.home_rounded, inactiveIcon: Icons.home_outlined, tabIndex: 0),
+    DrawerItemData(title: 'Projeler', activeIcon: Icons.construction_rounded, inactiveIcon: Icons.construction_outlined, tabIndex: 1),
+    DrawerItemData(title: 'Hareketler', activeIcon: Icons.receipt_long_rounded, inactiveIcon: Icons.receipt_long_outlined, tabIndex: 3),
+    DrawerItemData(title: 'Ayarlar', activeIcon: Icons.settings_rounded, inactiveIcon: Icons.settings_outlined, tabIndex: -1),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: context.colors.surface,
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -54,13 +53,17 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
                         child: Column(
                           children: List.generate(_drawerItems.length, (index) {
                             final item = _drawerItems[index];
-                            final isSelected = widget.selectedIndex == item.tabIndex && index < 3;
+                            final isSelected = widget.selectedIndex == item.tabIndex;
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 10.0),
                               child: InkWell(
                                 onTap: () {
                                   Navigator.pop(context); // Close drawer
-                                  widget.onItemSelected(item.tabIndex); // Route to appropriate tab
+                                  if (item.title == 'Ayarlar') {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const AyarlarView()));
+                                  } else {
+                                    widget.onItemSelected(item.tabIndex); // Route to appropriate tab
+                                  }
                                 },
                                 onHover: (isHovered) {
                                   setState(() {
@@ -78,7 +81,7 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
                                   ),
                                   decoration: BoxDecoration(
                                     color: isSelected
-                                        ? const Color(0xFF032B5E)
+                                        ? context.colors.brand
                                         : (_hoveredIndex == index
                                             ? const Color(0x14032B5E)
                                             : Colors.transparent),
@@ -93,10 +96,10 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
                                       Icon(
                                         isSelected ? item.activeIcon : item.inactiveIcon,
                                         color: isSelected
-                                            ? Colors.white
+                                            ? context.colors.surface
                                             : (_hoveredIndex == index
-                                                ? const Color(0xFF032B5E)
-                                                : const Color(0xFF475569)),
+                                                ? context.colors.brand
+                                                : context.colors.textSecondary),
                                         size: 24,
                                       ),
                                       const SizedBox(width: 16),
@@ -104,10 +107,10 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
                                         item.title,
                                         style: TextStyle(
                                           color: isSelected
-                                              ? Colors.white
+                                              ? context.colors.surface
                                               : (_hoveredIndex == index
-                                                  ? const Color(0xFF032B5E)
-                                                  : const Color(0xFF475569)),
+                                                  ? context.colors.brand
+                                                  : context.colors.textSecondary),
                                           fontSize: 16,
                                           fontWeight: isSelected || _hoveredIndex == index
                                               ? FontWeight.bold

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+
+import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:hano/views/proje_detay_view.dart';
-import 'package:hano/providers/finance_provider.dart';
-import 'package:hano/models/project.dart';
-import 'package:hano/views/yeni_proje_view.dart';
+import 'package:hane/views/proje_detay_view.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/models/project.dart';
+import 'package:hane/views/yeni_proje_view.dart';
 
 final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 
@@ -27,56 +29,93 @@ class ProjelerScreen extends StatelessWidget {
         children: [
           const SizedBox(height: 8),
           // Subtitle Row: "Devam Eden Projeler" & "Tümü"
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Devam Eden Projeler',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF032B5E),
+          if (projects.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Devam Eden Projeler',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: context.colors.brand,
+                    ),
                   ),
-                ),
-                InkWell(
-                  onTap: () {},
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Tümü',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF3B82F6),
+                  InkWell(
+                    onTap: () {},
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Tümü',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: context.colors.accent,
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 11,
-                        color: Color(0xFF3B82F6),
-                      ),
-                    ],
+                        SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 11,
+                          color: context.colors.accent,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
           // Project Cards List
           Expanded(
-            child: ListView.builder(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 20.0),
-              itemCount: projects.length,
-              itemBuilder: (context, index) {
-                final project = projects[index];
-                return _buildProjectCard(context, project, financeProvider);
-              },
-            ),
+            child: projects.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.transparent,
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              width: 6,
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              Icons.add,
+                              size: 40,
+                              color: Colors.grey[300],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Henüz bir projeniz yok',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: context.colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 20.0),
+                    itemCount: projects.length,
+                    itemBuilder: (context, index) {
+                      final project = projects[index];
+                      return _buildProjectCard(context, project, financeProvider);
+                    },
+                  ),
           ),
         ],
       ),
@@ -96,7 +135,7 @@ class ProjelerScreen extends StatelessWidget {
     final int karPercent = satis > 0 ? ((kar / satis) * 100).toInt() : 0;
 
     final bool isZeroRealization = realizationPercent == 0;
-    final Color percentColor = isZeroRealization ? const Color(0xFF94A3B8) : const Color(0xFF10B981);
+    final Color percentColor = isZeroRealization ? context.colors.textSecondary : context.colors.success;
 
     return GestureDetector(
       onTap: () {
@@ -110,9 +149,9 @@ class ProjelerScreen extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16.0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: context.colors.border),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withAlpha(5),
@@ -147,28 +186,28 @@ class ProjelerScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Status Tag
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Color(int.parse('0xFF${project.statusBgColorHex}')),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      child: Text(
-                        project.status,
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Color(int.parse(project.statusBgColorHex.replaceFirst('#', '').replaceFirst('0xFF', '').replaceFirst('0xff', '').padLeft(8, 'f'), radix: 16)),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        child: Text(
+                          project.status,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: Color(int.parse('0xFF${project.statusColorHex}')),
+                          color: Color(int.parse(project.statusColorHex.replaceFirst('#', '').replaceFirst('0xFF', '').replaceFirst('0xff', '').padLeft(8, 'f'), radix: 16)),
                         ),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       project.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
+                        color: context.colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -183,10 +222,10 @@ class ProjelerScreen extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       currencyFormat.format(totalCost),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF1E293B),
+                        color: context.colors.textPrimary,
                       ),
                     ),
                   ],
@@ -196,12 +235,12 @@ class ProjelerScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text(
+                  Text(
                     'Gerçekleşme',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF94A3B8),
+                      color: context.colors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -222,7 +261,7 @@ class ProjelerScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(2),
                       child: LinearProgressIndicator(
                         value: realizationPercent / 100.0,
-                        backgroundColor: const Color(0xFFE2E8F0),
+                        backgroundColor: context.colors.border,
                         valueColor: AlwaysStoppedAnimation<Color>(percentColor),
                       ),
                     ),
@@ -232,16 +271,16 @@ class ProjelerScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          Divider(height: 1, color: context.colors.surfaceVariant),
           const SizedBox(height: 10),
 
           // Middle row: Tahsilat, Satış, Kâr columns
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStatsCol('Tahsilat', currencyFormat.format(tahsilat), const Color(0xFF64748B)),
-              _buildStatsCol('Satış', currencyFormat.format(satis), const Color(0xFF64748B)),
-              _buildStatsCol('Kâr', '%$karPercent', karPercent > 0 ? const Color(0xFF10B981) : const Color(0xFF94A3B8)),
+              _buildStatsCol('Tahsilat', currencyFormat.format(tahsilat), context.colors.textSecondary),
+              _buildStatsCol('Satış', currencyFormat.format(satis), context.colors.textSecondary),
+              _buildStatsCol('Kâr', '%$karPercent', karPercent > 0 ? context.colors.success : context.colors.textSecondary),
             ],
           ),
           const SizedBox(height: 8),
@@ -258,7 +297,7 @@ class ProjelerScreen extends StatelessWidget {
                   ),
                 );
               },
-              child: const Padding(
+              child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -268,14 +307,14 @@ class ProjelerScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF032B5E),
+                        color: context.colors.brand,
                       ),
                     ),
                     SizedBox(width: 4),
                     Icon(
                       Icons.arrow_forward_ios_rounded,
                       size: 11,
-                      color: Color(0xFF032B5E),
+                      color: context.colors.brand,
                     ),
                   ],
                 ),

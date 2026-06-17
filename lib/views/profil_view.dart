@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:hane/theme/app_theme.dart';
 import 'package:flutter/services.dart';
-import 'package:hano/views/widgets/zeynep_logo.dart';
-import 'package:hano/views/kasa_view.dart';
-import 'package:hano/views/widgets/bank_logo.dart';
-import 'package:hano/views/ayarlar_view.dart';
-import 'package:hano/views/yardim_view.dart';
-import 'package:hano/models/company_profile.dart';
-import 'package:hano/models/account.dart';
-import 'package:hano/services/database_helper.dart';
+import 'package:hane/views/widgets/zeynep_logo.dart';
+import 'package:hane/views/kasa_view.dart';
+import 'package:hane/views/widgets/bank_logo.dart';
+import 'package:hane/views/ayarlar_view.dart';
+import 'package:hane/views/yardim_view.dart';
+import 'package:hane/models/company_profile.dart';
+import 'package:hane/models/account.dart';
+import 'package:hane/services/api_service.dart';
+import 'package:hane/views/auth/login_view.dart';
+import 'package:hane/views/yeni_hesap_view.dart';
 
 class ProfilScreen extends StatefulWidget {
   const ProfilScreen({super.key});
@@ -34,10 +37,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
   }
 
   Future<void> _loadData() async {
-    final profile = await DatabaseHelper.instance.getCompanyProfile();
-    final db = await DatabaseHelper.instance.database;
-    final accountMaps = await db.query('accounts');
-    final accounts = accountMaps.map((m) => Account.fromMap(m)).toList();
+    final profile = await ApiService.instance.getCompanyProfile();
+    final accounts = await ApiService.instance.readAllAccounts();
     
     if (mounted) {
       setState(() {
@@ -55,7 +56,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            Icon(Icons.check_circle_rounded, color: context.colors.surface, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -66,7 +67,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
           ],
         ),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF032B5E),
+        backgroundColor: context.colors.brand,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 2),
       ),
@@ -76,12 +77,29 @@ class _ProfilScreenState extends State<ProfilScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const SafeArea(child: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        backgroundColor: context.colors.surface,
+        appBar: AppBar(
+          title: Text('Profil', style: TextStyle(color: context.colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+          backgroundColor: context.colors.surface,
+          elevation: 0,
+          iconTheme: IconThemeData(color: context.colors.textPrimary),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
-    return SafeArea(
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 8.0, bottom: 16.0),
+    return Scaffold(
+      backgroundColor: context.colors.surface,
+      appBar: AppBar(
+        title: Text('Profil', style: TextStyle(color: context.colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+        backgroundColor: context.colors.surface,
+        elevation: 0,
+        iconTheme: IconThemeData(color: context.colors.textPrimary),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 8.0, bottom: 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -89,9 +107,9 @@ class _ProfilScreenState extends State<ProfilScreen> {
             // Company Info Card
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.colors.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: context.colors.border),
               ),
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -102,13 +120,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
                     width: 56,
                     height: 56,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: context.colors.scaffold,
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      border: Border.all(color: context.colors.border),
                     ),
-                    padding: const EdgeInsets.all(6.0),
-                    child: const CustomPaint(
-                      painter: LogoPainter(),
+                    padding: EdgeInsets.all(6.0),
+                    child: CustomPaint(
+                      painter: LogoPainter(brandColor: context.colors.brand),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -119,10 +137,10 @@ class _ProfilScreenState extends State<ProfilScreen> {
                       children: [
                         Text(
                           _companyProfile?.companyName ?? 'Şirket Adı',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF032B5E),
+                            color: context.colors.brand,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -138,40 +156,70 @@ class _ProfilScreenState extends State<ProfilScreen> {
             ),
             const SizedBox(height: 20),
 
-            _buildOptionItem(
-              icon: Icons.analytics_outlined,
-              title: 'Kasa Özeti',
-              isExpanded: _isKasaExpanded,
-              onTap: () {
-                setState(() {
-                  _isKasaExpanded = !_isKasaExpanded;
-                });
-              },
-              expandedContent: _buildKasaDetails(),
-            ),
-
 
             // List Options
             _buildOptionItem(
               icon: Icons.account_balance_wallet_outlined,
-              title: 'Banka Iban',
+              title: 'Banka Hesapları',
               isExpanded: _isIbanExpanded,
               onTap: () {
                 setState(() {
                   _isIbanExpanded = !_isIbanExpanded;
                 });
               },
+              actionWidget: Material(
+                color: context.colors.brand.withAlpha(20),
+                borderRadius: BorderRadius.circular(6),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Banka'))).then((_) => _loadData());
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, color: context.colors.brand, size: 14),
+                        const SizedBox(width: 4),
+                        Text('Ekle', style: TextStyle(color: context.colors.brand, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               expandedContent: _buildIbanDetails(),
             ),
             _buildOptionItem(
               icon: Icons.credit_card_outlined,
-              title: 'Kredi Kartı',
+              title: 'Kredi Kartları',
               isExpanded: _isKrediKartiExpanded,
               onTap: () {
                 setState(() {
                   _isKrediKartiExpanded = !_isKrediKartiExpanded;
                 });
               },
+              actionWidget: Material(
+                color: context.colors.brand.withAlpha(20),
+                borderRadius: BorderRadius.circular(6),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Kredi Kartı'))).then((_) => _loadData());
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, color: context.colors.brand, size: 14),
+                        const SizedBox(width: 4),
+                        Text('Ekle', style: TextStyle(color: context.colors.brand, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               expandedContent: _buildKrediKartiDetails(),
             ),
             _buildOptionItem(
@@ -196,40 +244,18 @@ class _ProfilScreenState extends State<ProfilScreen> {
               },
               expandedContent: _buildIletisimDetails(),
             ),
-
-              _buildSimpleOptionItem(
-                icon: Icons.settings_outlined,
-                title: 'Ayarlar',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AyarlarView()),
-                  );
-                },
-              ),
-              _buildSimpleOptionItem(
-                icon: Icons.help_outline_rounded,
-                title: 'Yardım & Destek',
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const YardimDestekView()),
-                  );
-                },
-              ),
+            const SizedBox(height: 12),
             _buildSimpleOptionItem(
               icon: Icons.logout_rounded,
               title: 'Çıkış Yap',
+              onTap: _showLogoutDialog,
               isDanger: true,
-              onTap: () {
-                _showLogoutDialog();
-              },
             ),
-            
             const SizedBox(height: 20),
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -253,9 +279,9 @@ class _ProfilScreenState extends State<ProfilScreen> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF1E293B),
+                color: context.colors.textPrimary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -271,14 +297,15 @@ class _ProfilScreenState extends State<ProfilScreen> {
     required bool isExpanded,
     required VoidCallback onTap,
     required Widget expandedContent,
+    Widget? actionWidget,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: context.colors.border),
           boxShadow: isExpanded
               ? [
                   const BoxShadow(
@@ -299,25 +326,29 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
                 child: Row(
                   children: [
-                    Icon(icon, color: const Color(0xFF1E293B), size: 22),
+                    Icon(icon, color: context.colors.textPrimary, size: 22),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF1E293B),
+                          color: context.colors.textPrimary,
                         ),
                       ),
                     ),
+                    if (actionWidget != null) ...[
+                      actionWidget,
+                      const SizedBox(width: 12),
+                    ],
                     AnimatedRotation(
                       turns: isExpanded ? 0.25 : 0.0,
                       duration: const Duration(milliseconds: 200),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_forward_ios_rounded,
                         size: 14,
-                        color: Color(0xFF94A3B8),
+                        color: context.colors.textSecondary,
                       ),
                     ),
                   ],
@@ -346,14 +377,14 @@ class _ProfilScreenState extends State<ProfilScreen> {
     required VoidCallback onTap,
     bool isDanger = false,
   }) {
-    final Color color = isDanger ? Colors.red : const Color(0xFF1E293B);
+    final Color color = isDanger ? Colors.red : context.colors.textPrimary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: context.colors.border),
         ),
         child: InkWell(
           onTap: onTap,
@@ -377,7 +408,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 14,
-                  color: isDanger ? Colors.red.withAlpha(128) : const Color(0xFF94A3B8),
+                  color: isDanger ? Colors.red.withAlpha(128) : context.colors.textSecondary,
                 ),
               ],
             ),
@@ -392,9 +423,9 @@ class _ProfilScreenState extends State<ProfilScreen> {
     return Expanded(
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
+          color: context.colors.scaffold,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
+          border: Border.all(color: context.colors.border),
         ),
         padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
         child: Column(
@@ -402,20 +433,20 @@ class _ProfilScreenState extends State<ProfilScreen> {
           children: [
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF64748B),
+                color: context.colors.textSecondary,
                 letterSpacing: 0.5,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
+                color: context.colors.textPrimary,
               ),
             ),
           ],
@@ -453,24 +484,6 @@ class _ProfilScreenState extends State<ProfilScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          height: 36,
-          decoration: BoxDecoration(
-            color: const Color(0xFF032B5E),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'KASA ÖZETİ',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.0,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
         Column(
           children: [
             Row(
@@ -488,8 +501,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 _buildKasaCard('BORSA', '₺1.000.000'),
               ],
             ),
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            SizedBox(height: 16),
+            Divider(height: 1, color: context.colors.border),
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
@@ -510,54 +523,36 @@ class _ProfilScreenState extends State<ProfilScreen> {
   // --- Banka Iban Builders ---
   Widget _buildIbanDetails() {
     final bankAccounts = _accounts.where((a) => a.type == 'Banka').toList();
-    if (bankAccounts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Text('Kayıtlı banka hesabı bulunamadı.', style: TextStyle(color: Colors.grey)),
-      );
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          height: 36,
-          decoration: BoxDecoration(
-            color: const Color(0xFF032B5E),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'BANKA IBAN',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
+        if (bankAccounts.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text('Kayıtlı banka hesabı bulunamadı.', style: TextStyle(color: Colors.grey)),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: context.colors.border),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Column(
+              children: bankAccounts.asMap().entries.map((entry) {
+                int idx = entry.key;
+                var acc = entry.value;
+                return Column(
+                  children: [
+                    _buildIbanRow(acc.name, acc.accountDetails),
+                    if (idx < bankAccounts.length - 1)
+                      Divider(height: 1, color: context.colors.surfaceVariant),
+                  ],
+                );
+              }).toList(),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-          child: Column(
-            children: bankAccounts.asMap().entries.map((entry) {
-              int idx = entry.key;
-              var acc = entry.value;
-              return Column(
-                children: [
-                  _buildIbanRow(acc.name, acc.accountDetails),
-                  if (idx < bankAccounts.length - 1)
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
       ],
     );
   }
@@ -571,7 +566,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
             width: 90,
             height: 38,
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: context.colors.scaffold,
               borderRadius: BorderRadius.circular(8),
             ),
             padding: const EdgeInsets.all(4.0),
@@ -584,26 +579,26 @@ class _ProfilScreenState extends State<ProfilScreen> {
               children: [
                 Text(
                   bankName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF1E293B),
+                    color: context.colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   iban,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     fontFamily: 'monospace',
-                    color: Color(0xFF64748B),
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.content_copy_rounded, color: Color(0xFF94A3B8), size: 18),
+            icon: Icon(Icons.content_copy_rounded, color: context.colors.textSecondary, size: 18),
             onPressed: () => _copyToClipboard(context, '$bankName IBAN numarası', iban),
             tooltip: 'Kopyala',
           ),
@@ -615,54 +610,36 @@ class _ProfilScreenState extends State<ProfilScreen> {
   // --- Kredi Kartı Builders ---
   Widget _buildKrediKartiDetails() {
     final cardAccounts = _accounts.where((a) => a.type == 'Kredi Kartı').toList();
-    if (cardAccounts.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Text('Kayıtlı kredi kartı bulunamadı.', style: TextStyle(color: Colors.grey)),
-      );
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          height: 36,
-          decoration: BoxDecoration(
-            color: const Color(0xFF032B5E),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'KREDİ KARTI NO',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.2,
+        if (cardAccounts.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text('Kayıtlı kredi kartı bulunamadı.', style: TextStyle(color: Colors.grey)),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: context.colors.border),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Column(
+              children: cardAccounts.asMap().entries.map((entry) {
+                int idx = entry.key;
+                var acc = entry.value;
+                return Column(
+                  children: [
+                    _buildIbanRow(acc.name, acc.accountDetails),
+                    if (idx < cardAccounts.length - 1)
+                      Divider(height: 1, color: context.colors.surfaceVariant),
+                  ],
+                );
+              }).toList(),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-          child: Column(
-            children: cardAccounts.asMap().entries.map((entry) {
-              int idx = entry.key;
-              var acc = entry.value;
-              return Column(
-                children: [
-                  _buildIbanRow(acc.name, acc.accountDetails),
-                  if (idx < cardAccounts.length - 1)
-                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
       ],
     );
   }
@@ -673,28 +650,10 @@ class _ProfilScreenState extends State<ProfilScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFF032B5E),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'ADRES KİMLİK BİLGİLERİ',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.0,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.colors.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: context.colors.border),
           ),
           padding: const EdgeInsets.all(12.0),
           child: Column(
@@ -704,25 +663,25 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 _companyProfile?.addressTitle ?? 'Adres',
                 '${_companyProfile?.addressLine1 ?? ''} ${_companyProfile?.addressLine2 ?? ''} ${_companyProfile?.city ?? ''} / ${_companyProfile?.country ?? ''}',
               ),
-              const Divider(height: 20, color: Color(0xFFF1F5F9)),
+              Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.credit_card_outlined,
                 'TC Kimlik No',
                 '12345678901', // Since we don't have TC Kimlik No in the DB schema, leave as is or remove
               ),
-              const Divider(height: 20, color: Color(0xFFF1F5F9)),
+              Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.business_outlined,
                 'Vergi No',
                 _companyProfile?.taxNumber ?? '',
               ),
-              const Divider(height: 20, color: Color(0xFFF1F5F9)),
+              Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.article_outlined,
                 'Ticari Sicil No',
                 _companyProfile?.commercialRegistry ?? '',
               ),
-              const Divider(height: 20, color: Color(0xFFF1F5F9)),
+              Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.assignment_outlined,
                 'Mersis No',
@@ -741,28 +700,10 @@ class _ProfilScreenState extends State<ProfilScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          height: 36,
           decoration: BoxDecoration(
-            color: const Color(0xFF032B5E),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          alignment: Alignment.center,
-          child: const Text(
-            'İLETİŞİM BİLGİLERİ',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.0,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.colors.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
+            border: Border.all(color: context.colors.border),
           ),
           padding: const EdgeInsets.all(12.0),
           child: Column(
@@ -772,13 +713,13 @@ class _ProfilScreenState extends State<ProfilScreen> {
                 'Telefon',
                 _companyProfile?.phone1 ?? '',
               ),
-              const Divider(height: 20, color: Color(0xFFF1F5F9)),
+              Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.mail_outline_rounded,
                 'E-posta',
                 _companyProfile?.email ?? '',
               ),
-              const Divider(height: 20, color: Color(0xFFF1F5F9)),
+              Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.language_rounded,
                 'Web Sitesi',
@@ -795,7 +736,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: const Color(0xFF64748B), size: 20),
+        Icon(icon, color: context.colors.textSecondary, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -803,26 +744,26 @@ class _ProfilScreenState extends State<ProfilScreen> {
             children: [
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF64748B),
+                  color: context.colors.textSecondary,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFF1E293B),
+                  color: context.colors.textPrimary,
                 ),
               ),
             ],
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.content_copy_rounded, color: Color(0xFF94A3B8), size: 16),
+          icon: Icon(Icons.content_copy_rounded, color: context.colors.textSecondary, size: 16),
           onPressed: () => _copyToClipboard(context, label, value),
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
@@ -840,8 +781,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           title,
-          style: const TextStyle(
-            color: Color(0xFF032B5E),
+          style: TextStyle(color: context.colors.brand,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -849,7 +789,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Tamam', style: TextStyle(color: Color(0xFF032B5E), fontWeight: FontWeight.bold)),
+            child: Text('Tamam', style: TextStyle(color: context.colors.brand, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -872,17 +812,23 @@ class _ProfilScreenState extends State<ProfilScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('İptal', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.bold)),
+            child: Text('İptal', style: TextStyle(color: context.colors.textSecondary, fontWeight: FontWeight.bold)),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Çıkış yapıldı!'),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              try {
+                await ApiService.instance.logout();
+              } catch (e) {
+                // Hata olsa da çıkış ekranına atalım
+              }
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginView()),
+                  (route) => false,
+                );
+              }
             },
             child: const Text('Çıkış Yap', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),

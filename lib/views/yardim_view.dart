@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
 
+
+import 'package:hane/theme/app_theme.dart';
 class YardimDestekView extends StatelessWidget {
   const YardimDestekView({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: context.colors.scaffold,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Yardım & Destek',
           style: TextStyle(
-            color: Color(0xFF1E293B),
+            color: context.colors.textPrimary,
             fontWeight: FontWeight.w800,
             fontSize: 18,
           ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: context.colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF032B5E)),
+        iconTheme: IconThemeData(color: context.colors.brand),
         centerTitle: true,
       ),
       body: ListView(
@@ -33,29 +35,29 @@ class YardimDestekView extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF032B5E), Color(0xFF0A4B9C)],
+              gradient: LinearGradient(
+                colors: [context.colors.brand, Color(0xFF0A4B9C)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF032B5E).withOpacity(0.3),
+                  color: context.colors.brand.withOpacity(0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 )
               ],
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.support_agent_rounded, color: Colors.white, size: 40),
+                Icon(Icons.support_agent_rounded, color: context.colors.surface, size: 40),
                 SizedBox(height: 16),
                 Text(
                   'Size nasıl yardımcı olabiliriz?',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: context.colors.surface,
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -64,7 +66,7 @@ class YardimDestekView extends StatelessWidget {
                 Text(
                   'Sık sorulan soruları inceleyebilir veya destek ekibimizle iletişime geçebilirsiniz.',
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: context.colors.surface.withAlpha(178),
                     fontSize: 14,
                   ),
                 ),
@@ -73,30 +75,30 @@ class YardimDestekView extends StatelessWidget {
           ),
           const SizedBox(height: 32),
 
-          const Text(
+          Text(
             'İletişim Kanalları',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
+              color: context.colors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
-          _buildContactCard(
+          _buildContactCard(context, 
             'Canlı Destek',
             'Hemen bir temsilci ile görüşün',
             Icons.chat_bubble_outline_rounded,
-            const Color(0xFF3B82F6),
+            context.colors.accent,
             () {},
           ),
-          _buildContactCard(
+          _buildContactCard(context, 
             'E-Posta Gönder',
             'destek@hano.com.tr',
             Icons.email_outlined,
-            const Color(0xFF10B981),
+            context.colors.success,
             () {},
           ),
-          _buildContactCard(
+          _buildContactCard(context, 
             'Bizi Arayın',
             '0850 123 45 67',
             Icons.phone_outlined,
@@ -105,24 +107,24 @@ class YardimDestekView extends StatelessWidget {
           ),
 
           const SizedBox(height: 32),
-          const Text(
+          Text(
             'Sık Sorulan Sorular',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
+              color: context.colors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
-          _buildFaqItem(
+          _buildFaqItem(context, 
             'Yeni bir projeyi nasıl eklerim?',
             'Ana ekranda "Projeler" sekmesine giderek "Yeni Proje Ekle" butonunu kullanabilirsiniz.',
           ),
-          _buildFaqItem(
+          _buildFaqItem(context, 
             'Finansal raporları nasıl dışa aktarırım?',
             'Raporlar sekmesinden tarih aralığı seçtikten sonra sağ üst köşedeki indirme ikonuna tıklayarak PDF veya Excel olarak dışa aktarabilirsiniz.',
           ),
-          _buildFaqItem(
+          _buildFaqItem(context, 
             'Şifremi unuttum, ne yapmalıyım?',
             'Giriş ekranında bulunan "Şifremi Unuttum" bağlantısına tıklayarak e-posta adresinize sıfırlama bağlantısı gönderebilirsiniz.',
           ),
@@ -133,13 +135,13 @@ class YardimDestekView extends StatelessWidget {
     );
   }
 
-  Widget _buildContactCard(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildContactCard(BuildContext context, String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.colors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
@@ -159,33 +161,33 @@ class YardimDestekView extends StatelessWidget {
           ),
           child: Icon(icon, color: color),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Color(0xFF1E293B))),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Color(0xFF94A3B8)),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: context.colors.textPrimary)),
+        subtitle: Text(subtitle, style: TextStyle(fontSize: 13, color: context.colors.textSecondary)),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: context.colors.textSecondary),
       ),
     );
   }
 
-  Widget _buildFaqItem(String question, String answer) {
+  Widget _buildFaqItem(BuildContext context, String question, String answer) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.colors.border),
       ),
       child: ExpansionTile(
         title: Text(
           question,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color(0xFF1E293B)),
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: context.colors.textPrimary),
         ),
-        collapsedIconColor: const Color(0xFF64748B),
-        iconColor: const Color(0xFF032B5E),
+        collapsedIconColor: context.colors.textSecondary,
+        iconColor: context.colors.brand,
         childrenPadding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
         children: [
           Text(
             answer,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF475569), height: 1.5),
+            style: TextStyle(fontSize: 13, color: context.colors.textSecondary, height: 1.5),
           ),
         ],
       ),

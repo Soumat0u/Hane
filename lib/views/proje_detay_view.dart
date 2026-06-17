@@ -1,97 +1,120 @@
 import 'dart:math';
+
+import 'package:hane/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:hano/providers/finance_provider.dart';
-import 'package:hano/models/project.dart';
-import 'package:hano/views/proje_duzenle_view.dart';
-import 'package:hano/views/yeni_islem_view.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/models/project.dart';
+import 'package:hane/models/financial_transaction.dart';
+import 'package:hane/views/yeni_proje_view.dart';
+import 'package:hane/views/yeni_islem_view.dart';
 
 final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
+final dateFormat = DateFormat('dd.MM.yyyy');
 
-class ProjeDetayView extends StatelessWidget {
+class ProjeDetayView extends StatefulWidget {
   final String projectName;
 
   const ProjeDetayView({super.key, required this.projectName});
+
+  @override
+  State<ProjeDetayView> createState() => _ProjeDetayViewState();
+}
+
+class _ProjeDetayViewState extends State<ProjeDetayView> {
+  String _selectedCategory = 'Tümü';
 
   @override
   Widget build(BuildContext context) {
     return Consumer<FinanceProvider>(
       builder: (context, fp, child) {
         final project = fp.projects.firstWhere(
-          (p) => p.name == projectName, 
+          (p) => p.name == widget.projectName, 
           orElse: () => Project(name: 'Bulunamadı', status: '', statusColorHex: '000000', statusBgColorHex: 'FFFFFF')
         );
         if (project.id == null) {
-          return Scaffold(appBar: AppBar(title: Text(projectName)), body: const Center(child: Text("Proje bulunamadı.")));
+          return Scaffold(appBar: AppBar(title: Text(widget.projectName)), body: const Center(child: Text("Proje bulunamadı.")));
         }
 
-        final totalGider = fp.getProjectTotalGider(project.id!);
-        final totalTahsilat = fp.getProjectTotalTahsilat(project.id!);
-        final totalSatis = fp.getProjectTotalSatis(project.id!);
+        final projectTransactions = fp.getTransactionsForProject(project.id!);
+        final harcamalar = projectTransactions.where((t) => t.type == 'Gider').toList();
         
-        final double kar = totalSatis - project.estimatedTotalCost;
-        final int tahsilatPercent = totalSatis > 0 ? ((totalTahsilat / totalSatis) * 100).toInt() : 0;
-        final int karPercent = totalSatis > 0 ? ((kar / totalSatis) * 100).toInt() : 0;
-        final int harcamaPercent = project.estimatedTotalCost > 0 ? ((totalGider / project.estimatedTotalCost) * 100).toInt() : 0;
+        final totalGider = harcamalar.fold(0.0, (sum, t) => sum + t.amount);
+        final kalanButce = project.estimatedTotalCost - totalGider;
+
+        final currentMonth = DateTime.now().month;
+        final currentYear = DateTime.now().year;
+        final buAyHarcama = harcamalar.where((t) {
+          final d = DateTime.tryParse(t.date);
+          if (d == null) return false;
+          return d.month == currentMonth && d.year == currentYear;
+        }).fold(0.0, (sum, t) => sum + t.amount);
+
+        // Get unique categories from expenses
+        final categories = ['Tümü'];
+        final uniqueCategories = harcamalar.map((e) => e.category).toSet().toList();
+        uniqueCategories.sort();
+        categories.addAll(uniqueCategories);
+
+        if (!_categoriesContains(_selectedCategory, categories)) {
+           _selectedCategory = 'Tümü';
+        }
+
+        // Filter transactions by selected category
+        final filteredHarcamalar = _selectedCategory == 'Tümü' 
+            ? harcamalar 
+            : harcamalar.where((t) => t.category == _selectedCategory).toList();
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: context.colors.surface,
           appBar: AppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: context.colors.surface,
             elevation: 0,
             centerTitle: true,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Color(0xFF032B5E)),
+              icon: Icon(Icons.arrow_back_ios_new, size: 20, color: context.colors.textPrimary),
               onPressed: () => Navigator.pop(context),
             ),
             title: Text(
-              projectName,
-              style: const TextStyle(
-                color: Color(0xFF032B5E),
+              widget.projectName,
+              style: TextStyle(
+                color: context.colors.textPrimary,
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: 18,
               ),
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.edit, color: Color(0xFF032B5E)),
+                icon: Icon(Icons.edit, color: context.colors.textPrimary),
                 tooltip: 'Düzenle',
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ProjeDuzenleView(project: project),
+                      builder: (context) => YeniProjeView(project: project),
                     ),
                   );
                 },
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const YeniIslemScreen(initialType: 'Ödeme'),
-                ),
-              );
-            },
-            backgroundColor: const Color(0xFF032B5E),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text('Yeni İşlem Ekle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeroSection(project),
-                const SizedBox(height: 16),
-                _buildSummaryCards(project, totalTahsilat, totalSatis, kar, tahsilatPercent, karPercent, harcamaPercent),
-                _buildSpendingDistribution(project, fp, totalGider),
+                _buildHeroCard(context, project),
                 const SizedBox(height: 24),
-                _buildPaymentsSection(project, fp),
+                _buildHarcamalarHeader(context, project.name),
+                const SizedBox(height: 16),
+                _buildFilterChips(context, categories),
+                const SizedBox(height: 16),
+                _buildExpenditureList(context, filteredHarcamalar),
+                const SizedBox(height: 24),
+                _buildSummaryCards(context, totalGider, buAyHarcama, kalanButce),
+                const SizedBox(height: 32),
+                _buildSpendingDistribution(context, project, fp, totalGider),
                 const SizedBox(height: 40),
               ],
             ),
@@ -101,423 +124,456 @@ class ProjeDetayView extends StatelessWidget {
     );
   }
 
-  Widget _buildHeroSection(Project project) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Image & Badge
-        Expanded(
-          flex: 4,
-          child: Container(
-            height: 180,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              image: const DecorationImage(
-                image: AssetImage('assets/images/modern_apartment_building.png'),
-                fit: BoxFit.cover,
-              ),
-            ),
-            alignment: Alignment.topLeft,
-            padding: const EdgeInsets.all(8),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(230),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                project.status,
-                style: TextStyle(
-                  color: Color(int.parse('0xFF${project.statusColorHex}')),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        // Project Details
-        Expanded(
-          flex: 5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.location_on_outlined, color: Color(0xFF64748B), size: 24),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Konum', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
-                        Text('İstanbul / Başakşehir', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.edit, size: 14, color: Colors.white),
-                    label: const Text('Düzenle', style: TextStyle(fontSize: 12)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0056D2),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                      minimumSize: const Size(0, 32),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      elevation: 0,
-                    ),
-                  ),
-                ],
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12.0),
-                child: Divider(height: 1, color: Color(0xFFE2E8F0)),
-              ),
-              Row(
-                children: [
-                  const Icon(Icons.square_foot_outlined, color: Color(0xFF64748B), size: 24),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('m² (Toplam İnşaat Alanı)', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
-                      Text('${project.areaSqMeters} m²', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    ],
-                  ),
-                ],
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12.0),
-                child: Divider(height: 1, color: Color(0xFFE2E8F0)),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Icon(Icons.home_outlined, color: Color(0xFF64748B), size: 24),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Konut Sayısı', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
-                            Text('${project.unitCount}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Icon(Icons.store_mall_directory_outlined, color: Color(0xFF64748B), size: 24),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Dükkan Sayısı', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
-                            Text('${project.shopCount}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
+  bool _categoriesContains(String cat, List<String> cats) {
+      return cats.contains(cat);
   }
 
-  Widget _buildSummaryCards(Project project, double tahsilat, double satis, double kar, int tahsilatPercent, int karPercent, int harcamaPercent) {
-    return Row(
-      children: [
-        _buildStatCard(
-          title: 'Toplam Maliyet',
-          amount: currencyFormat.format(project.estimatedTotalCost),
-          percentage: '%$harcamaPercent',
-          icon: Icons.receipt_long_outlined,
-          iconColor: const Color(0xFF3B82F6),
-          bgColor: const Color(0xFFF8FAFC),
-        ),
-        const SizedBox(width: 8),
-        _buildStatCard(
-          title: 'Tahsilat',
-          amount: currencyFormat.format(tahsilat),
-          percentage: '%$tahsilatPercent',
-          icon: Icons.account_balance_wallet_outlined,
-          iconColor: const Color(0xFF10B981),
-          bgColor: const Color(0xFFECFDF5),
-        ),
-        const SizedBox(width: 8),
-        _buildStatCard(
-          title: 'Satış (Sözleşme)',
-          amount: currencyFormat.format(satis),
-          icon: Icons.handshake_outlined,
-          iconColor: const Color(0xFF8B5CF6),
-          bgColor: const Color(0xFFF5F3FF),
-        ),
-        const SizedBox(width: 8),
-        _buildStatCard(
-          title: 'Kar',
-          amount: currencyFormat.format(kar),
-          percentage: '%$karPercent',
-          icon: Icons.trending_up,
-          iconColor: kar >= 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
-          bgColor: kar >= 0 ? const Color(0xFFF8FAFC) : const Color(0xFFFEF2F2),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard({
-    required String title,
-    required String amount,
-    String? percentage,
-    required IconData icon,
-    required Color iconColor,
-    required Color bgColor,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: iconColor, size: 24),
-            const SizedBox(height: 12),
-            Text(title, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text(amount, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-            if (percentage != null) ...[
-              const SizedBox(height: 4),
-              Text(percentage, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: iconColor)),
-            ],
-          ],
-        ),
+  Widget _buildHeroCard(BuildContext context, Project project) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.colors.border),
       ),
-    );
-  }
-
-  Widget _buildPaymentsSection(Project project, FinanceProvider fp) {
-    // To make this dynamic, we need to sum expenses by category.
-    // The previous implementation used fixed budgets for categories.
-    // Let's create dynamic rows based on actual expenses.
-    final categorySpending = fp.getProjectCategorySpending(project.id!);
-    
-    // Some predefined colors for categories
-    final categoryColors = {
-      'Beton': const Color(0xFF10B981),
-      'Demir': const Color(0xFF10B981),
-      'Hafriyat': const Color(0xFFF59E0B),
-      'Duvar': const Color(0xFF3B82F6),
-      'İşçilik': const Color(0xFF8B5CF6),
-      'Genel Gider': const Color(0xFFF43F5E),
-    };
-
-    final categoryIcons = {
-      'Beton': Icons.fire_truck_outlined,
-      'Demir': Icons.grid_4x4_outlined,
-      'Hafriyat': Icons.local_shipping_outlined,
-      'Duvar': Icons.view_quilt_outlined,
-      'İşçilik': Icons.engineering_outlined,
-      'Genel Gider': Icons.receipt_outlined,
-    };
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Ödemeler (Kategori Bazlı)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-            ),
-            ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Ödeme Ekle'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        // Table Header
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
-          child: Row(
-            children: [
-              Expanded(flex: 3, child: Text('Kategori', style: TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.bold))),
-              Expanded(flex: 3, child: Text('Harcama', style: TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.bold))),
-              Expanded(flex: 2, child: Text('', style: TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.bold))),
-              Expanded(flex: 3, child: Align(alignment: Alignment.centerRight, child: Text('', style: TextStyle(color: Color(0xFF64748B), fontSize: 11, fontWeight: FontWeight.bold)))),
-            ],
-          ),
-        ),
-        const Divider(color: Color(0xFFE2E8F0)),
-        // Table Rows
-        ...categorySpending.entries.map((e) {
-          return _buildPaymentRow(
-            icon: categoryIcons[e.key] ?? Icons.category_outlined,
-            name: e.key,
-            total: currencyFormat.format(e.value),
-            remaining: '-',
-            progress: 1.0,
-            color: categoryColors[e.key] ?? const Color(0xFF10B981)
-          );
-        }).toList(),
-        if (categorySpending.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text("Henüz ödeme kaydı bulunmuyor.", style: TextStyle(color: Colors.grey)),
-          )
-      ],
-    );
-  }
-
-  Widget _buildPaymentRow({
-    required IconData icon,
-    required String name,
-    required String total,
-    required String remaining,
-    required double progress,
-    required Color color,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 12.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 3,
-            child: Row(
-              children: [
-                Icon(icon, color: const Color(0xFF032B5E), size: 16),
-                const SizedBox(width: 4),
-                Expanded(child: Text(name, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF1E293B)))),
-              ],
+          // Project Image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/modern_apartment_building.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.cover,
             ),
           ),
-          Expanded(flex: 3, child: Text(total, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF1E293B)))),
-          Expanded(flex: 2, child: Text(remaining, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF1E293B)))),
+          const SizedBox(width: 16),
+          // Details
           Expanded(
-            flex: 3,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${(progress * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF1E293B))),
-                const SizedBox(width: 4),
-                SizedBox(
-                  width: 36,
-                  height: 6,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(3),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: const Color(0xFFF1F5F9),
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                Row(
+                  children: [
+                    Text(
+                      project.name,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: context.colors.textPrimary,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: context.colors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'AKP-001', // Example project code
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: context.colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.location_on_outlined, size: 14, color: context.colors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'İstanbul / Başakşehir',
+                      style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.home_work_outlined, size: 14, color: context.colors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Konut Projesi',
+                      style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
+          // Pafta, Parsel, Alan
+          Row(
+            children: [
+              _buildProjectStatItem(context, 'Pafta', '125'),
+              const SizedBox(width: 16),
+              _buildProjectStatItem(context, 'Parsel', '48'),
+              const SizedBox(width: 16),
+              _buildProjectStatItem(context, 'Alan (m²)', currencyFormat.format(project.areaSqMeters).replaceAll('₺', '').trim()),
+            ],
+          )
         ],
       ),
     );
   }
 
-  Widget _buildSpendingDistribution(Project project, FinanceProvider fp, double totalGider) {
+  Widget _buildProjectStatItem(BuildContext context, String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: context.colors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: context.colors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHarcamalarHeader(BuildContext context, String projectName) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'HARCAMALAR',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: context.colors.textPrimary,
+            letterSpacing: 0.5,
+          ),
+        ),
+        ElevatedButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => YeniIslemScreen(
+                  initialType: 'Gider',
+                  initialProject: projectName,
+                ),
+              ),
+            );
+          },
+          icon: Icon(Icons.add, size: 16, color: context.colors.surface),
+          label: Text('Yeni Harcama Ekle', style: TextStyle(color: context.colors.surface, fontWeight: FontWeight.bold)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0F172A), // Dark blue almost black from mock
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChips(BuildContext context, List<String> categories) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: categories.map((cat) {
+          final isSelected = _selectedCategory == cat;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ChoiceChip(
+              label: Text(
+                cat,
+                style: TextStyle(
+                  color: isSelected ? context.colors.surface : context.colors.textPrimary,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() => _selectedCategory = cat);
+                }
+              },
+              backgroundColor: context.colors.surface,
+              selectedColor: const Color(0xFF0F172A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(
+                  color: isSelected ? Colors.transparent : context.colors.border,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildExpenditureList(BuildContext context, List<FinancialTransaction> transactions) {
+    if (transactions.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 32.0),
+        child: Center(child: Text("Bu kategoriye ait harcama bulunamadı.", style: TextStyle(color: Colors.grey))),
+      );
+    }
+
+    return Column(
+      children: [
+        // Table Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+          child: Row(
+            children: [
+              Expanded(flex: 2, child: Text('KATEGORİ', style: _headerStyle(context))),
+              Expanded(flex: 3, child: Text('AÇIKLAMA / MİKTAR', style: _headerStyle(context))),
+              Expanded(flex: 2, child: Text('TEDARİKÇİ', style: _headerStyle(context))),
+              Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('TUTAR', style: _headerStyle(context)))),
+              Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('TARİH', style: _headerStyle(context)))),
+              const SizedBox(width: 24), // For arrow icon
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        // Rows
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: transactions.length,
+          separatorBuilder: (context, index) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final t = transactions[index];
+            DateTime? date = DateTime.tryParse(t.date);
+            final dateStr = date != null ? dateFormat.format(date) : t.date;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: context.colors.surfaceVariant.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(_getIconForCategory(t.category), size: 18, color: context.colors.textPrimary),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(t.category, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(t.description.isNotEmpty ? t.description : '-', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: context.colors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        // Attempt to extract quantity from description if possible, or just leave it empty. Let's just use description.
+                        Text('', style: TextStyle(fontSize: 11, color: context.colors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(t.contactName ?? '-', style: TextStyle(fontSize: 12, color: context.colors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(currencyFormat.format(t.amount), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary)),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(dateStr, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.chevron_right, size: 16, color: context.colors.textSecondary),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  TextStyle _headerStyle(BuildContext context) {
+    return TextStyle(
+      fontSize: 10,
+      fontWeight: FontWeight.bold,
+      color: context.colors.textSecondary,
+    );
+  }
+
+  IconData _getIconForCategory(String category) {
+    switch (category.toLowerCase()) {
+      case 'beton': return Icons.fire_truck_outlined;
+      case 'demir': return Icons.grid_4x4_outlined;
+      case 'duvar': return Icons.view_quilt_outlined;
+      case 'elektrik': return Icons.electrical_services_outlined;
+      case 'sıhhi tesisat': return Icons.water_drop_outlined;
+      case 'işçilik': return Icons.engineering_outlined;
+      case 'kalıp': return Icons.construction_outlined;
+      case 'nakliye': return Icons.local_shipping_outlined;
+      default: return Icons.build_outlined;
+    }
+  }
+
+  Widget _buildSummaryCards(BuildContext context, double totalGider, double buAyHarcama, double kalanButce) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.colors.border),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildSummaryCardColumn(context, 'Toplam Harcama', currencyFormat.format(totalGider), context.colors.textPrimary),
+          Container(height: 40, width: 1, color: context.colors.border),
+          _buildSummaryCardColumn(context, 'Bu Ay Harcama', currencyFormat.format(buAyHarcama), context.colors.textPrimary),
+          Container(height: 40, width: 1, color: context.colors.border),
+          _buildSummaryCardColumn(context, 'Kalan Bütçe', currencyFormat.format(kalanButce), context.colors.success),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryCardColumn(BuildContext context, String title, String amount, Color amountColor) {
+    return Column(
+      children: [
+        Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textSecondary)),
+        const SizedBox(height: 8),
+        Text(amount, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: amountColor)),
+      ],
+    );
+  }
+
+  Widget _buildSpendingDistribution(BuildContext context, Project project, FinanceProvider fp, double totalGider) {
     final categorySpending = fp.getProjectCategorySpending(project.id!);
     
     final categoryColors = {
-      'Beton': const Color(0xFF3B82F6),
-      'Demir': const Color(0xFF14B8A6),
-      'Duvar': const Color(0xFF8B5CF6),
-      'Kalıp & İskele': const Color(0xFF0EA5E9),
-      'Hafriyat': const Color(0xFF10B981),
+      'Beton': const Color(0xFF0F172A), // Dark blue from mock for chart
+      'Demir': const Color(0xFF3B82F6),
+      'Duvar': const Color(0xFF10B981),
+      'Kalıp & İskele': const Color(0xFF8B5CF6),
+      'Hafriyat': context.colors.success,
       'Elektrik': const Color(0xFFF59E0B),
       'Sıhhi Tesisat': const Color(0xFFF43F5E),
       'İşçilik': const Color(0xFFCBD5E1),
-      'Genel Gider': const Color(0xFF475569),
+      'Genel Gider': context.colors.textSecondary,
     };
 
     final List<SpendingData> data = categorySpending.entries.map((e) {
       double pct = totalGider > 0 ? (e.value / totalGider) * 100 : 0;
-      return SpendingData(e.key, currencyFormat.format(e.value), pct, categoryColors[e.key] ?? const Color(0xFF1E293B));
+      return SpendingData(e.key, currencyFormat.format(e.value), pct, categoryColors[e.key] ?? context.colors.brand);
     }).toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Harcama Dağılımı',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
-        ),
-        const SizedBox(height: 16),
-        if (data.isEmpty)
-          const Text("Harcama verisi bulunamadı.", style: TextStyle(color: Colors.grey))
-        else
+    // Sort data to match mock
+    data.sort((a, b) => b.percentage.compareTo(a.percentage));
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              SizedBox(
-                width: 140,
-                height: 140,
-                child: CustomPaint(
-                  painter: DonutChartPainter(data),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text('Toplam Ödenen', style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
-                        Text(currencyFormat.format(totalGider), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                      ],
-                    ),
-                  ),
-                ),
+              Text(
+                'Harcama Dağılımı',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
               ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  children: data.map((item) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 6.0),
-                      child: Row(
-                        children: [
-                          Container(width: 8, height: 8, decoration: BoxDecoration(color: item.color, shape: BoxShape.circle)),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(item.name, style: const TextStyle(fontSize: 12, color: Color(0xFF475569)))),
-                          Text(item.amount, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                          const SizedBox(width: 12),
-                          SizedBox(
-                            width: 40,
-                            child: Text('%${item.percentage.toStringAsFixed(1)}', textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
+              Row(
+                children: [
+                  Text('Tümünü Gör', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.brand)),
+                  Icon(Icons.chevron_right, size: 16, color: context.colors.brand),
+                ],
               ),
             ],
           ),
-      ],
+          const SizedBox(height: 24),
+          if (data.isEmpty)
+            const Text("Harcama verisi bulunamadı.", style: TextStyle(color: Colors.grey))
+          else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 140,
+                  height: 140,
+                  child: CustomPaint(
+                    painter: DonutChartPainter(data),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Toplam', style: TextStyle(fontSize: 10, color: context.colors.textSecondary)),
+                          Text(currencyFormat.format(totalGider), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    children: data.map((item) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Row(
+                          children: [
+                            Container(width: 8, height: 8, decoration: BoxDecoration(color: item.color, shape: BoxShape.circle)),
+                            const SizedBox(width: 8),
+                            Expanded(child: Text(item.name, style: TextStyle(fontSize: 12, color: context.colors.textSecondary))),
+                            Text(item.amount, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 40,
+                              child: Text('%${item.percentage.toStringAsFixed(1)}', textAlign: TextAlign.right, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textSecondary)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 }
@@ -553,7 +609,8 @@ class DonutChartPainter extends CustomPainter {
       final paint = Paint()
         ..color = item.color
         ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth;
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
 
       canvas.drawArc(rect, startAngle, sweepAngle, false, paint);
       

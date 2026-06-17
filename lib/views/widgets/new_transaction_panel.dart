@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+
+import 'package:hane/theme/app_theme.dart';
 class NewTransactionPanel extends StatelessWidget {
   final ValueChanged<String> onTypeSelected;
 
@@ -11,8 +13,8 @@ class NewTransactionPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration(
+        color: context.colors.surface,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
@@ -34,12 +36,12 @@ class NewTransactionPanel extends StatelessWidget {
           const SizedBox(height: 20),
 
           // Header Title
-          const Text(
+          Text(
             'Yeni İşlem Türü Seçin',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
+              color: context.colors.textPrimary,
             ),
           ),
           const SizedBox(height: 24),
@@ -53,12 +55,12 @@ class NewTransactionPanel extends StatelessWidget {
             crossAxisSpacing: 16,
             childAspectRatio: 0.95,
             children: [
-              _buildGridItem(context, 'Ödeme', Icons.outbox_rounded, const Color(0xFFEFF6FF), const Color(0xFF3B82F6)),
-              _buildGridItem(context, 'Tahsilat', Icons.move_to_inbox_rounded, const Color(0xFFECFDF5), const Color(0xFF10B981)),
+              _buildGridItem(context, 'Ödeme', Icons.outbox_rounded, Color(0xFFEFF6FF), context.colors.accent),
+              _buildGridItem(context, 'Tahsilat', Icons.move_to_inbox_rounded, Color(0xFFECFDF5), context.colors.success),
               _buildGridItem(context, 'Transfer', Icons.swap_horiz_rounded, const Color(0xFFFFF7ED), const Color(0xFFF59E0B)),
-              _buildGridItem(context, 'Borçlanma', Icons.account_balance_rounded, const Color(0xFFFEF2F2), const Color(0xFFEF4444)),
+              _buildGridItem(context, 'Borçlanma', Icons.account_balance_rounded, Color(0xFFFEF2F2), context.colors.danger),
               _buildGridItem(context, 'Kredi Kullanımı', Icons.wallet_rounded, const Color(0xFFF5F3FF), const Color(0xFF8B5CF6)),
-              _buildGridItem(context, 'Satış', Icons.assignment_turned_in_rounded, const Color(0xFFEFF6FF), const Color(0xFF032B5E)),
+              _buildGridItem(context, 'Satış', Icons.assignment_turned_in_rounded, Color(0xFFEFF6FF), context.colors.brand),
             ],
           ),
           const SizedBox(height: 20),
@@ -76,9 +78,9 @@ class NewTransactionPanel extends StatelessWidget {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.colors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(5),
@@ -110,10 +112,10 @@ class NewTransactionPanel extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF475569),
+                  color: context.colors.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),

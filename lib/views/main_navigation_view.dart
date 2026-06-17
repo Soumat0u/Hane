@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:hano/views/dashboard_view.dart';
-import 'package:hano/views/kasa_view.dart';
-import 'package:hano/views/profil_view.dart';
-import 'package:hano/views/projeler_view.dart';
-import 'package:hano/views/yeni_islem_view.dart';
-import 'package:hano/views/bildirimler_view.dart' as hano_bildirimler;
-import 'package:hano/views/widgets/bottom_navbar.dart';
-import 'package:hano/views/widgets/zeynep_drawer.dart';
-import 'package:hano/views/widgets/new_transaction_panel.dart';
-import 'package:hano/views/yeni_proje_view.dart';
+import 'package:hane/theme/app_theme.dart';
+import 'package:hane/views/dashboard_view.dart';
+import 'package:hane/views/kasa_view.dart';
+import 'package:hane/views/profil_view.dart';
+import 'package:hane/views/hareketler_view.dart';
+import 'package:hane/views/projeler_view.dart';
+import 'package:hane/views/yeni_islem_view.dart';
+import 'package:hane/views/bildirimler_view.dart' as hano_bildirimler;
+import 'package:hane/views/widgets/bottom_navbar.dart';
+import 'package:hane/views/widgets/zeynep_drawer.dart';
+import 'package:hane/views/widgets/new_transaction_panel.dart';
+import 'package:hane/views/yeni_proje_view.dart';
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({super.key});
@@ -44,15 +46,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   String _getHeaderTitle(int index) {
     switch (index) {
       case 0:
-        return 'Anasayfa';
+        return 'Finansal Durum';
       case 1:
-        return 'Kasa';
-      case 3:
         return 'Projeler';
+      case 3:
+        return 'Hareketler';
       case 4:
         return 'Profil';
       default:
-        return 'Anasayfa';
+        return 'Finansal Durum';
     }
   }
 
@@ -99,15 +101,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   Widget build(BuildContext context) {
     // Scaffold screens list
     final List<Widget> screens = [
-      const DashboardScreen(),
-      KasaScreen(onBack: () => _selectTab(0)),
-      const ProjelerScreen(),
+      DashboardScreen(),
+      ProjelerScreen(),
+      HareketlerView(),
       const ProfilScreen(),
     ];
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: context.colors.scaffold,
       drawer: ZeynepDrawer(
         selectedIndex: _currentTabIndex,
         onItemSelected: (index) {
@@ -120,7 +122,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             bottom: false,
             child: Column(
               children: [
-                if (_currentTabIndex != 2)
+                if (_currentTabIndex != 2 && _currentTabIndex != 4)
                   Padding(
                     padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 12.0, bottom: 4.0),
                     child: Row(
@@ -129,7 +131,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                         Row(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.menu_rounded, color: Color(0xFF032B5E), size: 28),
+                              icon: Icon(Icons.menu_rounded, color: context.colors.brand, size: 28),
                               onPressed: () {
                                 _scaffoldKey.currentState?.openDrawer();
                               },
@@ -137,21 +139,21 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                             const SizedBox(width: 8),
                             Text(
                               _getHeaderTitle(_currentTabIndex),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF1E293B),
+                                color: context.colors.textPrimary,
                               ),
                             ),
                           ],
                         ),
-                        _currentTabIndex == 3
+                        _currentTabIndex == 1
                             ? TextButton(
                                 onPressed: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (context) => const YeniProjeView()));
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) => YeniProjeView()));
                                 },
                                 style: TextButton.styleFrom(
-                                  foregroundColor: const Color(0xFF032B5E),
+                                  foregroundColor: context.colors.brand,
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 ),
                                 child: const Text(
@@ -162,56 +164,61 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                                   ),
                                 ),
                               )
-                            : Stack(
-                                alignment: Alignment.topRight,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF64748B), size: 28),
-                                    onPressed: () {
-                                      showGeneralDialog(
-                                        context: context,
-                                        barrierDismissible: true,
-                                        barrierLabel: 'Dismiss',
-                                        barrierColor: Colors.black.withOpacity(0.4),
-                                        transitionDuration: const Duration(milliseconds: 300),
-                                        pageBuilder: (context, anim1, anim2) {
-                                          return Align(
-                                            alignment: Alignment.topCenter,
-                                            child: Material(
-                                              color: Colors.transparent,
-                                              child: const hano_bildirimler.BildirimlerView(),
+                            : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Stack(
+                                      alignment: Alignment.topRight,
+                                      children: [
+                                        IconButton(
+                                          icon: Icon(Icons.notifications_none_rounded, color: context.colors.textSecondary, size: 28),
+                                          onPressed: () {
+                                            showGeneralDialog(
+                                              context: context,
+                                              barrierDismissible: true,
+                                              barrierLabel: 'Dismiss',
+                                              barrierColor: Colors.black.withOpacity(0.4),
+                                              transitionDuration: const Duration(milliseconds: 300),
+                                              pageBuilder: (context, anim1, anim2) {
+                                                return Align(
+                                                  alignment: Alignment.topCenter,
+                                                  child: Material(
+                                                    color: Colors.transparent,
+                                                    child: hano_bildirimler.BildirimlerView(),
+                                                  ),
+                                                );
+                                              },
+                                              transitionBuilder: (context, anim1, anim2, child) {
+                                                return SlideTransition(
+                                                  position: Tween<Offset>(
+                                                    begin: const Offset(0, -1),
+                                                    end: const Offset(0, 0),
+                                                  ).animate(CurvedAnimation(
+                                                    parent: anim1,
+                                                    curve: Curves.easeOutCubic,
+                                                  )),
+                                                  child: child,
+                                                );
+                                              },
+                                            );
+                                          },
+                                        ),
+                                        Positioned(
+                                          right: 10,
+                                          top: 10,
+                                          child: Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: const BoxDecoration(
+                                              color: Colors.red,
+                                              shape: BoxShape.circle,
                                             ),
-                                          );
-                                        },
-                                        transitionBuilder: (context, anim1, anim2, child) {
-                                          return SlideTransition(
-                                            position: Tween<Offset>(
-                                              begin: const Offset(0, -1),
-                                              end: const Offset(0, 0),
-                                            ).animate(CurvedAnimation(
-                                              parent: anim1,
-                                              curve: Curves.easeOutCubic,
-                                            )),
-                                            child: child,
-                                          );
-                                        },
-                                      );
-                                    },
-                                  ),
-                                  Positioned(
-                                    right: 10,
-                                    top: 10,
-                                    child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: Colors.red,
-                                        shape: BoxShape.circle,
-                                      ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
                       ],
                     ),
                   ),

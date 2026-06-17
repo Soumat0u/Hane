@@ -1,27 +1,82 @@
 import 'package:flutter/material.dart';
+import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:hano/models/project.dart';
-import 'package:hano/providers/finance_provider.dart';
-import 'package:hano/services/database_helper.dart';
+import 'package:hane/models/project.dart';
+import 'package:hane/providers/finance_provider.dart';
 
 class YeniProjeView extends StatefulWidget {
-  const YeniProjeView({super.key});
+  final Project? project; // If provided, we are in Edit Mode
+
+  const YeniProjeView({super.key, this.project});
 
   @override
   State<YeniProjeView> createState() => _YeniProjeViewState();
 }
 
 class _YeniProjeViewState extends State<YeniProjeView> {
+  int _currentStep = 0;
   final _formKey = GlobalKey<FormState>();
-  
+
+  void _deleteProject(BuildContext context) {
+    if (widget.project?.id == null) return;
+    
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Projeyi Sil'),
+        content: const Text('Bu projeyi silmek istediğinize emin misiniz? Tüm proje verileri silinecektir.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('İptal', style: TextStyle(color: context.colors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                final fp = Provider.of<FinanceProvider>(context, listen: false);
+                await fp.deleteProject(widget.project!.id!);
+                if (mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Proje silindi.'), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: context.colors.danger),
+            child: const Text('Sil', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Controllers for Step 1
   final _nameController = TextEditingController();
+  final _codeController = TextEditingController();
   final _locationController = TextEditingController();
+  final _paftaController = TextEditingController();
+  final _parselController = TextEditingController();
   final _areaController = TextEditingController();
+  final _totalSectionsController = TextEditingController();
   final _unitCountController = TextEditingController();
   final _shopCountController = TextEditingController();
+  final _startDateController = TextEditingController();
+  final _endDateController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  String _projectType = 'Konut';
+
+  // Controllers for Step 2
   final _estimatedCostController = TextEditingController();
   final _estimatedRevenueController = TextEditingController();
-
   String _selectedStatus = 'Planlama Aşaması';
 
   final List<Map<String, String>> _statusOptions = [
@@ -32,199 +87,234 @@ class _YeniProjeViewState extends State<YeniProjeView> {
   ];
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _locationController.dispose();
-    _areaController.dispose();
-    _unitCountController.dispose();
-    _shopCountController.dispose();
-    _estimatedCostController.dispose();
-    _estimatedRevenueController.dispose();
-    super.dispose();
-  }
+  void initState() {
+    super.initState();
+    if (widget.project != null) {
+      final p = widget.project!;
+      _nameController.text = p.name;
+      _codeController.text = p.projectCode;
+      _locationController.text = p.location;
+      _paftaController.text = p.pafta;
+      _parselController.text = p.parsel;
+      _areaController.text = p.areaSqMeters > 0 ? p.areaSqMeters.toString() : '';
+      _totalSectionsController.text = p.totalIndependentSections > 0 ? p.totalIndependentSections.toString() : '';
+      _unitCountController.text = p.unitCount > 0 ? p.unitCount.toString() : '';
+      _shopCountController.text = p.shopCount > 0 ? p.shopCount.toString() : '';
+      _startDateController.text = p.startDate;
+      _endDateController.text = p.endDate;
+      _descriptionController.text = p.description;
+      _projectType = p.projectType.isEmpty ? 'Konut' : p.projectType;
 
-  void _saveProject() async {
-    if (_formKey.currentState!.validate()) {
-      final selectedStatusData = _statusOptions.firstWhere((element) => element['status'] == _selectedStatus);
+      _estimatedCostController.text = p.estimatedTotalCost > 0 ? p.estimatedTotalCost.toString() : '';
+      _estimatedRevenueController.text = p.estimatedTotalRevenue > 0 ? p.estimatedTotalRevenue.toString() : '';
       
-      final project = Project(
-        name: _nameController.text.trim(),
-        status: _selectedStatus,
-        statusColorHex: selectedStatusData['color']!,
-        statusBgColorHex: selectedStatusData['bg']!,
-        location: _locationController.text.trim(),
-        areaSqMeters: int.tryParse(_areaController.text) ?? 0,
-        unitCount: int.tryParse(_unitCountController.text) ?? 0,
-        shopCount: int.tryParse(_shopCountController.text) ?? 0,
-        estimatedTotalCost: double.tryParse(_estimatedCostController.text) ?? 0.0,
-        estimatedTotalRevenue: double.tryParse(_estimatedRevenueController.text) ?? 0.0,
-        // imagePath: null, // Default görsel kullanılacak
-      );
-
-      await DatabaseHelper.instance.createProject(project);
-      
-      if (mounted) {
-        Provider.of<FinanceProvider>(context, listen: false).refreshData();
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Proje başarıyla eklendi!')),
-        );
+      // Ensure status exists in options
+      if (_statusOptions.any((opt) => opt['status'] == p.status)) {
+        _selectedStatus = p.status;
       }
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text(
-          'Yeni Proje Ekle',
-          style: TextStyle(
-            color: Color(0xFF032B5E),
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
+  void dispose() {
+    _nameController.dispose();
+    _codeController.dispose();
+    _locationController.dispose();
+    _paftaController.dispose();
+    _parselController.dispose();
+    _areaController.dispose();
+    _totalSectionsController.dispose();
+    _unitCountController.dispose();
+    _shopCountController.dispose();
+    _startDateController.dispose();
+    _endDateController.dispose();
+    _descriptionController.dispose();
+    _estimatedCostController.dispose();
+    _estimatedRevenueController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate(TextEditingController controller) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: context.colors.brand,
+              onPrimary: Colors.white,
+              onSurface: context.colors.textPrimary,
+            ),
           ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF032B5E)),
-        centerTitle: true,
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        controller.text = "${picked.day.toString().padLeft(2, '0')}.${picked.month.toString().padLeft(2, '0')}.${picked.year}";
+      });
+    }
+  }
+
+  void _nextStep() {
+    if (_currentStep == 0) {
+      if (_formKey.currentState!.validate()) {
+        setState(() => _currentStep++);
+      }
+    } else if (_currentStep == 1) {
+      setState(() => _currentStep++);
+    } else {
+      _saveProject();
+    }
+  }
+
+  void _saveProject() async {
+    final selectedStatusData = _statusOptions.firstWhere((element) => element['status'] == _selectedStatus);
+    
+    final project = Project(
+      id: widget.project?.id,
+      name: _nameController.text.trim(),
+      projectCode: _codeController.text.trim(),
+      projectType: _projectType,
+      status: _selectedStatus,
+      statusColorHex: selectedStatusData['color']!,
+      statusBgColorHex: selectedStatusData['bg']!,
+      location: _locationController.text.trim(),
+      pafta: _paftaController.text.trim(),
+      parsel: _parselController.text.trim(),
+      areaSqMeters: int.tryParse(_areaController.text) ?? 0,
+      totalIndependentSections: int.tryParse(_totalSectionsController.text) ?? 0,
+      unitCount: int.tryParse(_unitCountController.text) ?? 0,
+      shopCount: int.tryParse(_shopCountController.text) ?? 0,
+      estimatedTotalCost: double.tryParse(_estimatedCostController.text) ?? 0.0,
+      estimatedTotalRevenue: double.tryParse(_estimatedRevenueController.text) ?? 0.0,
+      startDate: _startDateController.text,
+      endDate: _endDateController.text,
+      description: _descriptionController.text.trim(),
+      imagePath: widget.project?.imagePath,
+    );
+
+    final fp = Provider.of<FinanceProvider>(context, listen: false);
+    
+    try {
+      if (widget.project != null) {
+        await fp.updateProject(project);
+      } else {
+        await fp.createProject(project);
+      }
+      if (mounted) {
+        Navigator.pop(context, true); // Return true indicating success
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(widget.project != null ? 'Proje güncellendi!' : 'Proje eklendi!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata oluştu: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildStepIcon(int step, String title, bool isActive) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: isActive ? context.colors.brand : Colors.transparent,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isActive ? context.colors.brand : Colors.grey[300]!,
+                width: 2,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                '$step',
+                style: TextStyle(
+                  color: isActive ? Colors.white : Colors.grey[400],
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              color: isActive ? context.colors.brand : Colors.grey[500],
+            ),
+          )
+        ],
       ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
+    );
+  }
+
+  Widget _buildStepLine(bool isActive) {
+    return Expanded(
+      child: Container(
+        height: 2,
+        color: isActive ? context.colors.brand : Colors.grey[200],
+        margin: const EdgeInsets.only(bottom: 24),
+      ),
+    );
+  }
+
+  Widget _buildStepper() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _buildStepIcon(1, 'Bilgiler', _currentStep >= 0),
+          _buildStepLine(_currentStep >= 1),
+          _buildStepIcon(2, 'Detaylar', _currentStep >= 1),
+          _buildStepLine(_currentStep >= 2),
+          _buildStepIcon(3, 'Özet', _currentStep >= 2),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeCard(String type, IconData icon) {
+    final isSelected = _projectType == type;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _projectType = type),
+        child: Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: isSelected ? context.colors.brand.withOpacity(0.05) : context.colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? context.colors.brand : context.colors.border,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Project Image Placeholder
-              Center(
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/modern_apartment_building.png'),
-                      fit: BoxFit.cover,
-                      opacity: 0.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
-                        shape: BoxShape.circle,
-                      ),
-                      padding: const EdgeInsets.all(12),
-                      child: const Icon(Icons.add_a_photo, color: Colors.white, size: 28),
-                    ),
-                  ),
-                ),
-              ),
+              Icon(icon, color: isSelected ? context.colors.brand : Colors.grey[500], size: 28),
               const SizedBox(height: 8),
-              const Center(
-                child: Text(
-                  'Görsel Yükle (Opsiyonel)',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B), fontWeight: FontWeight.bold),
+              Text(
+                type,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                  color: isSelected ? context.colors.brand : Colors.grey[600],
                 ),
               ),
-              const SizedBox(height: 32),
-
-              _buildSectionTitle('Temel Bilgiler'),
-              const SizedBox(height: 12),
-              _buildInputField('Proje Adı', _nameController, TextInputType.text, icon: Icons.business),
-              const SizedBox(height: 16),
-              _buildInputField('Konum (Örn: İstanbul / Başakşehir)', _locationController, TextInputType.text, icon: Icons.location_on),
-              const SizedBox(height: 16),
-              
-              const Text(
-                'Durum',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B)),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedStatus,
-                    isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8)),
-                    items: _statusOptions.map((option) {
-                      return DropdownMenuItem<String>(
-                        value: option['status'],
-                        child: Text(
-                          option['status']!,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1E293B),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        if (value != null) _selectedStatus = value;
-                      });
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              _buildSectionTitle('Fiziksel Detaylar'),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _buildInputField('Alan (m²)', _areaController, TextInputType.number)),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildInputField('Konut Sayısı', _unitCountController, TextInputType.number)),
-                  const SizedBox(width: 16),
-                  Expanded(child: _buildInputField('Dükkan Sayısı', _shopCountController, TextInputType.number)),
-                ],
-              ),
-              const SizedBox(height: 32),
-
-              _buildSectionTitle('Finansal Öngörüler'),
-              const SizedBox(height: 12),
-              _buildInputField('Öngörülen Toplam Maliyet (₺)', _estimatedCostController, TextInputType.number, icon: Icons.money_off),
-              const SizedBox(height: 16),
-              _buildInputField('Öngörülen Toplam Gelir (₺)', _estimatedRevenueController, TextInputType.number, icon: Icons.attach_money),
-              const SizedBox(height: 40),
-
-              // Save Button
-              ElevatedButton(
-                onPressed: _saveProject,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF032B5E),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 56),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 4,
-                  shadowColor: const Color(0x33032B5E),
-                ),
-                child: const Text(
-                  'Proje Oluştur',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -232,67 +322,342 @@ class _YeniProjeViewState extends State<YeniProjeView> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF1E293B),
+  Widget _buildStep1() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Temel Bilgiler', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+          const SizedBox(height: 16),
+          
+          _buildInputField('Proje Adı', 'Proje adını giriniz', _nameController, icon: Icons.business, isRequired: true),
+          const SizedBox(height: 16),
+          
+          _buildInputField('Proje Kodu', 'Proje kodunu giriniz (örn. AKP-001)', _codeController, icon: Icons.local_offer_outlined),
+          const SizedBox(height: 16),
+          
+          Text('Proje Tipi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _buildTypeCard('Konut', Icons.home_work_outlined),
+              _buildTypeCard('İşyeri', Icons.storefront_outlined),
+              _buildTypeCard('Ofis', Icons.domain),
+              _buildTypeCard('Diğer', Icons.more_horiz),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          Text('Konum', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextFieldOnly('İl / İlçe seçiniz', _locationController, icon: Icons.location_on_outlined),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: context.colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.colors.border),
+                ),
+                child: Icon(Icons.gps_fixed, color: Colors.grey[600]),
+              )
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              Expanded(child: _buildInputField('Pafta', 'Pafta no', _paftaController)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildInputField('Parsel', 'Parsel no', _parselController)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildInputField('Alan (m²)', 'Alan m²', _areaController, type: TextInputType.number)),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              Expanded(child: _buildInputField('Toplam Bağımsız Bölüm', 'Örn. 48', _totalSectionsController, type: TextInputType.number)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildInputField('Konut Sayısı', 'Örn. 40', _unitCountController, type: TextInputType.number)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildInputField('İşyeri Sayısı', 'Örn. 8', _shopCountController, type: TextInputType.number)),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              Expanded(child: _buildDateField('Başlangıç Tarihi', _startDateController)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildDateField('Tahmini Bitiş Tarihi', _endDateController)),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          Text('Açıklama (Opsiyonel)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.colors.border),
+            ),
+            child: TextField(
+              controller: _descriptionController,
+              maxLines: 4,
+              maxLength: 500,
+              style: TextStyle(fontSize: 14, color: context.colors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Proje hakkında not ekleyebilirsiniz...',
+                hintStyle: TextStyle(color: Colors.grey[400]),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.all(16),
+                counterText: '', // Using default counter looks fine, or custom
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInputField(String label, TextEditingController controller, TextInputType type, {IconData? icon}) {
+  Widget _buildStep2() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF64748B),
-          ),
-        ),
+        Text('Finansal ve Durum Detayları', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+        const SizedBox(height: 16),
+        _buildInputField('Öngörülen Toplam Maliyet (₺)', '0.0', _estimatedCostController, type: TextInputType.number, icon: Icons.money_off),
+        const SizedBox(height: 16),
+        _buildInputField('Öngörülen Toplam Gelir (₺)', '0.0', _estimatedRevenueController, type: TextInputType.number, icon: Icons.attach_money),
+        const SizedBox(height: 16),
+        Text('Durum', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.colors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.02),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            border: Border.all(color: context.colors.border),
           ),
-          child: TextFormField(
-            controller: controller,
-            keyboardType: type,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E293B),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedStatus,
+              isExpanded: true,
+              icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary),
+              items: _statusOptions.map((option) {
+                return DropdownMenuItem<String>(
+                  value: option['status'],
+                  child: Text(
+                    option['status']!,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: context.colors.textPrimary,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  if (value != null) _selectedStatus = value;
+                });
+              },
             ),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              prefixIcon: icon != null ? Icon(icon, color: const Color(0xFF94A3B8), size: 20) : null,
-              hintText: '...',
-              hintStyle: TextStyle(color: Colors.grey[400]),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Bu alan zorunludur';
-              }
-              return null;
-            },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStep3() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Özet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.colors.border),
+          ),
+          child: Column(
+            children: [
+              _buildSummaryRow('Proje Adı', _nameController.text),
+              const Divider(),
+              _buildSummaryRow('Tipi', _projectType),
+              const Divider(),
+              _buildSummaryRow('Lokasyon', _locationController.text),
+              const Divider(),
+              _buildSummaryRow('Durum', _selectedStatus),
+              const Divider(),
+              _buildSummaryRow('Öngörülen Maliyet', '₺${_estimatedCostController.text}'),
+              const Divider(),
+              _buildSummaryRow('Öngörülen Gelir', '₺${_estimatedRevenueController.text}'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+          Text(value.isEmpty ? '-' : value, style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateField(String label, TextEditingController controller) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => _selectDate(controller),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.colors.border),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_outlined, size: 18, color: Colors.grey[500]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    controller.text.isEmpty ? 'Seçiniz' : controller.text,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: controller.text.isEmpty ? Colors.grey[400] : context.colors.textPrimary,
+                    ),
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputField(String label, String hint, TextEditingController controller, {IconData? icon, TextInputType type = TextInputType.text, bool isRequired = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+        const SizedBox(height: 8),
+        _buildTextFieldOnly(hint, controller, icon: icon, type: type, isRequired: isRequired),
+      ],
+    );
+  }
+
+  Widget _buildTextFieldOnly(String hint, TextEditingController controller, {IconData? icon, TextInputType type = TextInputType.text, bool isRequired = false}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.colors.border),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: type,
+        style: TextStyle(fontSize: 14, color: context.colors.textPrimary),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          prefixIcon: icon != null ? Icon(icon, color: Colors.grey[500], size: 20) : null,
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.grey[400]),
+        ),
+        validator: isRequired ? (value) => (value == null || value.isEmpty) ? 'Zorunlu alan' : null : null,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: context.colors.scaffold,
+      appBar: AppBar(
+        title: Text(
+          widget.project != null ? 'Projeyi Düzenle' : 'Projeyi Tasarla',
+          style: TextStyle(color: context.colors.brand, fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        backgroundColor: context.colors.surface,
+        elevation: 0,
+        iconTheme: IconThemeData(color: context.colors.brand),
+        centerTitle: true,
+        actions: [
+          if (widget.project != null)
+            IconButton(
+              icon: Icon(Icons.delete_outline, color: context.colors.danger),
+              tooltip: 'Projeyi Sil',
+              onPressed: () => _deleteProject(context),
+            ),
+          if (_currentStep == 2)
+             TextButton(
+               onPressed: _saveProject,
+               child: Text('Kaydet', style: TextStyle(color: context.colors.brand, fontWeight: FontWeight.bold, fontSize: 15)),
+             )
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildStepper(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+              child: _currentStep == 0 ? _buildStep1() : _currentStep == 1 ? _buildStep2() : _buildStep3(),
+            ),
+          ),
+        ],
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: ElevatedButton(
+          onPressed: _nextStep,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: context.colors.brand,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 56),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _currentStep == 2 ? (widget.project != null ? 'Güncelle' : 'Oluştur') : 'İleri',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
+              if (_currentStep < 2)
+                const Icon(Icons.arrow_forward, size: 20),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
