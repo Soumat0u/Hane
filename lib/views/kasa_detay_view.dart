@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:hane/utils/formatters.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/account.dart';
 import 'package:hane/views/kasa_view.dart'; // For Kasa Painters (Garanti, etc)
-
-final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
 class KasaDetayView extends StatelessWidget {
@@ -134,7 +133,7 @@ class KasaDetayView extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
+                        color: context.colors.accentBg,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -236,15 +235,15 @@ class KasaDetayView extends StatelessWidget {
     if (t.type == 'Transfer') {
       icon = Icons.sync_alt_rounded;
       color = context.colors.accent;
-      bgColor = const Color(0xFFEFF6FF);
+      bgColor = context.colors.accentBg;
     } else if (isIncome) {
       icon = Icons.arrow_downward_rounded;
       color = context.colors.success;
-      bgColor = const Color(0xFFF0FDF4);
+      bgColor = context.colors.successBg;
     } else {
       icon = Icons.arrow_upward_rounded;
       color = context.colors.danger;
-      bgColor = const Color(0xFFFEF2F2);
+      bgColor = context.colors.dangerBg;
     }
 
     String counterpartyText = isIncome ? t.sourceName : t.destName;

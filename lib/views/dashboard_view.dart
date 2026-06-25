@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/kasa_view.dart';
 import 'package:hane/views/borclar_view.dart';
 import 'package:hane/views/finansman_gucu_view.dart';
-
-final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -50,7 +48,6 @@ class DashboardScreen extends StatelessWidget {
                           value: currencyFormat.format(kasa),
                           icon: Icons.account_balance_wallet_rounded,
                           accentColor: context.colors.accent,
-                          bgColor: const Color(0xFFEFF6FF),
                           onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => const KasaScreen()));
                           },
@@ -61,7 +58,6 @@ class DashboardScreen extends StatelessWidget {
                           value: currencyFormat.format(borclar),
                           icon: Icons.receipt_long_rounded,
                           accentColor: Theme.of(context).extension<AppColors>()!.danger,
-                          bgColor: const Color(0xFFFEF2F2),
                           onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => const BorclarView()));
                           },
@@ -78,7 +74,6 @@ class DashboardScreen extends StatelessWidget {
                           value: currencyFormat.format(alacaklar > 0 ? alacaklar : 0),
                           icon: Icons.assignment_returned_rounded,
                           accentColor: Theme.of(context).extension<AppColors>()!.success,
-                          bgColor: const Color(0xFFF0FDF4),
                         ),
                         _buildMetricCard(context,
                           width: cardWidth,
@@ -86,7 +81,6 @@ class DashboardScreen extends StatelessWidget {
                           value: currencyFormat.format(finansmanGucu),
                           icon: Icons.shield_rounded,
                           accentColor: const Color(0xFF8B5CF6),
-                          bgColor: const Color(0xFFFAF5FF),
                           onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (_) => const FinansmanGucuView()));
                           },
@@ -141,8 +135,8 @@ class DashboardScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                           currencyFormat.format(netPozisyon),
-                          style: TextStyle(
-                            color: context.colors.surface,
+                          style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                           ),
@@ -251,7 +245,6 @@ class DashboardScreen extends StatelessWidget {
     required double width,
     required IconData icon,
     required Color accentColor,
-    required Color bgColor,
     VoidCallback? onTap,
   }) {
     return GestureDetector(
@@ -271,7 +264,7 @@ class DashboardScreen extends StatelessWidget {
             children: [
               Container(
                 decoration: BoxDecoration(
-                  color: bgColor,
+                  color: accentColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 padding: const EdgeInsets.all(8.0),

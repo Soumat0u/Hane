@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:hane/views/dashboard_view.dart';
 import 'package:hane/views/kasa_view.dart';
@@ -177,7 +179,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                                               context: context,
                                               barrierDismissible: true,
                                               barrierLabel: 'Dismiss',
-                                              barrierColor: Colors.black.withOpacity(0.4),
+                                              barrierColor: Colors.black.withValues(alpha: 0.4),
                                               transitionDuration: const Duration(milliseconds: 300),
                                               pageBuilder: (context, anim1, anim2) {
                                                 return Align(
@@ -203,18 +205,20 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                                             );
                                           },
                                         ),
-                                        Positioned(
-                                          right: 10,
-                                          top: 10,
-                                          child: Container(
-                                            width: 8,
-                                            height: 8,
-                                            decoration: const BoxDecoration(
-                                              color: Colors.red,
-                                              shape: BoxShape.circle,
+                                        // Sadece okunmamış bildirim varken kırmızı nokta göster.
+                                        if (context.watch<FinanceProvider>().hasUnreadNotifications)
+                                          Positioned(
+                                            right: 10,
+                                            top: 10,
+                                            child: Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.red,
+                                                shape: BoxShape.circle,
+                                              ),
                                             ),
                                           ),
-                                        ),
                                       ],
                                     ),
                                   ],

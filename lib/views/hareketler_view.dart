@@ -1,6 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/utils/formatters.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/views/hareket_detay_view.dart';
+
+/// Bir işlem tipinin renk ve ikonunu döndürür (liste ve detay ekranı paylaşır).
+({Color color, IconData icon}) transactionVisuals(BuildContext context, String type) {
+  switch (type) {
+    case 'Gider':
+      return (color: context.colors.danger, icon: Icons.arrow_upward_rounded);
+    case 'Gelir':
+    case 'Tahsilat':
+    case 'Satış':
+      return (color: context.colors.success, icon: Icons.arrow_downward_rounded);
+    case 'Transfer':
+      return (color: context.colors.accent, icon: Icons.swap_horiz_rounded);
+    default: // Borçlanma, Kredi Kullanımı
+      return (color: context.colors.warning, icon: Icons.account_balance_rounded);
+  }
+}
+
+const _incomeTypes = {'Gelir', 'Tahsilat', 'Satış'};
 
 class HareketlerView extends StatefulWidget {
   const HareketlerView({super.key});
@@ -10,399 +33,390 @@ class HareketlerView extends StatefulWidget {
 }
 
 class _HareketlerViewState extends State<HareketlerView> {
-  final List<String> _filters = ['Tümü', 'Gider', 'Gelir', 'Tahsilat', 'Transfer', 'Avans', 'Maaş', 'Satış'];
   String _selectedFilter = 'Tümü';
+  String _selectedProje = 'Tümü';
+  String _selectedCari = 'Tümü';
+  DateTimeRange? _selectedDateRange;
+  String _search = '';
 
-  // Dummy transactions data to match the screenshot exactly
-  final List<Map<String, dynamic>> _transactions = [
-    {
-      'type': 'gider',
-      'category': 'GİDER',
-      'title': 'Kapıcı Avansı',
-      'subtitle': 'Kapıcı Hasan',
-      'details': 'Personel Avansı',
-      'amount': '₺15.000',
-      'date': '10 Mayıs 2024\n11:30',
-      'project': 'Akpınar Projesi',
-      'account': 'Nakit Kasa',
-      'accountIcon': Icons.money_rounded,
-    },
-    {
-      'type': 'gider',
-      'category': 'GİDER',
-      'title': 'Mehmet Yılmaz Maaş',
-      'subtitle': 'Mehmet Yılmaz',
-      'details': 'Personel Maaş Ödemesi',
-      'amount': '₺50.000',
-      'date': '10 Mayıs 2024\n10:15',
-      'project': 'Akpınar Projesi',
-      'account': 'Halkbank',
-      'accountIcon': Icons.account_balance_rounded,
-    },
-    {
-      'type': 'gider',
-      'category': 'GİDER',
-      'title': 'C30 Hazır Beton',
-      'subtitle': 'ABC Beton',
-      'details': 'Beton Alımı',
-      'amount': '₺250.000',
-      'date': '09 Mayıs 2024\n17:20',
-      'project': 'Akpınar Projesi',
-      'account': 'Halkbank',
-      'accountIcon': Icons.account_balance_rounded,
-    },
-    {
-      'type': 'gider',
-      'category': 'GİDER',
-      'title': '14\'lük Nervürlü Demir',
-      'subtitle': 'XYZ Demir',
-      'details': 'Demir Alımı',
-      'amount': '₺1.450.000',
-      'date': '04 Mayıs 2024\n15:40',
-      'project': 'Akpınar Projesi',
-      'account': 'Halkbank',
-      'accountIcon': Icons.account_balance_rounded,
-    },
-    {
-      'type': 'tahsilat',
-      'category': 'TAHSİLAT',
-      'title': 'Daire Satışı',
-      'subtitle': 'Mehmet Yılmaz',
-      'details': 'A Blok 12',
-      'amount': '₺1.200.000',
-      'date': '03 Mayıs 2024\n09:10',
-      'project': 'Akpınar Projesi',
-      'account': 'Halkbank',
-      'accountIcon': Icons.account_balance_rounded,
-    },
-    {
-      'type': 'transfer',
-      'category': 'TRANSFER',
-      'title': 'Hesaplar Arası Transfer',
-      'subtitle': 'Nakit Kasa → Halkbank',
-      'details': '',
-      'amount': '₺500.000',
-      'date': '02 Mayıs 2024\n14:25',
-      'project': 'Akpınar Projesi',
-      'account': '',
-      'accountIcon': null,
-    },
-    {
-      'type': 'gider',
-      'category': 'GİDER',
-      'title': 'SGK Primi Ödemesi',
-      'subtitle': 'Akpınar İnşaat Ltd. Şti.',
-      'details': 'SGK Primi',
-      'amount': '₺87.500',
-      'date': '01 Mayıs 2024\n11:05',
-      'project': 'Akpınar Projesi',
-      'account': 'Halkbank',
-      'accountIcon': Icons.account_balance_rounded,
-    },
-  ];
+  final DateFormat _dateFmt = DateFormat('d MMM yyyy', 'tr_TR');
+
+  // --- Filtreleme ---
+  List<FinancialTransaction> _applyFilters(
+    List<FinancialTransaction> all,
+    Map<int, String> projectNames,
+  ) {
+    return all.where((t) {
+      if (_selectedFilter != 'Tümü' && t.type != _selectedFilter) return false;
+      if (_selectedProje != 'Tümü') {
+        final name = t.projectId != null ? projectNames[t.projectId] : null;
+        if (name != _selectedProje) return false;
+      }
+      if (_selectedCari != 'Tümü' && t.contactName != _selectedCari) return false;
+      if (_selectedDateRange != null) {
+        final d = DateTime.tryParse(t.date);
+        if (d == null) return false;
+        final day = DateUtils.dateOnly(d);
+        if (day.isBefore(DateUtils.dateOnly(_selectedDateRange!.start)) ||
+            day.isAfter(DateUtils.dateOnly(_selectedDateRange!.end))) {
+          return false;
+        }
+      }
+      if (_search.isNotEmpty) {
+        final hay =
+            '${t.description} ${t.category} ${t.contactName} ${t.sourceName} ${t.destName}'
+                .toLowerCase();
+        if (!hay.contains(_search.toLowerCase())) return false;
+      }
+      return true;
+    }).toList()
+      ..sort((a, b) {
+        final da = DateTime.tryParse(a.date);
+        final db = DateTime.tryParse(b.date);
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return db.compareTo(da); // en yeni üstte
+      });
+  }
+
+  bool get _hasActiveFilter =>
+      _selectedFilter != 'Tümü' ||
+      _selectedProje != 'Tümü' ||
+      _selectedCari != 'Tümü' ||
+      _selectedDateRange != null;
+
+  void _clearFilters() {
+    setState(() {
+      _selectedFilter = 'Tümü';
+      _selectedProje = 'Tümü';
+      _selectedCari = 'Tümü';
+      _selectedDateRange = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.colors.scaffold,
-      body: Column(
-        children: [
-          // Filter Chips
-          SizedBox(
-            height: 48,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _filters.length,
-              itemBuilder: (context, index) {
-                final filter = _filters[index];
-                final isSelected = filter == _selectedFilter;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(
-                      filter,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : context.colors.textPrimary,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      ),
-                    ),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() => _selectedFilter = filter);
-                      }
-                    },
-                    backgroundColor: Colors.white,
-                    selectedColor: context.colors.brand,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: isSelected ? context.colors.brand : context.colors.border,
-                      ),
-                    ),
-                    showCheckmark: false,
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          // Search & Filter Button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: context.colors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        const SizedBox(width: 12),
-                        Icon(Icons.search_rounded, color: context.colors.textSecondary),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            decoration: InputDecoration(
-                              hintText: 'İşlem ara...',
-                              hintStyle: TextStyle(color: context.colors.textSecondary),
-                              border: InputBorder.none,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
+      body: Consumer<FinanceProvider>(
+        builder: (context, fp, child) {
+          final projectNames = {for (final p in fp.projects) if (p.id != null) p.id!: p.name};
+          final categoryOptions = ['Tümü', ...{for (final t in fp.allTransactions) t.type}];
+          final projeOptions = ['Tümü', ...projectNames.values];
+          final cariOptions = [
+            'Tümü',
+            ...{for (final t in fp.allTransactions) if (t.contactName.isNotEmpty) t.contactName}
+          ];
+
+          final filtered = _applyFilters(fp.allTransactions, projectNames);
+          final toplamGelir = filtered
+              .where((t) => _incomeTypes.contains(t.type))
+              .fold(0.0, (s, t) => s + t.amount);
+          final toplamGider = filtered
+              .where((t) => t.type == 'Gider')
+              .fold(0.0, (s, t) => s + t.amount);
+
+          return Column(
+            children: [
+              const SizedBox(height: 12),
+              // Arama
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
                   height: 48,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.colors.surface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: context.colors.border),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.filter_alt_outlined, color: context.colors.textPrimary),
+                      const SizedBox(width: 12),
+                      Icon(Icons.search_rounded, color: context.colors.textSecondary),
                       const SizedBox(width: 8),
-                      Text(
-                        'Filtrele',
-                        style: TextStyle(
-                          color: context.colors.textPrimary,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: TextField(
+                          onChanged: (v) => setState(() => _search = v),
+                          decoration: InputDecoration(
+                            hintText: 'İşlem ara...',
+                            hintStyle: TextStyle(color: context.colors.textSecondary),
+                            border: InputBorder.none,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Filter Summary Cards
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                _buildFilterCard(context, Icons.calendar_today_rounded, 'Tarih', '01.05.2024 - 31.05.2024'),
-                const SizedBox(width: 8),
-                _buildFilterCard(context, Icons.folder_open_rounded, 'Proje', 'Tümü'),
-                const SizedBox(width: 8),
-                _buildFilterCard(context, Icons.person_outline_rounded, 'Cari', 'Tümü'),
-                const SizedBox(width: 8),
-                _buildFilterCard(context, Icons.sell_outlined, 'Kategori', 'Tümü'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Monthly Summary Row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Mayıs 2024',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: context.colors.textPrimary,
+              ),
+              const SizedBox(height: 16),
+
+              // Filtre kartları
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    _buildFilterCard(
+                      context,
+                      Icons.calendar_today_rounded,
+                      'Tarih',
+                      _dateRangeLabel,
+                      onTap: () => _pickDateRange(context),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    _buildFilterCard(
+                      context,
+                      Icons.folder_open_rounded,
+                      'Proje',
+                      _selectedProje,
+                      onTap: () => _showOptionPicker(context,
+                          title: 'Proje Seç',
+                          options: projeOptions,
+                          current: _selectedProje,
+                          onSelect: (v) => setState(() => _selectedProje = v)),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterCard(
+                      context,
+                      Icons.person_outline_rounded,
+                      'Cari',
+                      _selectedCari,
+                      onTap: () => _showOptionPicker(context,
+                          title: 'Cari Seç',
+                          options: cariOptions,
+                          current: _selectedCari,
+                          onSelect: (v) => setState(() => _selectedCari = v)),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterCard(
+                      context,
+                      Icons.sell_outlined,
+                      'Kategori',
+                      _selectedFilter,
+                      onTap: () => _showOptionPicker(context,
+                          title: 'İşlem Türü Seç',
+                          options: categoryOptions,
+                          current: _selectedFilter,
+                          onSelect: (v) => setState(() => _selectedFilter = v)),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Gelir', style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-                      Text('₺12.450.000', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: context.colors.success)),
-                    ],
-                  ),
+              ),
+              const SizedBox(height: 16),
+
+              // Özet satırı
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: _hasActiveFilter
+                          ? GestureDetector(
+                              onTap: _clearFilters,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.close_rounded, size: 16, color: context.colors.brand),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text('Filtreyi Temizle',
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: context.colors.brand)),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Text('${filtered.length} işlem',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: context.colors.textPrimary)),
+                    ),
+                    _buildSummaryItem(context, 'Gelir', toplamGelir, context.colors.success),
+                    _buildSummaryItem(context, 'Gider', toplamGider, context.colors.danger),
+                    _buildSummaryItem(
+                        context, 'Net', toplamGelir - toplamGider, context.colors.success),
+                  ],
                 ),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Gider', style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-                      Text('₺8.200.000', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: context.colors.danger)),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Net', style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-                      Text('₺4.250.000', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: context.colors.success)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          
-          // Transaction List
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.only(bottom: 100), // removed horizontal padding from ListView itself
-              itemCount: _transactions.length,
-              separatorBuilder: (context, index) => Divider(color: context.colors.border, height: 1),
-              itemBuilder: (context, index) {
-                final transaction = _transactions[index];
-                return _buildTransactionItem(context, transaction);
-              },
-            ),
-          ),
+              ),
+              const SizedBox(height: 12),
+
+              // Liste
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.search_off_rounded, size: 48, color: context.colors.textSecondary),
+                            const SizedBox(height: 12),
+                            Text(
+                              fp.allTransactions.isEmpty
+                                  ? 'Henüz işlem yok'
+                                  : 'Seçilen filtrelere uygun işlem yok',
+                              style: TextStyle(fontSize: 14, color: context.colors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        itemCount: filtered.length,
+                        separatorBuilder: (context, i) =>
+                            Divider(color: context.colors.border, height: 1),
+                        itemBuilder: (context, i) =>
+                            _buildTransactionItem(context, filtered[i], projectNames),
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSummaryItem(BuildContext context, String label, double value, Color color) {
+    return Expanded(
+      flex: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+          Text(currencyFormat.format(value),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
-      
-      // Fixed Bottom Summary Panel
-      bottomSheet: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+  }
+
+  Widget _buildFilterCard(BuildContext context, IconData icon, String title, String value,
+      {VoidCallback? onTap}) {
+    final bool isActive = onTap != null && value != 'Tümü';
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
+          color: context.colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isActive ? context.colors.brand : context.colors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: isActive ? context.colors.brand : context.colors.textSecondary, size: 20),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+                Text(value, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+              ],
             ),
+            if (onTap != null) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary, size: 18),
+            ],
           ],
         ),
-        child: SafeArea(
+      ),
+    );
+  }
+
+  String get _dateRangeLabel {
+    if (_selectedDateRange == null) return 'Tümü';
+    final df = DateFormat('dd.MM.yyyy');
+    return '${df.format(_selectedDateRange!.start)} - ${df.format(_selectedDateRange!.end)}';
+  }
+
+  Future<void> _pickDateRange(BuildContext context) async {
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      initialDateRange: _selectedDateRange,
+    );
+    if (picked != null) setState(() => _selectedDateRange = picked);
+  }
+
+  void _showOptionPicker(
+    BuildContext context, {
+    required String title,
+    required List<String> options,
+    required String current,
+    required ValueChanged<String> onSelect,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: context.colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Bu Ay Özeti',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: context.colors.textPrimary,
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: context.colors.border, borderRadius: BorderRadius.circular(2)),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(title,
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+              ),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: options.map((option) {
+                    final bool selected = option == current;
+                    return ListTile(
+                      title: Text(option,
+                          style: TextStyle(
+                              color: context.colors.textPrimary,
+                              fontWeight: selected ? FontWeight.bold : FontWeight.normal)),
+                      trailing:
+                          selected ? Icon(Icons.check_rounded, color: context.colors.brand) : null,
+                      onTap: () {
+                        onSelect(option);
+                        Navigator.pop(sheetContext);
+                      },
+                    );
+                  }).toList(),
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Toplam Gelir', style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-                      Text('₺12.450.000', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.success)),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Text('Toplam Gider', style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-                      Text('₺8.200.000', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.danger)),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('Net', style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-                      Text('₺4.250.000', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.success)),
-                    ],
-                  ),
-                ],
-              ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildFilterCard(BuildContext context, IconData icon, String title, String value) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.colors.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: context.colors.textSecondary, size: 20),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
-              Text(value, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTransactionItem(BuildContext context, Map<String, dynamic> item) {
-    Color typeColor;
-    IconData typeIcon;
-    Color amountColor;
-    
-    if (item['type'] == 'gider') {
-      typeColor = context.colors.danger;
-      typeIcon = Icons.arrow_upward_rounded;
-      amountColor = context.colors.danger;
-    } else if (item['type'] == 'tahsilat') {
-      typeColor = context.colors.success;
-      typeIcon = Icons.arrow_downward_rounded;
-      amountColor = context.colors.success;
-    } else { // transfer
-      typeColor = context.colors.accent;
-      typeIcon = Icons.swap_horiz_rounded;
-      amountColor = context.colors.accent;
-    }
+  Widget _buildTransactionItem(
+      BuildContext context, FinancialTransaction t, Map<int, String> projectNames) {
+    final visuals = transactionVisuals(context, t.type);
+    final title = t.description.isNotEmpty ? t.description : t.category;
+    final projectName = t.projectId != null ? projectNames[t.projectId] : null;
+    final account = t.sourceName.isNotEmpty ? t.sourceName : t.destName;
+    final date = DateTime.tryParse(t.date);
 
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => HareketDetayView(transaction: item),
-          ),
+          MaterialPageRoute(builder: (_) => HareketDetayView(transaction: t)),
         );
       },
       child: Padding(
@@ -410,118 +424,83 @@ class _HareketlerViewState extends State<HareketlerView> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          // Icon
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: typeColor,
-              shape: BoxShape.circle,
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(color: visuals.color, shape: BoxShape.circle),
+              child: Icon(visuals.icon, color: Colors.white, size: 24),
             ),
-            child: Icon(typeIcon, color: Colors.white, size: 24),
-          ),
-          const SizedBox(width: 12),
-          // Main Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.type.toUpperCase(),
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: visuals.color,
+                          letterSpacing: 0.5)),
+                  const SizedBox(height: 2),
+                  Text(title,
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+                  if (t.contactName.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(t.contactName,
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: context.colors.textPrimary)),
+                    ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      if (projectName != null) ...[
+                        Icon(Icons.calendar_view_day_rounded, size: 14, color: context.colors.textSecondary),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(projectName,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+                        ),
+                      ],
+                      if (account.isNotEmpty) ...[
+                        if (projectName != null) ...[
+                          const SizedBox(width: 8),
+                          Text('•', style: TextStyle(color: context.colors.textSecondary)),
+                          const SizedBox(width: 8),
+                        ],
+                        Icon(Icons.account_balance_rounded, size: 14, color: context.colors.textSecondary),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(account,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  item['category'],
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: typeColor,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  item['title'],
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: context.colors.textPrimary,
-                  ),
-                ),
-                if (item['subtitle'] != null && item['subtitle'].isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      item['subtitle'],
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: context.colors.textPrimary,
-                      ),
-                    ),
-                  ),
-                if (item['details'] != null && item['details'].isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(
-                      item['details'],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: context.colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 6),
-                // Footer Tags
-                Row(
-                  children: [
-                    Icon(Icons.calendar_view_day_rounded, size: 14, color: context.colors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      item['project'],
-                      style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-                    ),
-                    if (item['account'] != null && item['account'].isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Text('•', style: TextStyle(color: context.colors.textSecondary)),
-                      const SizedBox(width: 8),
-                      Icon(item['accountIcon'], size: 14, color: context.colors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(
-                        item['account'],
-                        style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-                      ),
-                    ]
-                  ],
-                ),
+                Text(currencyFormat.format(t.amount),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: visuals.color)),
+                const SizedBox(height: 4),
+                Text(date != null ? _dateFmt.format(date) : t.date,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(fontSize: 11, color: context.colors.textSecondary, height: 1.2)),
               ],
             ),
-          ),
-          // Amount & Date
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                item['amount'],
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: amountColor,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                item['date'],
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: context.colors.textSecondary,
-                  height: 1.2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 8),
-          Icon(Icons.chevron_right_rounded, color: context.colors.border),
-        ],
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, color: context.colors.border),
+          ],
+        ),
       ),
-    ),
     );
   }
 }

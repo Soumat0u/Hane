@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/project.dart';
 import 'package:hane/models/financial_transaction.dart';
-
-final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 
 class GenelBakisScreen extends StatelessWidget {
   const GenelBakisScreen({super.key});
@@ -76,7 +74,7 @@ class GenelBakisScreen extends StatelessWidget {
                         subtitle: 'Nakit & Banka',
                         icon: Icons.account_balance_wallet_rounded,
                         iconColor: Theme.of(context).extension<AppColors>()!.success,
-                        iconBgColor: const Color(0xFFECFDF5),
+                        iconBgColor: context.colors.successBg,
                         textColor: Theme.of(context).extension<AppColors>()!.success,
                       ),
                       const SizedBox(width: 12),
@@ -87,7 +85,7 @@ class GenelBakisScreen extends StatelessWidget {
                         subtitle: 'Tedarikçi & Diğer',
                         icon: Icons.account_balance_wallet_rounded,
                         iconColor: Theme.of(context).extension<AppColors>()!.danger,
-                        iconBgColor: const Color(0xFFFEF2F2),
+                        iconBgColor: context.colors.dangerBg,
                         textColor: Theme.of(context).extension<AppColors>()!.danger,
                       ),
                       const SizedBox(width: 12),
@@ -98,7 +96,7 @@ class GenelBakisScreen extends StatelessWidget {
                         subtitle: finansmanGucuDeger >= 0 ? 'Pozitif' : 'Negatif',
                         icon: Icons.analytics_rounded,
                         iconColor: context.colors.accent,
-                        iconBgColor: const Color(0xFFEFF6FF),
+                        iconBgColor: context.colors.accentBg,
                         textColor: context.colors.accent,
                       ),
                       const SizedBox(width: 12),
@@ -108,9 +106,9 @@ class GenelBakisScreen extends StatelessWidget {
                         amountText: currencyFormat.format(yaklasanOdemeler),
                         subtitle: '7 gün içinde',
                         icon: Icons.receipt_long_rounded,
-                        iconColor: const Color(0xFF8B5CF6),
-                        iconBgColor: const Color(0xFFF5F3FF),
-                        textColor: const Color(0xFF8B5CF6),
+                        iconColor: context.colors.purple,
+                        iconBgColor: context.colors.purpleBg,
+                        textColor: context.colors.purple,
                       ),
                     ],
                   ),
@@ -172,7 +170,7 @@ class GenelBakisScreen extends StatelessWidget {
         border: Border.all(color: Theme.of(context).extension<AppColors>()!.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -327,7 +325,7 @@ class GenelBakisScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
+                        color: context.colors.accentBg,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -454,20 +452,20 @@ class GenelBakisScreen extends StatelessWidget {
     
     if (t.category == 'Beton') {
       iconData = Icons.fire_truck_rounded;
-      iconColor = const Color(0xFF8B5CF6);
-      iconBgColor = const Color(0xFFF5F3FF);
+      iconColor = context.colors.purple;
+      iconBgColor = context.colors.purpleBg;
     } else if (t.category == 'Demir') {
       iconData = Icons.hardware_rounded;
-      iconColor = const Color(0xFFF59E0B);
-      iconBgColor = const Color(0xFFFFFBEB);
+      iconColor = context.colors.warning;
+      iconBgColor = context.colors.warningBg;
     } else if (isIncome) {
       iconData = Icons.account_balance_wallet_rounded;
       iconColor = Theme.of(context).extension<AppColors>()!.success;
-      iconBgColor = const Color(0xFFECFDF5);
+      iconBgColor = context.colors.successBg;
     } else {
       iconData = Icons.water_drop_rounded;
       iconColor = context.colors.accent;
-      iconBgColor = const Color(0xFFEFF6FF);
+      iconBgColor = context.colors.accentBg;
     }
 
     return Padding(

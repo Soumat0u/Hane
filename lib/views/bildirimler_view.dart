@@ -3,9 +3,7 @@ import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/finance_entities.dart';
-import 'package:intl/intl.dart';
-
-final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
+import 'package:hane/utils/formatters.dart';
 
 class BildirimlerView extends StatelessWidget {
   const BildirimlerView({super.key});
@@ -59,11 +57,12 @@ class BildirimlerView extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (notifications.isNotEmpty)
+                      if (fp.hasUnreadNotifications)
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
+                              fp.markAllNotificationsRead();
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Tümü okundu olarak işaretlendi.')),
                               );
@@ -86,19 +85,22 @@ class BildirimlerView extends StatelessWidget {
                             final notif = notifications[index];
                             final isOverdue = notif.isOverdue;
                             final isPayable = notif.isPayable;
+                            final isRead = fp.isNotificationRead(notif);
                             
                             // Determine colors and icons based on payment type and overdue status
                             Color iconColor = isPayable ? context.colors.danger : context.colors.success;
-                            Color bgColor = isPayable ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4);
+                            Color bgColor = isPayable ? context.colors.dangerBg : context.colors.successBg;
                             IconData icon = isPayable ? Icons.payment_outlined : Icons.account_balance_wallet_outlined;
                             
                             if (isOverdue) {
-                              iconColor = const Color(0xFFF59E0B);
-                              bgColor = const Color(0xFFFFF7ED);
+                              iconColor = context.colors.warning;
+                              bgColor = context.colors.warningBg;
                               icon = Icons.warning_amber_rounded;
                             }
 
-                            return Container(
+                            return Opacity(
+                              opacity: isRead ? 0.55 : 1.0,
+                              child: Container(
                               decoration: BoxDecoration(
                                 color: context.colors.surface,
                                 borderRadius: BorderRadius.circular(12),
@@ -107,7 +109,7 @@ class BildirimlerView extends StatelessWidget {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.02),
+                                    color: Colors.black.withValues(alpha: 0.02),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   )
@@ -126,6 +128,17 @@ class BildirimlerView extends StatelessWidget {
                                 title: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
+                                    if (!isRead) ...[
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: context.colors.brand,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
                                     Expanded(
                                       child: Text(
                                         isPayable ? 'Yaklaşan Ödeme' : 'Yaklaşan Tahsilat',
@@ -157,8 +170,9 @@ class BildirimlerView extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                onTap: () {},
+                                onTap: () => fp.markNotificationRead(notif),
                               ),
+                            ),
                             );
                           },
                         ),

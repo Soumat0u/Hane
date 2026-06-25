@@ -12,7 +12,7 @@ from .serializers import (
     CompanyProfileSerializer, ContactSerializer, CategorySerializer,
     AccountSerializer, ProjectSerializer, BudgetLineSerializer,
     FinancialTransactionSerializer, LoanSerializer, ChequeSerializer,
-    SaleSerializer, ReceivableSerializer,
+    SaleSerializer, ReceivableSerializer, apply_legacy_balance,
 )
 
 
@@ -118,6 +118,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # create is handled in serializer.create() which sets user and handles balances
         serializer.save()
+
+    def perform_destroy(self, instance):
+        # İsim-bazlı işlemin bakiye etkisini geri al (FK hesaplı olanları sinyal yönetir).
+        apply_legacy_balance(instance.user, instance, -1)
+        instance.delete()
 
 
 # ── Yeni model ViewSet'leri ───────────────────────────────────────────────────

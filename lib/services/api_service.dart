@@ -216,6 +216,31 @@ class ApiService {
     }
   }
 
+  Future<FinancialTransaction> updateTransaction(FinancialTransaction transaction) async {
+    final headers = await _getHeaders();
+    final response = await http.put(
+      Uri.parse('$baseUrl/transactions/${transaction.id}/'),
+      headers: headers,
+      body: jsonEncode(transaction.toMap()),
+    );
+    if (response.statusCode == 200) {
+      return FinancialTransaction.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+    } else {
+      throw Exception('İşlem güncellenemedi');
+    }
+  }
+
+  Future<void> deleteTransaction(int transactionId) async {
+    final headers = await _getHeaders();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/transactions/$transactionId/'),
+      headers: headers,
+    );
+    if (response.statusCode != 204) {
+      throw Exception('İşlem silinemedi');
+    }
+  }
+
   // Company Profile
   Future<CompanyProfile?> getCompanyProfile() async {
     final headers = await _getHeaders();

@@ -16,6 +16,15 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color accent;
   final Color success;
   final Color danger;
+  final Color warning;
+  final Color purple;
+  final Color textTertiary;
+  // Semantik arkaplan tonları (rozet/ikon arkaplanları) — her temada uyumlu.
+  final Color successBg;
+  final Color dangerBg;
+  final Color accentBg;
+  final Color warningBg;
+  final Color purpleBg;
 
   const AppColors({
     required this.scaffold,
@@ -28,6 +37,14 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.accent,
     required this.success,
     required this.danger,
+    required this.warning,
+    required this.purple,
+    required this.textTertiary,
+    required this.successBg,
+    required this.dangerBg,
+    required this.accentBg,
+    required this.warningBg,
+    required this.purpleBg,
   });
 
   static const light = AppColors(
@@ -41,6 +58,14 @@ class AppColors extends ThemeExtension<AppColors> {
     accent: Color(0xFF3B82F6),
     success: Color(0xFF10B981),
     danger: Color(0xFFEF4444),
+    warning: Color(0xFFF59E0B),
+    purple: Color(0xFF8B5CF6),
+    textTertiary: Color(0xFF94A3B8),
+    successBg: Color(0xFFF0FDF4),
+    dangerBg: Color(0xFFFEF2F2),
+    accentBg: Color(0xFFEFF6FF),
+    warningBg: Color(0xFFFFF7ED),
+    purpleBg: Color(0xFFF5F3FF),
   );
 
   static const dark = AppColors(
@@ -54,6 +79,15 @@ class AppColors extends ThemeExtension<AppColors> {
     accent: Color(0xFF3B82F6),
     success: Color(0xFF10B981),
     danger: Color(0xFFEF4444),
+    warning: Color(0xFFF59E0B),
+    purple: Color(0xFF8B5CF6),
+    textTertiary: Color(0xFF64748B),
+    // Koyu temada düşük-alfa tonlar (önceden hesaplanmış ARGB, ~%15).
+    successBg: Color(0x2610B981),
+    dangerBg: Color(0x26EF4444),
+    accentBg: Color(0x263B82F6),
+    warningBg: Color(0x26F59E0B),
+    purpleBg: Color(0x268B5CF6),
   );
 
   @override
@@ -68,6 +102,14 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? accent,
     Color? success,
     Color? danger,
+    Color? warning,
+    Color? purple,
+    Color? textTertiary,
+    Color? successBg,
+    Color? dangerBg,
+    Color? accentBg,
+    Color? warningBg,
+    Color? purpleBg,
   }) =>
       AppColors(
         scaffold: scaffold ?? this.scaffold,
@@ -80,6 +122,14 @@ class AppColors extends ThemeExtension<AppColors> {
         accent: accent ?? this.accent,
         success: success ?? this.success,
         danger: danger ?? this.danger,
+        warning: warning ?? this.warning,
+        purple: purple ?? this.purple,
+        textTertiary: textTertiary ?? this.textTertiary,
+        successBg: successBg ?? this.successBg,
+        dangerBg: dangerBg ?? this.dangerBg,
+        accentBg: accentBg ?? this.accentBg,
+        warningBg: warningBg ?? this.warningBg,
+        purpleBg: purpleBg ?? this.purpleBg,
       );
 
   @override
@@ -96,6 +146,14 @@ class AppColors extends ThemeExtension<AppColors> {
       accent: Color.lerp(accent, other.accent, t)!,
       success: Color.lerp(success, other.success, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
+      warning: Color.lerp(warning, other.warning, t)!,
+      purple: Color.lerp(purple, other.purple, t)!,
+      textTertiary: Color.lerp(textTertiary, other.textTertiary, t)!,
+      successBg: Color.lerp(successBg, other.successBg, t)!,
+      dangerBg: Color.lerp(dangerBg, other.dangerBg, t)!,
+      accentBg: Color.lerp(accentBg, other.accentBg, t)!,
+      warningBg: Color.lerp(warningBg, other.warningBg, t)!,
+      purpleBg: Color.lerp(purpleBg, other.purpleBg, t)!,
     );
   }
 }

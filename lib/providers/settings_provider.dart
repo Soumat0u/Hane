@@ -8,32 +8,17 @@ class SettingsProvider extends ChangeNotifier {
   static const _kBiometric = 'pref_biometric';
   static const _kNotifications = 'pref_notifications';
   static const _kLocale = 'pref_locale';
-  static const _kCurrency = 'pref_currency';
 
   ThemeMode _themeMode = ThemeMode.light;
   bool _biometricEnabled = false;
   bool _notificationsEnabled = true;
   Locale _locale = const Locale('tr');
-  String _baseCurrency = 'TRY';
 
   ThemeMode get themeMode => _themeMode;
   bool get isDark => _themeMode == ThemeMode.dark;
   bool get biometricEnabled => _biometricEnabled;
   bool get notificationsEnabled => _notificationsEnabled;
   Locale get locale => _locale;
-  String get baseCurrency => _baseCurrency;
-
-  /// Para birimi sembolü (formatlama için).
-  String get currencySymbol {
-    switch (_baseCurrency) {
-      case 'USD':
-        return '\$';
-      case 'EUR':
-        return '€';
-      default:
-        return '₺';
-    }
-  }
 
   bool _loaded = false;
   bool get isLoaded => _loaded;
@@ -53,7 +38,6 @@ class SettingsProvider extends ChangeNotifier {
     _biometricEnabled = prefs.getBool(_kBiometric) ?? false;
     _notificationsEnabled = prefs.getBool(_kNotifications) ?? true;
     _locale = Locale(prefs.getString(_kLocale) ?? 'tr');
-    _baseCurrency = prefs.getString(_kCurrency) ?? 'TRY';
     _loaded = true;
     notifyListeners();
   }
@@ -84,12 +68,5 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kLocale, languageCode);
-  }
-
-  Future<void> setBaseCurrency(String currency) async {
-    _baseCurrency = currency;
-    notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kCurrency, currency);
   }
 }

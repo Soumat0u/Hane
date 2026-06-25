@@ -1,473 +1,498 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/utils/formatters.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/models/financial_transaction.dart';
+import 'package:hane/views/hareketler_view.dart' show transactionVisuals;
 
-class HareketDetayView extends StatelessWidget {
-  final Map<String, dynamic> transaction;
+const _incomeTypes = {'Gelir', 'Tahsilat', 'Satış'};
+
+class HareketDetayView extends StatefulWidget {
+  final FinancialTransaction transaction;
 
   const HareketDetayView({super.key, required this.transaction});
 
   @override
-  Widget build(BuildContext context) {
-    // Determine colors based on transaction type
-    Color typeColor;
-    IconData typeIcon;
-    Color amountColor;
-    Color headerBackgroundColor;
-    
-    if (transaction['type'] == 'gider') {
-      typeColor = context.colors.danger;
-      typeIcon = Icons.arrow_upward_rounded;
-      amountColor = context.colors.danger;
-      headerBackgroundColor = const Color(0xFFFEF2F2); // very light red tint
-    } else if (transaction['type'] == 'tahsilat') {
-      typeColor = context.colors.success;
-      typeIcon = Icons.arrow_downward_rounded;
-      amountColor = context.colors.success;
-      headerBackgroundColor = const Color(0xFFF0FDF4); // very light green tint
-    } else { // transfer
-      typeColor = context.colors.accent;
-      typeIcon = Icons.swap_horiz_rounded;
-      amountColor = context.colors.accent;
-      headerBackgroundColor = const Color(0xFFEFF6FF); // very light blue tint
-    }
+  State<HareketDetayView> createState() => _HareketDetayViewState();
+}
 
-    return Scaffold(
-      backgroundColor: context.colors.scaffold,
-      appBar: AppBar(
-        backgroundColor: context.colors.scaffold,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.chevron_left_rounded, color: context.colors.textPrimary, size: 32),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Hareket Detayı',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: context.colors.textPrimary,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.more_horiz_rounded, color: context.colors.textPrimary, size: 28),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100), // bottom padding for sticky buttons
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header Card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: headerBackgroundColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: typeColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(typeIcon, color: Colors.white, size: 24),
+class _HareketDetayViewState extends State<HareketDetayView> {
+  final DateFormat _dateFmt = DateFormat('d MMM yyyy', 'tr_TR');
+  final DateFormat _shortFmt = DateFormat('dd.MM.yyyy');
+
+  String _fmtDate(String raw, {bool short = false}) {
+    final d = DateTime.tryParse(raw);
+    if (d == null) return raw;
+    return (short ? _shortFmt : _dateFmt).format(d);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<FinanceProvider>(
+      builder: (context, fp, child) {
+        // Güncel kaydı listeden çek (düzenleme sonrası taze veri); yoksa (silinmiş) gelen referans.
+        final t = fp.allTransactions.firstWhere(
+          (x) => x.id == widget.transaction.id,
+          orElse: () => widget.transaction,
+        );
+        final visuals = transactionVisuals(context, t.type);
+        final projectName = t.projectId != null
+            ? (fp.projects.where((p) => p.id == t.projectId).isNotEmpty
+                ? fp.projects.firstWhere((p) => p.id == t.projectId).name
+                : null)
+            : null;
+        final account = t.sourceName.isNotEmpty ? t.sourceName : t.destName;
+        final related = _relatedTransactions(fp, t);
+
+        return Scaffold(
+          backgroundColor: context.colors.scaffold,
+          appBar: AppBar(
+            backgroundColor: context.colors.scaffold,
+            elevation: 0,
+            centerTitle: true,
+            leading: IconButton(
+              icon: Icon(Icons.chevron_left_rounded, color: context.colors.textPrimary, size: 32),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text('Hareket Detayı',
+                style: TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+            actions: [
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_horiz_rounded, color: context.colors.textPrimary, size: 28),
+                color: context.colors.surface,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onSelected: (value) {
+                  if (value == 'duzenle') {
+                    _showEditDialog(fp, t);
+                  } else if (value == 'sil') {
+                    _confirmDelete(fp, t);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem<String>(
+                    value: 'duzenle',
+                    child: Row(children: [
+                      Icon(Icons.edit_outlined, size: 18, color: context.colors.accent),
+                      const SizedBox(width: 12),
+                      Text('Düzenle',
+                          style: TextStyle(color: context.colors.textPrimary, fontWeight: FontWeight.w600)),
+                    ]),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          transaction['category'] ?? 'BİLİNMİYOR',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: typeColor,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                transaction['title'] ?? '',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: context.colors.textPrimary,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              transaction['amount'] ?? '',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: amountColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (transaction['subtitle'] != null && transaction['subtitle'].isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              transaction['subtitle'],
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: context.colors.textPrimary,
-                              ),
-                            ),
-                          ),
-                        if (transaction['details'] != null && transaction['details'].isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              transaction['details'],
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: context.colors.textPrimary, // Made slightly darker like the image
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(Icons.calendar_today_rounded, size: 14, color: context.colors.textSecondary),
-                            const SizedBox(width: 6),
-                            Text(
-                              transaction['date']?.replaceAll('\n', ' • ') ?? '',
-                              style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                  PopupMenuItem<String>(
+                    value: 'sil',
+                    child: Row(children: [
+                      Icon(Icons.delete_outline_rounded, size: 18, color: context.colors.danger),
+                      const SizedBox(width: 12),
+                      Text('Sil',
+                          style: TextStyle(color: context.colors.danger, fontWeight: FontWeight.w600)),
+                    ]),
                   ),
                 ],
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Details List
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.colors.border.withOpacity(0.5)),
-              ),
-              child: Column(
-                children: [
-                  _buildDetailRow(context, Icons.sell_outlined, 'Kategori', transaction['details'] ?? 'Diğer'),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildDetailRow(context, Icons.sell_outlined, 'Alt Kategori', transaction['details'] ?? 'Diğer'),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildDetailRow(
-                    context, 
-                    Icons.person_outline_rounded, 
-                    'Alıcı / Kişi', 
-                    transaction['subtitle'] ?? '-', 
-                    showTrailing: true,
-                  ),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildDetailRow(context, Icons.domain_rounded, 'Proje', transaction['project'] ?? '-'),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildDetailRowWithTrailingWidget(
-                    context, 
-                    Icons.account_balance_wallet_outlined, 
-                    'Ödeme Kaynağı', 
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          transaction['account'] ?? '-',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
-                        ),
-                        if (transaction['accountIcon'] != null) ...[
-                          const SizedBox(width: 8),
-                          Icon(transaction['accountIcon'], size: 16, color: context.colors.success),
-                        ],
-                      ],
-                    )
-                  ),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildDetailRowWithTrailingWidget(
-                    context, 
-                    Icons.calendar_today_rounded, 
-                    'Tutar', 
-                    Text(
-                      transaction['amount'] ?? '',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: amountColor),
-                    )
-                  ),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildDetailRowWithTrailingWidget(
-                    context, 
-                    Icons.description_outlined, 
-                    'Belge / Fatura', 
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: context.colors.surfaceVariant,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.insert_drive_file, size: 14, color: context.colors.textSecondary),
-                              const SizedBox(width: 4),
-                              Text(
-                                'avans-slip.pdf',
-                                style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Icon(Icons.download_rounded, size: 18, color: context.colors.textSecondary),
-                      ],
-                    )
-                  ),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildDetailRow(
-                    context, 
-                    Icons.format_quote_rounded, 
-                    'Not', 
-                    'Kapıcıya avans ödemesi yapıldı.' // Mocked note
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // İşlem Geçmişi
-            Text(
-              'İŞLEM GEÇMİŞİ',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: context.colors.textPrimary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.colors.border.withOpacity(0.5)),
-              ),
-              child: Column(
-                children: [
-                  _buildHistoryRow(context, '25.04.2024', 'Avans Ödemesi', '-₺10.000'),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildHistoryRow(context, '15.04.2024', 'Avans Ödemesi', '-₺10.000'),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildHistoryRow(context, '05.04.2024', 'Avans Ödemesi', '-₺5.000'),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildHistoryRow(context, '25.03.2024', 'Avans Ödemesi', '-₺10.000'),
-                  Divider(color: context.colors.border.withOpacity(0.5), height: 1),
-                  _buildHistoryRow(context, '15.03.2024', 'Avans Ödemesi', '-₺10.000'),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Toplam Bakiye
-            Text(
-              'TOPLAM BAKİYE',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: context.colors.textPrimary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.colors.border.withOpacity(0.5)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text('Toplam Avans', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.colors.brand)),
-                        const SizedBox(height: 8),
-                        Text('₺25.000', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: context.colors.accent)),
-                      ],
-                    ),
-                  ),
-                  Container(width: 1, height: 40, color: context.colors.border.withOpacity(0.5)),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text('Kesintiler', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.colors.brand)),
-                        const SizedBox(height: 8),
-                        Text('₺10.000', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: context.colors.success)),
-                      ],
-                    ),
-                  ),
-                  Container(width: 1, height: 40, color: context.colors.border.withOpacity(0.5)),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Text('Kalan Bakiye', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.colors.brand)),
-                        const SizedBox(height: 8),
-                        Text('₺15.000', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: context.colors.danger)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      
-      // Bottom Action Buttons
-      bottomSheet: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Düzenle', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: context.colors.accent,
-                    side: BorderSide(color: context.colors.border),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                  label: const Text('Sil', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: context.colors.danger,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    elevation: 0,
-                  ),
-                ),
               ),
             ],
           ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Başlık kartı
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: visuals.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(color: visuals.color, shape: BoxShape.circle),
+                        child: Icon(visuals.icon, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(t.type.toUpperCase(),
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: visuals.color,
+                                    letterSpacing: 0.5)),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                      t.description.isNotEmpty ? t.description : t.category,
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: context.colors.textPrimary)),
+                                ),
+                                Text(currencyFormat.format(t.amount),
+                                    style: TextStyle(
+                                        fontSize: 16, fontWeight: FontWeight.bold, color: visuals.color)),
+                              ],
+                            ),
+                            if (t.contactName.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(t.contactName,
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: context.colors.textPrimary)),
+                              ),
+                            const SizedBox(height: 12),
+                            Row(children: [
+                              Icon(Icons.calendar_today_rounded, size: 14, color: context.colors.textSecondary),
+                              const SizedBox(width: 6),
+                              Text(_fmtDate(t.date),
+                                  style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+                            ]),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Detaylar
+                _card(context, [
+                  _detailRow(context, Icons.sell_outlined, 'Kategori', t.category.isNotEmpty ? t.category : '-'),
+                  _divider(context),
+                  _detailRow(context, Icons.person_outline_rounded, 'Alıcı / Kişi',
+                      t.contactName.isNotEmpty ? t.contactName : '-'),
+                  _divider(context),
+                  _detailRow(context, Icons.domain_rounded, 'Proje', projectName ?? '-'),
+                  _divider(context),
+                  _detailRow(context, Icons.account_balance_wallet_outlined, 'Ödeme Kaynağı',
+                      account.isNotEmpty ? account : '-'),
+                  _divider(context),
+                  _detailRow(context, Icons.payments_outlined, 'Tutar', currencyFormat.format(t.amount),
+                      valueColor: visuals.color),
+                  if (t.dueDate.isNotEmpty) ...[
+                    _divider(context),
+                    _detailRow(context, Icons.event_outlined, 'Vade', _fmtDate(t.dueDate)),
+                  ],
+                ]),
+
+                if (related.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  _sectionTitle(context, 'İLGİLİ İŞLEM GEÇMİŞİ'),
+                  const SizedBox(height: 12),
+                  _card(
+                    context,
+                    [
+                      for (int i = 0; i < related.length; i++) ...[
+                        _historyRow(context, related[i]),
+                        if (i < related.length - 1) _divider(context),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildBalanceSummary(context, fp, t, projectName),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // --- İlgili işlemler: aynı cari, yoksa aynı proje ---
+  List<FinancialTransaction> _relatedTransactions(FinanceProvider fp, FinancialTransaction t) {
+    bool match(FinancialTransaction x) {
+      if (x.id == t.id) return false;
+      if (t.contactId != null) return x.contactId == t.contactId;
+      if (t.contactName.isNotEmpty) return x.contactName == t.contactName;
+      if (t.projectId != null) return x.projectId == t.projectId;
+      return false;
+    }
+
+    final list = fp.allTransactions.where(match).toList()
+      ..sort((a, b) {
+        final da = DateTime.tryParse(a.date);
+        final db = DateTime.tryParse(b.date);
+        if (da == null && db == null) return 0;
+        if (da == null) return 1;
+        if (db == null) return -1;
+        return db.compareTo(da);
+      });
+    return list.take(8).toList();
+  }
+
+  Widget _buildBalanceSummary(
+      BuildContext context, FinanceProvider fp, FinancialTransaction t, String? projectName) {
+    // İlgili cari (yoksa proje) için tüm işlemler üzerinden gerçek toplamlar.
+    bool sameGroup(FinancialTransaction x) {
+      if (t.contactId != null) return x.contactId == t.contactId;
+      if (t.contactName.isNotEmpty) return x.contactName == t.contactName;
+      if (t.projectId != null) return x.projectId == t.projectId;
+      return false;
+    }
+
+    final group = fp.allTransactions.where(sameGroup);
+    final gelir = group.where((x) => _incomeTypes.contains(x.type)).fold(0.0, (s, x) => s + x.amount);
+    final gider = group.where((x) => x.type == 'Gider').fold(0.0, (s, x) => s + x.amount);
+    final net = gelir - gider;
+
+    final label = t.contactName.isNotEmpty
+        ? t.contactName
+        : (projectName != null ? projectName : 'Toplam');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _sectionTitle(context, '$label — TOPLAM BAKİYE'),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.colors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: context.colors.border),
+          ),
+          child: Row(
+            children: [
+              _balanceCol(context, 'Gelir / Tahsilat', gelir, context.colors.success),
+              _vsep(context),
+              _balanceCol(context, 'Gider / Ödeme', gider, context.colors.danger),
+              _vsep(context),
+              _balanceCol(context, 'Net', net, net >= 0 ? context.colors.success : context.colors.danger),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _balanceCol(BuildContext context, String label, double value, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(label,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.colors.brand)),
+          const SizedBox(height: 8),
+          Text(currencyFormat.format(value),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _vsep(BuildContext context) =>
+      Container(width: 1, height: 40, color: context.colors.border);
+
+  // --- Düzenle / Sil ---
+  Future<void> _confirmDelete(FinanceProvider fp, FinancialTransaction t) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.colors.surface,
+        title: Text('İşlemi Sil', style: TextStyle(color: context.colors.textPrimary)),
+        content: Text('Bu işlemi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+            style: TextStyle(color: context.colors.textSecondary)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Vazgeç', style: TextStyle(color: context.colors.textSecondary))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Sil',
+                  style: TextStyle(color: context.colors.danger, fontWeight: FontWeight.bold))),
+        ],
+      ),
+    );
+    if (confirmed != true || t.id == null) return;
+    try {
+      await fp.deleteTransaction(t.id!);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İşlem silindi')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Silinemedi: $e')));
+      }
+    }
+  }
+
+  Future<void> _showEditDialog(FinanceProvider fp, FinancialTransaction t) async {
+    final descCtrl = TextEditingController(text: t.description);
+    final amountCtrl = TextEditingController(text: t.amount.toStringAsFixed(0));
+    final categoryCtrl = TextEditingController(text: t.category);
+    DateTime selectedDate = DateTime.tryParse(t.date) ?? DateTime.now();
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: context.colors.surface,
+          title: Text('İşlemi Düzenle', style: TextStyle(color: context.colors.textPrimary)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _editField(descCtrl, 'Açıklama'),
+                const SizedBox(height: 12),
+                _editField(amountCtrl, 'Tutar', keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                _editField(categoryCtrl, 'Kategori'),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2035),
+                    );
+                    if (picked != null) setDialogState(() => selectedDate = picked);
+                  },
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: 'Tarih',
+                      labelStyle: TextStyle(color: context.colors.textSecondary),
+                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: context.colors.border)),
+                    ),
+                    child: Text(_shortFmt.format(selectedDate),
+                        style: TextStyle(color: context.colors.textPrimary)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('Vazgeç', style: TextStyle(color: context.colors.textSecondary))),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: context.colors.brand, foregroundColor: Colors.white),
+              child: const Text('Kaydet'),
+            ),
+          ],
         ),
       ),
     );
+
+    if (saved != true) return;
+    final amount = double.tryParse(amountCtrl.text.replaceAll(',', '.')) ?? t.amount;
+    final updated = t.copyWith(
+      description: descCtrl.text,
+      amount: amount,
+      category: categoryCtrl.text,
+      date: selectedDate.toIso8601String(),
+    );
+    try {
+      await fp.updateTransaction(updated);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İşlem güncellendi')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Güncellenemedi: $e')));
+      }
+    }
   }
 
-  Widget _buildDetailRow(BuildContext context, IconData icon, String label, String value, {bool showTrailing = false}) {
+  Widget _editField(TextEditingController controller, String label,
+      {TextInputType? keyboardType}) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: TextStyle(color: context.colors.textPrimary),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: context.colors.textSecondary),
+        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: context.colors.border)),
+        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: context.colors.brand)),
+      ),
+    );
+  }
+
+  // --- Küçük UI yardımcıları ---
+  Widget _card(BuildContext context, List<Widget> children) => Container(
+        decoration: BoxDecoration(
+          color: context.colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.colors.border.withValues(alpha: 0.5)),
+        ),
+        child: Column(children: children),
+      );
+
+  Widget _divider(BuildContext context) =>
+      Divider(color: context.colors.border.withValues(alpha: 0.5), height: 1);
+
+  Widget _sectionTitle(BuildContext context, String text) => Text(text,
+      style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: context.colors.textPrimary,
+          letterSpacing: 0.5));
+
+  Widget _detailRow(BuildContext context, IconData icon, String label, String value,
+      {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           Icon(icon, size: 18, color: context.colors.textSecondary),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
-            ),
+          Expanded(child: Text(label, style: TextStyle(fontSize: 13, color: context.colors.textSecondary))),
+          Flexible(
+            child: Text(value,
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: valueColor ?? context.colors.textPrimary)),
           ),
-          Text(
-            value,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
-          ),
-          if (showTrailing) ...[
-            const SizedBox(width: 8),
-            Icon(Icons.chevron_right_rounded, size: 16, color: context.colors.textSecondary),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildDetailRowWithTrailingWidget(BuildContext context, IconData icon, String label, Widget trailingWidget) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: context.colors.textSecondary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
-            ),
-          ),
-          trailingWidget,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryRow(BuildContext context, String date, String title, String amount) {
+  Widget _historyRow(BuildContext context, FinancialTransaction t) {
+    final visuals = transactionVisuals(context, t.type);
+    final title = t.description.isNotEmpty ? t.description : t.category;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
           Expanded(
             flex: 2,
-            child: Text(
-              date,
-              style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-            ),
+            child: Text(_fmtDate(t.date, short: true),
+                style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
           ),
           Expanded(
             flex: 3,
-            child: Text(
-              title,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
-            ),
+            child: Text(title.isNotEmpty ? title : t.type,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
           ),
           Expanded(
             flex: 2,
-            child: Text(
-              amount,
-              textAlign: TextAlign.right,
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.danger),
-            ),
+            child: Text(currencyFormat.format(t.amount),
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: visuals.color)),
           ),
         ],
       ),

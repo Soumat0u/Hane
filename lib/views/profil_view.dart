@@ -78,7 +78,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: context.colors.surface,
+        backgroundColor: context.colors.scaffold,
         appBar: AppBar(
           title: Text('Profil', style: TextStyle(color: context.colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
           backgroundColor: context.colors.surface,
@@ -89,7 +89,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
       );
     }
     return Scaffold(
-      backgroundColor: context.colors.surface,
+      backgroundColor: context.colors.scaffold,
       appBar: AppBar(
         title: Text('Profil', style: TextStyle(color: context.colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
         backgroundColor: context.colors.surface,
@@ -271,7 +271,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[500],
+                color: context.colors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -464,7 +464,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w600,
-            color: Colors.grey[500],
+            color: context.colors.textSecondary,
           ),
         ),
         const SizedBox(height: 2),

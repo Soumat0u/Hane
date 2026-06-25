@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/finance_panel.dart';
 import 'package:hane/models/finance_entities.dart';
 import 'package:hane/views/yeni_islem_view.dart';
 import 'package:table_calendar/table_calendar.dart';
-
-final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 
 class BorclarView extends StatefulWidget {
   const BorclarView({super.key});
@@ -72,7 +70,7 @@ class _BorclarViewState extends State<BorclarView> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Theme.of(context).extension<AppColors>()!.danger.withOpacity(0.3),
+                          color: Theme.of(context).extension<AppColors>()!.danger.withValues(alpha: 0.3),
                           blurRadius: 10,
                           offset: const Offset(0, 6),
                         ),
@@ -194,7 +192,7 @@ class _BorclarViewState extends State<BorclarView> {
                               shape: BoxShape.circle,
                             ),
                             todayDecoration: BoxDecoration(
-                              color: Theme.of(context).extension<AppColors>()!.danger.withOpacity(0.3),
+                              color: Theme.of(context).extension<AppColors>()!.danger.withValues(alpha: 0.3),
                               shape: BoxShape.circle,
                             ),
                             markerDecoration: BoxDecoration(

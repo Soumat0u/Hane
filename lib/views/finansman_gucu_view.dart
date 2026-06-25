@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/yeni_islem_view.dart';
 import 'package:hane/views/widgets/bank_logo.dart';
-
-final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 
 class FinansmanGucuView extends StatelessWidget {
   const FinansmanGucuView({super.key});
@@ -50,7 +48,7 @@ class FinansmanGucuView extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Theme.of(context).extension<AppColors>()!.success.withOpacity(0.3),
+                          color: Theme.of(context).extension<AppColors>()!.success.withValues(alpha: 0.3),
                           blurRadius: 10,
                           offset: const Offset(0, 6),
                         ),

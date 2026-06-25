@@ -296,7 +296,7 @@ class _YeniProjeViewState extends State<YeniProjeView> {
           margin: const EdgeInsets.only(right: 8),
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: isSelected ? context.colors.brand.withOpacity(0.05) : context.colors.surface,
+            color: isSelected ? context.colors.brand.withValues(alpha: 0.05) : context.colors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected ? context.colors.brand : context.colors.border,

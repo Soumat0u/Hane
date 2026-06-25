@@ -106,7 +106,7 @@ class _YeniSatisViewState extends State<YeniSatisView> {
               padding: const EdgeInsets.all(12),
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
+                color: context.colors.accentBg,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(

@@ -48,7 +48,7 @@ class CustomBottomNavbar extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: context.colors.accent.withOpacity(0.3),
+                      color: context.colors.accent.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),

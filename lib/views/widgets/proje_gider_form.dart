@@ -90,7 +90,7 @@ class _ProjeGiderFormState extends State<ProjeGiderForm> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: const Color(0xFFFEF2F2), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: context.colors.dangerBg, borderRadius: BorderRadius.circular(10)),
                     child: Icon(Icons.business_center_rounded, color: context.colors.danger, size: 20),
                   ),
                   const SizedBox(width: 12),
@@ -453,7 +453,7 @@ class _ProjeGiderFormState extends State<ProjeGiderForm> {
             height: 56,
             margin: const EdgeInsets.symmetric(horizontal: 4),
             decoration: BoxDecoration(
-              color: sel ? Color(0xFFFEF2F2) : context.colors.surface,
+              color: sel ? context.colors.dangerBg : context.colors.surface,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: sel ? context.colors.danger : context.colors.border, width: sel ? 1.5 : 1),
             ),

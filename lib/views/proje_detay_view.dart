@@ -4,13 +4,12 @@ import 'package:hane/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/project.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/views/yeni_proje_view.dart';
 import 'package:hane/views/yeni_islem_view.dart';
-
-final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 final dateFormat = DateFormat('dd.MM.yyyy');
 
 class ProjeDetayView extends StatefulWidget {
@@ -157,12 +156,16 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
               children: [
                 Row(
                   children: [
-                    Text(
-                      project.name,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: context.colors.textPrimary,
+                    Flexible(
+                      child: Text(
+                        project.name,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: context.colors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -173,7 +176,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        'AKP-001', // Example project code
+                        project.projectCode.isNotEmpty ? project.projectCode : 'AKP-001',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -188,9 +191,12 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                   children: [
                     Icon(Icons.location_on_outlined, size: 14, color: context.colors.textSecondary),
                     const SizedBox(width: 4),
-                    Text(
-                      'İstanbul / Başakşehir',
-                      style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+                    Expanded(
+                      child: Text(
+                        project.location.isNotEmpty ? project.location : '-',
+                        style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -200,7 +206,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                     Icon(Icons.home_work_outlined, size: 14, color: context.colors.textSecondary),
                     const SizedBox(width: 4),
                     Text(
-                      'Konut Projesi',
+                      project.projectType.isNotEmpty ? project.projectType : '-',
                       style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
                     ),
                   ],
@@ -370,7 +376,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: context.colors.surfaceVariant.withOpacity(0.5),
+                            color: context.colors.surfaceVariant.withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(_getIconForCategory(t.category), size: 18, color: context.colors.textPrimary),

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-
+import 'package:hane/providers/settings_provider.dart';
+import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/services/notification_service.dart';
 import 'package:hane/theme/app_theme.dart';
+
 class AyarlarView extends StatefulWidget {
   const AyarlarView({super.key});
 
@@ -10,14 +14,22 @@ class AyarlarView extends StatefulWidget {
 }
 
 class _AyarlarViewState extends State<AyarlarView> {
-  bool _bildirimlerAcik = true;
-  bool _karanlikMod = false;
-  bool _biyometrikGiris = true;
-  String _seciliDil = 'Türkçe';
-  String _seciliParaBirimi = 'TRY (₺)';
+  /// Bildirim ayarı değiştiğinde zamanlanmış hatırlatmaları senkronlar.
+  Future<void> _onNotificationsChanged(bool value) async {
+    final settings = context.read<SettingsProvider>();
+    final fp = context.read<FinanceProvider>();
+    await settings.setNotifications(value);
+    if (value) {
+      await NotificationService.instance.requestPermission();
+      await NotificationService.instance.syncDueReminders(fp.getAllDuePayments());
+    } else {
+      await NotificationService.instance.cancelAll();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
     return Scaffold(
       backgroundColor: context.colors.scaffold,
       appBar: AppBar(
@@ -47,50 +59,33 @@ class _AyarlarViewState extends State<AyarlarView> {
             'Bildirimler',
             'Push bildirimlerini al',
             Icons.notifications_active_outlined,
-            _bildirimlerAcik,
-            (val) => setState(() => _bildirimlerAcik = val),
+            settings.notificationsEnabled,
+            _onNotificationsChanged,
           ),
           _buildSwitchTile(
             'Karanlık Mod',
             'Uygulama temasını değiştir',
             Icons.dark_mode_outlined,
-            _karanlikMod,
-            (val) => setState(() => _karanlikMod = val),
+            settings.isDark,
+            (val) => context.read<SettingsProvider>().setDarkMode(val),
           ),
-          
+
           const SizedBox(height: 24),
           _buildSectionTitle('Güvenlik'),
           _buildSwitchTile(
             'Biyometrik Giriş',
             'Face ID / Touch ID kullan',
             Icons.fingerprint_rounded,
-            _biyometrikGiris,
-            (val) => setState(() => _biyometrikGiris = val),
+            settings.biometricEnabled,
+            (val) => context.read<SettingsProvider>().setBiometric(val),
           ),
           _buildActionTile('Şifre Değiştir', 'Hesap şifrenizi yenileyin', Icons.lock_outline, () {}),
 
-          const SizedBox(height: 24),
-          _buildSectionTitle('Bölgesel Ayarlar'),
-          _buildDropdownTile(
-            'Dil',
-            Icons.language_outlined,
-            _seciliDil,
-            ['Türkçe', 'English', 'Deutsch'],
-            (val) => setState(() => _seciliDil = val!),
-          ),
-          _buildDropdownTile(
-            'Para Birimi',
-            Icons.payments_outlined,
-            _seciliParaBirimi,
-            ['TRY (₺)', 'USD (\$)', 'EUR (€)'],
-            (val) => setState(() => _seciliParaBirimi = val!),
-          ),
-          
           const SizedBox(height: 40),
           Center(
             child: Text(
               'Versiyon 1.0.0',
-              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              style: TextStyle(color: context.colors.textSecondary, fontSize: 12),
             ),
           ),
           const SizedBox(height: 20),
@@ -165,38 +160,4 @@ class _AyarlarViewState extends State<AyarlarView> {
     );
   }
 
-  Widget _buildDropdownTile(String title, IconData icon, String currentValue, List<String> options, ValueChanged<String?> onChanged) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.colors.border),
-      ),
-      child: ListTile(
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: context.colors.textPrimary)),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: context.colors.surfaceVariant,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: context.colors.brand, size: 20),
-        ),
-        trailing: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: currentValue,
-            icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary),
-            items: options.map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-              );
-            }).toList(),
-            onChanged: onChanged,
-          ),
-        ),
-      ),
-    );
-  }
 }

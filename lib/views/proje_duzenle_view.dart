@@ -144,7 +144,7 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
                   child: Center(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
+                        color: Colors.black.withValues(alpha: 0.4),
                         shape: BoxShape.circle,
                       ),
                       padding: const EdgeInsets.all(12),
@@ -290,7 +290,7 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
             border: Border.all(color: context.colors.border),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.02),
+                color: Colors.black.withValues(alpha: 0.02),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),

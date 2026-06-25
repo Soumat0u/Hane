@@ -523,7 +523,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     height: 44,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: _isIncome ? Color(0xFFECFDF5) : context.colors.surface,
+                      color: _isIncome ? context.colors.successBg : context.colors.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: _isIncome ? context.colors.success : context.colors.border,
@@ -552,7 +552,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     height: 44,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: !_isIncome ? Color(0xFFFEF2F2) : context.colors.surface,
+                      color: !_isIncome ? context.colors.dangerBg : context.colors.surface,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: !_isIncome ? context.colors.danger : context.colors.border,
@@ -1049,7 +1049,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
 
   Widget _buildMethodItem(String method, IconData icon) {
     final bool isSelected = _tahsilatOdemeYontemi == method;
-    final Color bgColor = isSelected ? Color(0xFFEFF6FF) : context.colors.surface;
+    final Color bgColor = isSelected ? context.colors.accentBg : context.colors.surface;
     final Color borderColor = isSelected ? context.colors.accent : context.colors.border;
     final Color color = isSelected ? context.colors.accent : context.colors.textSecondary;
 

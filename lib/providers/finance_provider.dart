@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/project.dart';
 import '../models/financial_transaction.dart';
 import '../models/account.dart';
@@ -74,8 +75,13 @@ class FinanceProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
+  // Okunmuş bildirimlerin içerik tabanlı anahtarları (SharedPreferences ile kalıcı).
+  final Set<String> _readNotificationKeys = {};
+  static const _kReadNotifications = 'pref_read_notifications';
+
   FinanceProvider() {
     refreshData();
+    _loadReadNotifications();
   }
 
   Future<void> refreshData() async {
@@ -128,6 +134,16 @@ class FinanceProvider extends ChangeNotifier {
 
   Future<void> addTransaction(FinancialTransaction transaction) async {
     await ApiService.instance.createTransaction(transaction);
+    await refreshData();
+  }
+
+  Future<void> updateTransaction(FinancialTransaction transaction) async {
+    await ApiService.instance.updateTransaction(transaction);
+    await refreshData();
+  }
+
+  Future<void> deleteTransaction(int id) async {
+    await ApiService.instance.deleteTransaction(id);
     await refreshData();
   }
 
@@ -389,6 +405,52 @@ class FinanceProvider extends ChangeNotifier {
     final all = [...getUpcomingPayments(), ...getUpcomingCollections()];
     _sortByDate(all);
     return all;
+  }
+
+  // --- Bildirim okundu durumu ---
+
+  /// Bir bildirim için içeriğe dayalı, yeniden hesaplamada da kararlı benzersiz anahtar.
+  String notificationKey(DuePayment p) =>
+      '${p.isPayable}|${p.title}|${p.rawDate}|${p.amount}';
+
+  bool isNotificationRead(DuePayment p) =>
+      _readNotificationKeys.contains(notificationKey(p));
+
+  /// Henüz okunmamış bildirim sayısı (kırmızı nokta göstergesi için).
+  int get unreadNotificationCount =>
+      getAllDuePayments().where((p) => !isNotificationRead(p)).length;
+
+  bool get hasUnreadNotifications => unreadNotificationCount > 0;
+
+  Future<void> markNotificationRead(DuePayment p) async {
+    if (_readNotificationKeys.add(notificationKey(p))) {
+      notifyListeners();
+      await _persistReadNotifications();
+    }
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    var changed = false;
+    for (final p in getAllDuePayments()) {
+      if (_readNotificationKeys.add(notificationKey(p))) changed = true;
+    }
+    if (changed) {
+      notifyListeners();
+      await _persistReadNotifications();
+    }
+  }
+
+  Future<void> _loadReadNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    _readNotificationKeys
+      ..clear()
+      ..addAll(prefs.getStringList(_kReadNotifications) ?? const []);
+    notifyListeners();
+  }
+
+  Future<void> _persistReadNotifications() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_kReadNotifications, _readNotificationKeys.toList());
   }
 
   void _sortByDate(List<DuePayment> list) {

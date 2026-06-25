@@ -121,6 +121,36 @@ class BudgetLineSerializer(serializers.ModelSerializer):
         return obj.actual_amount()
 
 
+def _adjust_account_balance(user, account_name, amount_change):
+    """İsmiyle bulunan hesabın bakiye cache'ini ``amount_change`` kadar değiştirir."""
+    if not account_name:
+        return
+    try:
+        account = Account.objects.get(user=user, name=account_name)
+        account.balance += amount_change
+        account.save(update_fields=['balance'])
+    except Account.DoesNotExist:
+        pass
+
+
+def apply_legacy_balance(user, transaction, sign):
+    """FK hesap verilmemiş (isim-bazlı) işlemin bakiye etkisini uygular.
+
+    ``sign=+1`` etkiyi uygular (oluşturma), ``sign=-1`` etkiyi geri alır (silme/düzenleme).
+    FK hesaplı işlemlerde bakiye zaten post_save/post_delete sinyaliyle yönetilir.
+    """
+    t = transaction
+    if t.from_account_id or t.to_account_id:
+        return
+    if t.type == 'Gider':
+        _adjust_account_balance(user, t.source_name, -t.amount * sign)
+    elif t.type in ('Gelir', 'Tahsilat'):
+        _adjust_account_balance(user, t.source_name, t.amount * sign)
+    elif t.type == 'Transfer':
+        _adjust_account_balance(user, t.source_name, -t.amount * sign)
+        _adjust_account_balance(user, t.dest_name, t.amount * sign)
+
+
 class FinancialTransactionSerializer(serializers.ModelSerializer):
     project_id = serializers.IntegerField(source='project.id', read_only=True, allow_null=True)
     amount_try = serializers.FloatField(read_only=True)
@@ -150,31 +180,17 @@ class FinancialTransactionSerializer(serializers.ModelSerializer):
         transaction = FinancialTransaction.objects.create(**validated_data)
 
         # FK verilmediyse eski isim-bazlı bakiye güncellemesini uygula (geriye uyum)
-        if not transaction.from_account and not transaction.to_account:
-            self._legacy_update_balances(request.user, transaction)
+        apply_legacy_balance(request.user, transaction, +1)
 
         return transaction
 
-    def _legacy_update_balances(self, user, transaction):
-        """source_name/dest_name string'lerinden hesap bularak bakiye günceller (eski akış)."""
-        t = transaction
-        if t.type == 'Gider' and t.source_name:
-            self._adjust(user, t.source_name, -t.amount)
-        elif t.type in ('Gelir', 'Tahsilat') and t.source_name:
-            self._adjust(user, t.source_name, t.amount)
-        elif t.type == 'Transfer':
-            if t.source_name:
-                self._adjust(user, t.source_name, -t.amount)
-            if t.dest_name:
-                self._adjust(user, t.dest_name, t.amount)
-
-    def _adjust(self, user, account_name, amount_change):
-        try:
-            account = Account.objects.get(user=user, name=account_name)
-            account.balance += amount_change
-            account.save(update_fields=['balance'])
-        except Account.DoesNotExist:
-            pass
+    def update(self, instance, validated_data):
+        user = instance.user
+        # Eski işlemin isim-bazlı bakiye etkisini geri al, güncelle, yeni etkiyi uygula.
+        apply_legacy_balance(user, instance, -1)
+        instance = super().update(instance, validated_data)
+        apply_legacy_balance(user, instance, +1)
+        return instance
 
 
 class LoanSerializer(serializers.ModelSerializer):

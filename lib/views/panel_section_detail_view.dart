@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
-import 'package:intl/intl.dart';
 import '../models/finance_panel.dart';
-
-final _currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
+import '../utils/formatters.dart';
 
 /// Bir finans paneli bölümünün (Kasa, Borçlar, vb.) detay/kırılım sayfası.
 ///
@@ -85,7 +83,7 @@ class PanelSectionDetailView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                _currencyFormat.format(section.total),
+                currencyFormat.format(section.total),
                 style: TextStyle(
                   color: context.colors.surface,
                   fontSize: 26,
@@ -128,7 +126,7 @@ class PanelSectionDetailView extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  _currencyFormat.format(group.total),
+                  currencyFormat.format(group.total),
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
@@ -186,7 +184,7 @@ class PanelSectionDetailView extends StatelessWidget {
             ),
           ),
           Text(
-            _currencyFormat.format(item.amount),
+            currencyFormat.format(item.amount),
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,

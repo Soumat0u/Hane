@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:hane/utils/formatters.dart';
 import 'package:hane/views/proje_detay_view.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/project.dart';
 import 'package:hane/views/yeni_proje_view.dart';
-
-final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 
 class ProjelerScreen extends StatelessWidget {
   const ProjelerScreen({super.key});
@@ -186,21 +184,25 @@ class ProjelerScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Status Tag
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Color(int.parse(project.statusBgColorHex.replaceFirst('#', '').replaceFirst('0xFF', '').replaceFirst('0xff', '').padLeft(8, 'f'), radix: 16)),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        child: Text(
-                          project.status,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Color(int.parse(project.statusColorHex.replaceFirst('#', '').replaceFirst('0xFF', '').replaceFirst('0xff', '').padLeft(8, 'f'), radix: 16)),
-                        ),
-                      ),
-                    ),
+                      Builder(builder: (context) {
+                        final statusColor = Color(int.parse(project.statusColorHex.replaceFirst('#', '').replaceFirst('0xFF', '').replaceFirst('0xff', '').padLeft(8, 'f'), radix: 16));
+                        return Container(
+                          decoration: BoxDecoration(
+                            // Arkaplanı status renginin şeffaf tonundan türet — hem açık hem karanlık temada uyumlu.
+                            color: statusColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          child: Text(
+                            project.status,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                            ),
+                          ),
+                        );
+                      }),
                     const SizedBox(height: 6),
                     Text(
                       project.name,

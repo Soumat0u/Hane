@@ -29,7 +29,7 @@ class NewTransactionPanel extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: const Color(0xFFCBD5E1),
+              color: context.colors.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -55,12 +55,12 @@ class NewTransactionPanel extends StatelessWidget {
             crossAxisSpacing: 16,
             childAspectRatio: 0.95,
             children: [
-              _buildGridItem(context, 'Ödeme', Icons.outbox_rounded, Color(0xFFEFF6FF), context.colors.accent),
-              _buildGridItem(context, 'Tahsilat', Icons.move_to_inbox_rounded, Color(0xFFECFDF5), context.colors.success),
-              _buildGridItem(context, 'Transfer', Icons.swap_horiz_rounded, const Color(0xFFFFF7ED), const Color(0xFFF59E0B)),
-              _buildGridItem(context, 'Borçlanma', Icons.account_balance_rounded, Color(0xFFFEF2F2), context.colors.danger),
-              _buildGridItem(context, 'Kredi Kullanımı', Icons.wallet_rounded, const Color(0xFFF5F3FF), const Color(0xFF8B5CF6)),
-              _buildGridItem(context, 'Satış', Icons.assignment_turned_in_rounded, Color(0xFFEFF6FF), context.colors.brand),
+              _buildGridItem(context, 'Ödeme', Icons.outbox_rounded, context.colors.accent),
+              _buildGridItem(context, 'Tahsilat', Icons.move_to_inbox_rounded, context.colors.success),
+              _buildGridItem(context, 'Transfer', Icons.swap_horiz_rounded, const Color(0xFFF59E0B)),
+              _buildGridItem(context, 'Borçlanma', Icons.account_balance_rounded, context.colors.danger),
+              _buildGridItem(context, 'Kredi Kullanımı', Icons.wallet_rounded, const Color(0xFF8B5CF6)),
+              _buildGridItem(context, 'Satış', Icons.assignment_turned_in_rounded, context.colors.brand),
             ],
           ),
           const SizedBox(height: 20),
@@ -73,7 +73,6 @@ class NewTransactionPanel extends StatelessWidget {
     BuildContext context,
     String label,
     IconData icon,
-    Color bgColor,
     Color iconColor,
   ) {
     return Container(
@@ -104,7 +103,7 @@ class NewTransactionPanel extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: bgColor,
+                  color: iconColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: iconColor, size: 24),

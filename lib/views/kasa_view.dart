@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
+import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/kasa_detay_view.dart';
 import 'package:hane/models/account.dart';
 import 'package:hane/views/widgets/bank_logo.dart';
 import 'package:hane/views/yeni_islem_view.dart';
-
-final currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
 
 class KasaScreen extends StatelessWidget {
   const KasaScreen({super.key});
@@ -45,14 +43,7 @@ class KasaScreen extends StatelessWidget {
                   // Top Total Kasa Card (Degrade)
                   Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          context.colors.brand,
-                          const Color(0xFF021B3A),
-                        ],
-                      ),
+                      color: context.colors.brand,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -72,7 +63,7 @@ class KasaScreen extends StatelessWidget {
                             Text(
                               'TOPLAM KASA',
                               style: TextStyle(
-                                color: context.colors.surface.withAlpha(180),
+                                color: Colors.white.withAlpha(180),
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 1,
@@ -81,8 +72,8 @@ class KasaScreen extends StatelessWidget {
                             const SizedBox(height: 8),
                             Text(
                               currencyFormat.format(kasa),
-                              style: TextStyle(
-                                color: context.colors.surface,
+                              style: const TextStyle(
+                                color: Colors.white,
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -92,7 +83,7 @@ class KasaScreen extends StatelessWidget {
                         SizedBox(
                           width: 52,
                           height: 52,
-                          child: Icon(Icons.account_balance_wallet_outlined, color: context.colors.surface.withAlpha(160), size: 48),
+                          child: Icon(Icons.account_balance_wallet_outlined, color: Colors.white.withAlpha(160), size: 48),
                         ),
                       ],
                     ),

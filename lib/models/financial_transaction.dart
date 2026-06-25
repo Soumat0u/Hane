@@ -34,6 +34,42 @@ class FinancialTransaction {
     this.dueDate = '',
   });
 
+  FinancialTransaction copyWith({
+    int? id,
+    int? projectId,
+    String? type,
+    double? amount,
+    String? currency,
+    String? date,
+    String? category,
+    String? description,
+    int? fromAccountId,
+    int? toAccountId,
+    int? contactId,
+    String? sourceName,
+    String? destName,
+    String? contactName,
+    String? dueDate,
+  }) {
+    return FinancialTransaction(
+      id: id ?? this.id,
+      projectId: projectId ?? this.projectId,
+      type: type ?? this.type,
+      amount: amount ?? this.amount,
+      currency: currency ?? this.currency,
+      date: date ?? this.date,
+      category: category ?? this.category,
+      description: description ?? this.description,
+      fromAccountId: fromAccountId ?? this.fromAccountId,
+      toAccountId: toAccountId ?? this.toAccountId,
+      contactId: contactId ?? this.contactId,
+      sourceName: sourceName ?? this.sourceName,
+      destName: destName ?? this.destName,
+      contactName: contactName ?? this.contactName,
+      dueDate: dueDate ?? this.dueDate,
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
