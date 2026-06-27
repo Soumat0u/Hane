@@ -188,6 +188,27 @@ class _HareketDetayViewState extends State<HareketDetayView> {
                   ],
                 ]),
 
+                if (t.attachmentUrl != null && t.attachmentUrl!.isNotEmpty) ...[
+                  const SizedBox(height: 24),
+                  _sectionTitle(context, 'FİŞ / FATURA'),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      t.attachmentUrl!,
+                      width: double.infinity,
+                      height: 220,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stack) => Container(
+                        height: 120,
+                        color: context.colors.surfaceVariant,
+                        alignment: Alignment.center,
+                        child: Text('Görsel yüklenemedi', style: TextStyle(color: context.colors.textSecondary)),
+                      ),
+                    ),
+                  ),
+                ],
+
                 if (related.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   _sectionTitle(context, 'İLGİLİ İŞLEM GEÇMİŞİ'),

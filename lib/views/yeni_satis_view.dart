@@ -22,7 +22,6 @@ class _YeniSatisViewState extends State<YeniSatisView> {
   final _unitNoCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
   String _unitType = 'apartment';
-  String _currency = 'TRY';
   DateTime? _saleDate;
   int? _buyerId;
   bool _createReceivable = true;
@@ -48,7 +47,6 @@ class _YeniSatisViewState extends State<YeniSatisView> {
       unitType: _unitType,
       unitNo: _unitNoCtrl.text.trim(),
       salePrice: price,
-      currency: _currency,
       saleDate: _saleDate?.toIso8601String().split('T').first ?? '',
     );
     try {
@@ -61,7 +59,6 @@ class _YeniSatisViewState extends State<YeniSatisView> {
           contactId: _buyerId,
           totalAmount: price,
           collectedAmount: 0,
-          currency: _currency,
           dueDate: _saleDate?.toIso8601String().split('T').first ?? '',
           description: '${_unitTypes[_unitType]} ${_unitNoCtrl.text.trim()} satış bedeli',
         ));
@@ -121,7 +118,6 @@ class _YeniSatisViewState extends State<YeniSatisView> {
             AppDropdown<String>(label: 'Birim Türü', value: _unitType, options: _unitTypes, onChanged: (v) => setState(() => _unitType = v!)),
             AppTextField(controller: _unitNoCtrl, label: 'Birim No', hint: 'Örn. A-12'),
             AppTextField(controller: _priceCtrl, label: 'Satış Fiyatı', number: true, required: true),
-            AppDropdown<String>(label: 'Para Birimi', value: _currency, options: kCurrencyOptions, onChanged: (v) => setState(() => _currency = v!)),
             if (buyerOptions.length > 1)
               AppDropdown<int?>(label: 'Alıcı (Cari)', value: _buyerId, options: buyerOptions, onChanged: (v) => setState(() => _buyerId = v)),
             AppDateField(label: 'Satış Tarihi', value: _saleDate, onChanged: (d) => setState(() => _saleDate = d)),

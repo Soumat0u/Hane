@@ -59,7 +59,6 @@ class _ButceFormState extends State<_ButceForm> {
       projectId: widget.project.id,
       category: _categoryCtrl.text.trim(),
       budgetedAmount: _num(_amountCtrl),
-      currency: 'TRY',
     );
     try {
       if (widget.existing != null) {

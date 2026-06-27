@@ -33,16 +33,16 @@ Account.objects.filter(user=u, account_details='seed').delete()
 
 # ── 1. KASA — Borsa hesabı + BCH hesapları + kart limiti ──────────────────────
 Account.objects.create(
-    user=u, name='Yatırım (Borsa)', type=Account.BROKERAGE, currency='TRY',
+    user=u, name='Yatırım (Borsa)', type=Account.BROKERAGE,
     opening_balance=320000, balance=320000, account_details='seed',
 )
 # BCH: negatif bakiye = kullanılan; credit_limit = toplam tahsis
 Account.objects.create(
-    user=u, name='Halkbank BCH', type=Account.BCH, currency='TRY',
+    user=u, name='Halkbank BCH', type=Account.BCH,
     opening_balance=-1800000, balance=-1800000, credit_limit=2500000, account_details='seed',
 )
 Account.objects.create(
-    user=u, name='Ziraat BCH', type=Account.BCH, currency='TRY',
+    user=u, name='Ziraat BCH', type=Account.BCH,
     opening_balance=-1200000, balance=-1200000, credit_limit=1750000, account_details='seed',
 )
 # Mevcut kredi kartına limit ata → kullanılabilir kart limiti
@@ -68,24 +68,24 @@ devlet = contact('Vergi Dairesi (KDV İade)', Contact.GOVERNMENT)
 Loan.objects.create(
     user=u, name='İşletme Kredisi', kind=Loan.LOAN, bank_name='Garanti BBVA',
     principal=2500000, total_payable=2950000, paid_amount=450000,
-    interest_rate=42.0, term_months=24, currency='TRY', start_date='2025-09-01',
+    interest_rate=42.0, term_months=24, start_date='2025-09-01',
 )
 Loan.objects.create(
     user=u, name='KGF Kredisi', kind=Loan.KGF, bank_name='Ziraat Bankası',
     principal=750000, total_payable=820000, paid_amount=70000,
-    interest_rate=28.0, term_months=36, currency='TRY', start_date='2026-01-15',
+    interest_rate=28.0, term_months=36, start_date='2026-01-15',
 )
 
 # Çekler — verilen (borç) ve alınan (alacak)
 Cheque.objects.create(user=u, direction=Cheque.ISSUED, status=Cheque.PORTFOLIO,
-                      amount=650000, currency='TRY', due_date='2026-07-20',
+                      amount=650000, due_date='2026-07-20',
                       bank_name='Garanti BBVA', serial_no='0012345', contact=betoncu,
                       project=first_proj)
 Cheque.objects.create(user=u, direction=Cheque.ISSUED, status=Cheque.PORTFOLIO,
-                      amount=500000, currency='TRY', due_date='2026-08-10',
+                      amount=500000, due_date='2026-08-10',
                       bank_name='İş Bankası', serial_no='0012346', contact=demirci)
 Cheque.objects.create(user=u, direction=Cheque.RECEIVED, status=Cheque.PORTFOLIO,
-                      amount=900000, currency='TRY', due_date='2026-07-05',
+                      amount=900000, due_date='2026-07-05',
                       bank_name='Ziraat', serial_no='0099001', contact=musteri2)
 
 # ── 4. PROJE MALİYETLERİ — bütçe kalemleri (gerçekleşme için) ─────────────────
@@ -97,34 +97,34 @@ if first_proj:
     for cat, amount in budget_categories.items():
         BudgetLine.objects.update_or_create(
             project=first_proj, category=cat,
-            defaults={'budgeted_amount': amount, 'currency': 'TRY'},
+            defaults={'budgeted_amount': amount},
         )
 
 # ── 5. ALACAKLAR — Satışlar + taksitler + müşteri/devlet alacağı ──────────────
 sale1 = Sale.objects.create(
     user=u, project=first_proj, buyer=musteri1, unit_type=Sale.APARTMENT,
-    unit_no='A-12', sale_price=4200000, currency='TRY', sale_date='2026-03-10',
+    unit_no='A-12', sale_price=4200000, sale_date='2026-03-10',
 )
 sale2 = Sale.objects.create(
     user=u, project=first_proj, buyer=musteri2, unit_type=Sale.SHOP,
-    unit_no='D-3', sale_price=1850000, currency='TRY', sale_date='2026-04-02',
+    unit_no='D-3', sale_price=1850000, sale_date='2026-04-02',
 )
 
 # Satış taksitleri (vadeli tahsilatlar)
 Receivable.objects.create(user=u, kind=Receivable.SALE_INSTALLMENT, sale=sale1,
                           contact=musteri1, project=first_proj, total_amount=2200000,
-                          collected_amount=800000, currency='TRY', due_date='2026-07-15',
+                          collected_amount=800000, due_date='2026-07-15',
                           status=Receivable.PARTIAL, description='A-12 daire taksiti')
 Receivable.objects.create(user=u, kind=Receivable.SALE_INSTALLMENT, sale=sale2,
                           contact=musteri2, project=first_proj, total_amount=1850000,
-                          collected_amount=0, currency='TRY', due_date='2026-09-01',
+                          collected_amount=0, due_date='2026-09-01',
                           status=Receivable.PENDING, description='D-3 dükkan bedeli')
 # Müşteri ve devlet alacağı
 Receivable.objects.create(user=u, kind=Receivable.CUSTOMER, contact=musteri1,
-                          total_amount=1340000, collected_amount=0, currency='TRY',
+                          total_amount=1340000, collected_amount=0,
                           due_date='2026-08-20', description='Müşteri cari alacağı')
 Receivable.objects.create(user=u, kind=Receivable.GOVERNMENT, contact=devlet,
-                          total_amount=680000, collected_amount=0, currency='TRY',
+                          total_amount=680000, collected_amount=0,
                           due_date='2026-10-01', description='KDV iadesi')
 
 print("Hesaplar     :", Account.objects.filter(user=u).count())

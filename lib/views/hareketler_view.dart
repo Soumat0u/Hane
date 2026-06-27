@@ -6,6 +6,7 @@ import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/views/hareket_detay_view.dart';
+import 'package:hane/services/export_service.dart';
 
 /// Bir işlem tipinin renk ve ikonunu döndürür (liste ve detay ekranı paylaşır).
 ({Color color, IconData icon}) transactionVisuals(BuildContext context, String type) {
@@ -123,30 +124,38 @@ class _HareketlerViewState extends State<HareketlerView> {
               // Arama
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: context.colors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: context.colors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      Icon(Icons.search_rounded, color: context.colors.textSecondary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          onChanged: (v) => setState(() => _search = v),
-                          decoration: InputDecoration(
-                            hintText: 'İşlem ara...',
-                            hintStyle: TextStyle(color: context.colors.textSecondary),
-                            border: InputBorder.none,
-                          ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: context.colors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: context.colors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 12),
+                            Icon(Icons.search_rounded, color: context.colors.textSecondary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                onChanged: (v) => setState(() => _search = v),
+                                decoration: InputDecoration(
+                                  hintText: 'İşlem ara...',
+                                  hintStyle: TextStyle(color: context.colors.textSecondary),
+                                  border: InputBorder.none,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildExportButton(context, filtered),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),
@@ -276,6 +285,40 @@ class _HareketlerViewState extends State<HareketlerView> {
         },
       ),
     );
+  }
+
+  Widget _buildExportButton(BuildContext context, List<FinancialTransaction> filtered) {
+    return Container(
+      height: 48,
+      width: 48,
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.colors.border),
+      ),
+      child: PopupMenuButton<String>(
+        icon: Icon(Icons.ios_share_rounded, color: context.colors.brand),
+        onSelected: (format) => _exportFiltered(context, filtered, format),
+        itemBuilder: (ctx) => const [
+          PopupMenuItem(value: 'pdf', child: Text('PDF olarak dışa aktar')),
+          PopupMenuItem(value: 'excel', child: Text('Excel olarak dışa aktar')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportFiltered(BuildContext context, List<FinancialTransaction> filtered, String format) async {
+    try {
+      if (format == 'pdf') {
+        await ExportService.exportTransactionsPdf(filtered, title: 'Hareketler');
+      } else {
+        await ExportService.exportTransactionsExcel(filtered, title: 'Hareketler');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Dışa aktarılamadı: $e')));
+      }
+    }
   }
 
   Widget _buildSummaryItem(BuildContext context, String label, double value, Color color) {

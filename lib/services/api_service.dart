@@ -8,6 +8,7 @@ import '../models/financial_transaction.dart';
 import '../models/account.dart';
 import '../models/company_profile.dart';
 import '../models/finance_entities.dart';
+import '../models/recurring_transaction.dart';
 
 class ApiService {
   // Android emülatörü host makineye 10.0.2.2 üzerinden ulaşır; localhost cihazın kendisidir.
@@ -230,6 +231,43 @@ class ApiService {
     }
   }
 
+  /// Fiş/fatura eki ile birlikte işlem oluşturur (multipart). `attachmentPath`
+  /// verilmezse normal JSON akışıyla aynı sonucu üretir.
+  Future<FinancialTransaction> createTransactionWithAttachment(
+      FinancialTransaction transaction, String? attachmentPath) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/transactions/'));
+    await _fillMultipartTransaction(request, transaction, attachmentPath);
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode == 201) {
+      return FinancialTransaction.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    throw Exception('İşlem oluşturulamadı: ${utf8.decode(response.bodyBytes)}');
+  }
+
+  Future<FinancialTransaction> updateTransactionWithAttachment(
+      FinancialTransaction transaction, String? attachmentPath) async {
+    final request = http.MultipartRequest('PUT', Uri.parse('$baseUrl/transactions/${transaction.id}/'));
+    await _fillMultipartTransaction(request, transaction, attachmentPath);
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode == 200) {
+      return FinancialTransaction.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    throw Exception('İşlem güncellenemedi: ${utf8.decode(response.bodyBytes)}');
+  }
+
+  Future<void> _fillMultipartTransaction(
+      http.MultipartRequest request, FinancialTransaction transaction, String? attachmentPath) async {
+    final token = await getToken();
+    if (token != null) request.headers['Authorization'] = 'Token $token';
+    transaction.toMap().forEach((key, value) {
+      if (key == 'id' || value == null) return;
+      request.fields[key] = value.toString();
+    });
+    if (attachmentPath != null) {
+      request.files.add(await http.MultipartFile.fromPath('attachment', attachmentPath));
+    }
+  }
+
   Future<void> deleteTransaction(int transactionId) async {
     final headers = await _getHeaders();
     final response = await http.delete(
@@ -390,4 +428,26 @@ class ApiService {
   Future<BudgetLine> createBudgetLine(BudgetLine b) => _create('budget-lines/', b.toMap(), BudgetLine.fromMap);
   Future<BudgetLine> updateBudgetLine(BudgetLine b) => _update('budget-lines/', b.id!, b.toMap(), BudgetLine.fromMap);
   Future<void> deleteBudgetLine(int id) => _delete('budget-lines/', id);
+
+  // Recurring Transactions
+  Future<List<RecurringTransaction>> readAllRecurringTransactions() =>
+      _readList('recurring-transactions/', RecurringTransaction.fromMap);
+  Future<RecurringTransaction> createRecurringTransaction(RecurringTransaction r) =>
+      _create('recurring-transactions/', r.toMap(), RecurringTransaction.fromMap);
+  Future<RecurringTransaction> updateRecurringTransaction(RecurringTransaction r) =>
+      _update('recurring-transactions/', r.id!, r.toMap(), RecurringTransaction.fromMap);
+  Future<void> deleteRecurringTransaction(int id) => _delete('recurring-transactions/', id);
+
+  Future<FinancialTransaction> confirmRecurringTransaction(int id, {String? date}) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/recurring-transactions/$id/confirm/'),
+      headers: headers,
+      body: jsonEncode({if (date != null) 'date': date}),
+    );
+    if (response.statusCode == 201) {
+      return FinancialTransaction.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    throw Exception('Tekrarlanan işlem onaylanamadı: ${utf8.decode(response.bodyBytes)}');
+  }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:hane/views/widgets/zeynep_logo.dart';
 import 'package:hane/views/ayarlar_view.dart';
+import 'package:hane/views/cari_hesaplar_view.dart';
+import 'package:hane/views/tekrarlanan_islemler_view.dart';
 
 class ZeynepDrawer extends StatefulWidget {
   final int selectedIndex;
@@ -24,6 +26,8 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
     DrawerItemData(title: 'Finansal Durum', activeIcon: Icons.home_rounded, inactiveIcon: Icons.home_outlined, tabIndex: 0),
     DrawerItemData(title: 'Projeler', activeIcon: Icons.construction_rounded, inactiveIcon: Icons.construction_outlined, tabIndex: 1),
     DrawerItemData(title: 'Hareketler', activeIcon: Icons.receipt_long_rounded, inactiveIcon: Icons.receipt_long_outlined, tabIndex: 3),
+    DrawerItemData(title: 'Cari Hesaplar', activeIcon: Icons.groups_rounded, inactiveIcon: Icons.groups_outlined, tabIndex: -1),
+    DrawerItemData(title: 'Tekrarlayan İşlemler', activeIcon: Icons.repeat_rounded, inactiveIcon: Icons.repeat_outlined, tabIndex: -1),
     DrawerItemData(title: 'Ayarlar', activeIcon: Icons.settings_rounded, inactiveIcon: Icons.settings_outlined, tabIndex: -1),
   ];
 
@@ -61,6 +65,10 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
                                   Navigator.pop(context); // Close drawer
                                   if (item.title == 'Ayarlar') {
                                     Navigator.push(context, MaterialPageRoute(builder: (_) => const AyarlarView()));
+                                  } else if (item.title == 'Cari Hesaplar') {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CariHesaplarView()));
+                                  } else if (item.title == 'Tekrarlayan İşlemler') {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const TekrarlananIslemlerView()));
                                   } else {
                                     widget.onItemSelected(item.tabIndex); // Route to appropriate tab
                                   }

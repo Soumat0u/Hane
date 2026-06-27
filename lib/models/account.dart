@@ -2,7 +2,6 @@ class Account {
   final int? id;
   final String name;
   final String type; // 'Banka', 'Nakit', 'Borsa', 'Kredi Kartı', 'BCH', 'Esnek'
-  final String currency; // TRY, USD, EUR
   final double openingBalance;
   final double balance;
   final double creditLimit; // kredi kartı / BCH / esnek hesap için
@@ -15,7 +14,6 @@ class Account {
     this.id,
     required this.name,
     required this.type,
-    this.currency = 'TRY',
     this.openingBalance = 0.0,
     required this.balance,
     this.creditLimit = 0.0,
@@ -30,7 +28,6 @@ class Account {
       'id': id,
       'name': name,
       'type': type,
-      'currency': currency,
       'opening_balance': openingBalance,
       'balance': balance,
       'credit_limit': creditLimit,
@@ -45,7 +42,6 @@ class Account {
       id: map['id'],
       name: map['name'] ?? '',
       type: map['type'] ?? '',
-      currency: map['currency'] ?? 'TRY',
       openingBalance: (map['opening_balance'] ?? 0).toDouble(),
       balance: (map['balance'] ?? 0).toDouble(),
       creditLimit: (map['credit_limit'] ?? 0).toDouble(),

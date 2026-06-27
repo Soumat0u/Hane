@@ -3,7 +3,6 @@ class FinancialTransaction {
   final int? projectId; // Can be null for general company expenses
   final String type; // 'Gelir', 'Gider', 'Tahsilat', 'Satış', 'Transfer', 'Borçlanma', 'Kredi Kullanımı'
   final double amount;
-  final String currency;
   final String date;
   final String category;
   final String description;
@@ -15,13 +14,13 @@ class FinancialTransaction {
   final String destName; // legacy: transfer hedefi
   final String contactName; // alıcı, satıcı, alacaklı
   final String dueDate;
+  final String? attachmentUrl; // sunucudan gelen fiş/fatura görseli (salt okunur)
 
   FinancialTransaction({
     this.id,
     this.projectId,
     required this.type,
     required this.amount,
-    this.currency = 'TRY',
     required this.date,
     required this.category,
     this.description = '',
@@ -32,6 +31,7 @@ class FinancialTransaction {
     this.destName = '',
     this.contactName = '',
     this.dueDate = '',
+    this.attachmentUrl,
   });
 
   FinancialTransaction copyWith({
@@ -39,7 +39,6 @@ class FinancialTransaction {
     int? projectId,
     String? type,
     double? amount,
-    String? currency,
     String? date,
     String? category,
     String? description,
@@ -50,13 +49,13 @@ class FinancialTransaction {
     String? destName,
     String? contactName,
     String? dueDate,
+    String? attachmentUrl,
   }) {
     return FinancialTransaction(
       id: id ?? this.id,
       projectId: projectId ?? this.projectId,
       type: type ?? this.type,
       amount: amount ?? this.amount,
-      currency: currency ?? this.currency,
       date: date ?? this.date,
       category: category ?? this.category,
       description: description ?? this.description,
@@ -67,6 +66,7 @@ class FinancialTransaction {
       destName: destName ?? this.destName,
       contactName: contactName ?? this.contactName,
       dueDate: dueDate ?? this.dueDate,
+      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
     );
   }
 
@@ -76,7 +76,6 @@ class FinancialTransaction {
       'project_id': projectId,
       'type': type,
       'amount': amount,
-      'currency': currency,
       'date': date,
       'category': category,
       'description': description,
@@ -96,7 +95,6 @@ class FinancialTransaction {
       projectId: map['project_id'],
       type: map['type'],
       amount: map['amount']?.toDouble() ?? 0.0,
-      currency: map['currency'] ?? 'TRY',
       date: map['date'],
       category: map['category'],
       description: map['description'] ?? '',
@@ -107,6 +105,7 @@ class FinancialTransaction {
       destName: map['dest_name'] ?? '',
       contactName: map['contact_name'] ?? '',
       dueDate: map['due_date'] ?? '',
+      attachmentUrl: map['attachment'],
     );
   }
 }

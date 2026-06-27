@@ -171,6 +171,3 @@ class AppSaveButton extends StatelessWidget {
     );
   }
 }
-
-/// Para birimi seçenekleri (ortak).
-const Map<String, String> kCurrencyOptions = {'TRY': '₺ TRY', 'USD': '\$ USD', 'EUR': '€ EUR'};

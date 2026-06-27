@@ -22,7 +22,6 @@ class _YeniCekViewState extends State<YeniCekView> {
 
   String _direction = 'received';
   String _status = 'portfolio';
-  String _currency = 'TRY';
   DateTime? _dueDate;
   int? _contactId;
   bool _saving = false;
@@ -54,7 +53,6 @@ class _YeniCekViewState extends State<YeniCekView> {
       direction: _direction,
       status: _status,
       amount: _num(_amountCtrl),
-      currency: _currency,
       dueDate: _dueDate?.toIso8601String().split('T').first ?? '',
       bankName: _bankCtrl.text.trim(),
       serialNo: _serialCtrl.text.trim(),
@@ -105,8 +103,6 @@ class _YeniCekViewState extends State<YeniCekView> {
             AppTextField(controller: _serialCtrl, label: 'Seri No', hint: 'Opsiyonel'),
             AppDropdown<String>(
                 label: 'Durum', value: _status, options: _statuses, onChanged: (v) => setState(() => _status = v!)),
-            AppDropdown<String>(
-                label: 'Para Birimi', value: _currency, options: kCurrencyOptions, onChanged: (v) => setState(() => _currency = v!)),
             AppDateField(label: 'Vade Tarihi', value: _dueDate, onChanged: (d) => setState(() => _dueDate = d)),
             if (contactOptions.length > 1)
               AppDropdown<int?>(

@@ -4,14 +4,6 @@ from django.db.models import Sum
 from decimal import Decimal
 
 
-# ── Para birimi ───────────────────────────────────────────────────────────────
-CURRENCY_CHOICES = [
-    ('TRY', '₺ Türk Lirası'),
-    ('USD', '$ Dolar'),
-    ('EUR', '€ Euro'),
-]
-
-
 class UserManager(BaseUserManager):
     """Custom user manager where email is the unique identifier."""
 
@@ -65,7 +57,6 @@ class CompanyProfile(models.Model):
     phone2 = models.CharField(max_length=30, default='', blank=True)
     email = models.CharField(max_length=255, default='', blank=True)
     website = models.CharField(max_length=255, default='', blank=True)
-    base_currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TRY', blank=True)
 
     def __str__(self):
         return self.company_name or f'Profile of {self.user.email}'
@@ -159,7 +150,6 @@ class Account(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='accounts')
     name = models.CharField(max_length=255)
     type = models.CharField(max_length=50, choices=TYPE_CHOICES, default=BANK)
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TRY')
 
     opening_balance = models.FloatField(default=0.0)
     balance = models.FloatField(default=0.0)  # cache: güncel bakiye (hesabın para biriminde)
@@ -212,7 +202,6 @@ class Project(models.Model):
     shop_count = models.IntegerField(default=0)
     estimated_total_cost = models.FloatField(default=0.0)
     estimated_total_revenue = models.FloatField(default=0.0)
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TRY')
     image_path = models.CharField(max_length=500, blank=True, null=True)
     start_date = models.CharField(max_length=50, default='', blank=True)
     end_date = models.CharField(max_length=50, default='', blank=True)
@@ -233,7 +222,6 @@ class BudgetLine(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='budget_lines')
     category = models.CharField(max_length=100)  # Hafriyat, Demir, Beton, İşçilik...
     budgeted_amount = models.FloatField(default=0.0)
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TRY')
 
     class Meta:
         ordering = ['category']
@@ -258,8 +246,6 @@ class FinancialTransaction(models.Model):
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
     type = models.CharField(max_length=50)  # Gelir, Gider, Tahsilat, Transfer, Borçlanma...
     amount = models.FloatField()
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TRY')
-    exchange_rate = models.FloatField(default=1.0)  # işlem para biriminin TRY karşılığı (raporlama)
     date = models.CharField(max_length=50)
     category = models.CharField(max_length=100, default='', blank=True)
     description = models.CharField(max_length=500, default='', blank=True)
@@ -275,16 +261,13 @@ class FinancialTransaction(models.Model):
     contact_name = models.CharField(max_length=255, default='', blank=True)
     document_no = models.CharField(max_length=100, default='', blank=True)
     due_date = models.CharField(max_length=50, default='', blank=True)
+    attachment = models.FileField(upload_to='attachments/%Y/%m/', null=True, blank=True)
 
     class Meta:
         ordering = ['-id']
 
     def __str__(self):
-        return f'{self.type} - {self.amount} {self.currency} ({self.date})'
-
-    @property
-    def amount_try(self):
-        return (self.amount or 0) * (self.exchange_rate or 1)
+        return f'{self.type} - {self.amount} ({self.date})'
 
 
 class Loan(models.Model):
@@ -304,7 +287,6 @@ class Loan(models.Model):
     paid_amount = models.FloatField(default=0.0)       # ödenen
     interest_rate = models.FloatField(default=0.0)
     term_months = models.IntegerField(default=0)
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TRY')
     start_date = models.CharField(max_length=50, default='', blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -340,7 +322,6 @@ class Cheque(models.Model):
     direction = models.CharField(max_length=10, choices=DIRECTION_CHOICES, default=RECEIVED)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=PORTFOLIO)
     amount = models.FloatField(default=0.0)
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TRY')
     due_date = models.CharField(max_length=50, default='', blank=True)
     bank_name = models.CharField(max_length=255, default='', blank=True)
     serial_no = models.CharField(max_length=100, default='', blank=True)
@@ -351,7 +332,7 @@ class Cheque(models.Model):
         ordering = ['due_date']
 
     def __str__(self):
-        return f'{self.get_direction_display()} çek - {self.amount} {self.currency}'
+        return f'{self.get_direction_display()} çek - {self.amount}'
 
 
 class Sale(models.Model):
@@ -373,12 +354,11 @@ class Sale(models.Model):
     unit_type = models.CharField(max_length=15, choices=UNIT_CHOICES, default=APARTMENT)
     unit_no = models.CharField(max_length=50, default='', blank=True)
     sale_price = models.FloatField(default=0.0)
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TRY')
     sale_date = models.CharField(max_length=50, default='', blank=True)
     is_completed = models.BooleanField(default=False)
 
     def __str__(self):
-        return f'{self.get_unit_type_display()} {self.unit_no} - {self.sale_price} {self.currency}'
+        return f'{self.get_unit_type_display()} {self.unit_no} - {self.sale_price}'
 
     def collected(self):
         return self.receivables.aggregate(s=Sum('collected_amount'))['s'] or 0
@@ -422,7 +402,6 @@ class Receivable(models.Model):
     sale = models.ForeignKey(Sale, on_delete=models.CASCADE, null=True, blank=True, related_name='receivables')
     total_amount = models.FloatField(default=0.0)
     collected_amount = models.FloatField(default=0.0)
-    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default='TRY')
     due_date = models.CharField(max_length=50, default='', blank=True)
     description = models.CharField(max_length=500, default='', blank=True)
 
@@ -430,11 +409,53 @@ class Receivable(models.Model):
         ordering = ['due_date']
 
     def __str__(self):
-        return f'{self.get_kind_display()} - {self.remaining} {self.currency}'
+        return f'{self.get_kind_display()} - {self.remaining}'
 
     @property
     def remaining(self):
         return max((self.total_amount or 0) - (self.collected_amount or 0), 0)
+
+
+class RecurringTransaction(models.Model):
+    """Tekrarlayan işlem şablonu: vadesi geldiğinde kullanıcı onayıyla gerçek
+    bir FinancialTransaction'a dönüştürülür (otomatik oluşturma yok)."""
+    WEEKLY = 'weekly'
+    MONTHLY = 'monthly'
+    INTERVAL_CHOICES = [(WEEKLY, 'Haftalık'), (MONTHLY, 'Aylık')]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='recurring_transactions')
+    type = models.CharField(max_length=50)  # Gelir, Gider, Tahsilat...
+    amount = models.FloatField(default=0.0)
+    category = models.CharField(max_length=100, default='', blank=True)
+    description = models.CharField(max_length=500, default='', blank=True)
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True, related_name='recurring_transactions')
+    contact = models.ForeignKey(Contact, on_delete=models.SET_NULL, null=True, blank=True, related_name='recurring_transactions')
+    from_account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='recurring_outgoing')
+    to_account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='recurring_incoming')
+    interval = models.CharField(max_length=10, choices=INTERVAL_CHOICES, default=MONTHLY)
+    day_of_month = models.IntegerField(default=1)  # aylık tekrar için (1-28, ay sonu sorunundan kaçınmak için sınırlı)
+    next_due_date = models.CharField(max_length=50)  # ISO tarih string'i (uygulamadaki diğer tarih alanlarıyla tutarlı)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['next_due_date']
+
+    def __str__(self):
+        return f'{self.description or self.category} ({self.get_interval_display()})'
+
+    def advance_next_due_date(self):
+        """next_due_date'i bir periyot ileri alır (onaylandıktan sonra çağrılır)."""
+        from datetime import date as _date, timedelta
+        d = _date.fromisoformat(self.next_due_date)
+        if self.interval == self.WEEKLY:
+            d = d + timedelta(days=7)
+        else:
+            month = d.month + 1 if d.month < 12 else 1
+            year = d.year + 1 if d.month == 12 else d.year
+            day = min(self.day_of_month or d.day, 28)
+            d = _date(year, month, day)
+        self.next_due_date = d.isoformat()
+        self.save(update_fields=['next_due_date'])
 
 
 # ── Hibrit bakiye: işlem değişince ilgili hesapları yeniden hesapla ────────────

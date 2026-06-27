@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import authenticate
 from .models import (
     User, CompanyProfile, Contact, Category, Account, Project, BudgetLine,
-    FinancialTransaction, Loan, Cheque, Sale, Receivable,
+    FinancialTransaction, Loan, Cheque, Sale, Receivable, RecurringTransaction,
 )
 
 
@@ -51,7 +51,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             'id', 'company_name', 'tax_office', 'tax_number',
             'commercial_registry', 'mersis_no', 'address_title',
             'address_line1', 'address_line2', 'city', 'country',
-            'phone1', 'phone2', 'email', 'website', 'base_currency',
+            'phone1', 'phone2', 'email', 'website',
         ]
         read_only_fields = ['id']
 
@@ -90,7 +90,7 @@ class AccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Account
         fields = [
-            'id', 'name', 'type', 'currency', 'opening_balance', 'balance',
+            'id', 'name', 'type', 'opening_balance', 'balance',
             'credit_limit', 'available_limit', 'bank_logo_painter',
             'account_details', 'is_active',
         ]
@@ -103,7 +103,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'project_code', 'project_type', 'status', 'status_color_hex', 'status_bg_color_hex',
             'location', 'pafta', 'parsel', 'area_sq_meters', 'total_independent_sections', 'unit_count', 'shop_count',
-            'estimated_total_cost', 'estimated_total_revenue', 'currency',
+            'estimated_total_cost', 'estimated_total_revenue',
             'image_path', 'start_date', 'end_date', 'description',
         ]
         read_only_fields = ['id']
@@ -114,7 +114,7 @@ class BudgetLineSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BudgetLine
-        fields = ['id', 'project', 'category', 'budgeted_amount', 'currency', 'actual_amount']
+        fields = ['id', 'project', 'category', 'budgeted_amount', 'actual_amount']
         read_only_fields = ['id', 'actual_amount']
 
     def get_actual_amount(self, obj):
@@ -153,17 +153,17 @@ def apply_legacy_balance(user, transaction, sign):
 
 class FinancialTransactionSerializer(serializers.ModelSerializer):
     project_id = serializers.IntegerField(source='project.id', read_only=True, allow_null=True)
-    amount_try = serializers.FloatField(read_only=True)
 
     class Meta:
         model = FinancialTransaction
         fields = [
-            'id', 'project_id', 'type', 'amount', 'currency', 'exchange_rate',
-            'amount_try', 'date', 'category', 'description',
+            'id', 'project_id', 'type', 'amount',
+            'date', 'category', 'description',
             'from_account', 'to_account', 'contact',
             'source_name', 'dest_name', 'contact_name', 'document_no', 'due_date',
+            'attachment',
         ]
-        read_only_fields = ['id', 'amount_try']
+        read_only_fields = ['id']
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -201,7 +201,7 @@ class LoanSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'kind', 'creditor', 'bank_name', 'principal',
             'total_payable', 'paid_amount', 'remaining', 'interest_rate',
-            'term_months', 'currency', 'start_date', 'is_active',
+            'term_months', 'start_date', 'is_active',
         ]
         read_only_fields = ['id', 'remaining']
 
@@ -210,7 +210,7 @@ class ChequeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cheque
         fields = [
-            'id', 'direction', 'status', 'amount', 'currency', 'due_date',
+            'id', 'direction', 'status', 'amount', 'due_date',
             'bank_name', 'serial_no', 'contact', 'project',
         ]
         read_only_fields = ['id']
@@ -224,7 +224,7 @@ class SaleSerializer(serializers.ModelSerializer):
         model = Sale
         fields = [
             'id', 'project', 'buyer', 'unit_type', 'unit_no', 'sale_price',
-            'currency', 'sale_date', 'is_completed', 'remaining', 'collected',
+            'sale_date', 'is_completed', 'remaining', 'collected',
         ]
         read_only_fields = ['id', 'remaining', 'collected']
 
@@ -239,7 +239,17 @@ class ReceivableSerializer(serializers.ModelSerializer):
         model = Receivable
         fields = [
             'id', 'kind', 'status', 'contact', 'project', 'sale',
-            'total_amount', 'collected_amount', 'remaining', 'currency',
+            'total_amount', 'collected_amount', 'remaining',
             'due_date', 'description',
         ]
         read_only_fields = ['id', 'remaining']
+
+
+class RecurringTransactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RecurringTransaction
+        fields = [
+            'id', 'type', 'amount', 'category', 'description', 'project', 'contact',
+            'from_account', 'to_account', 'interval', 'day_of_month', 'next_due_date', 'is_active',
+        ]
+        read_only_fields = ['id']

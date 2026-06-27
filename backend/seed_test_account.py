@@ -59,7 +59,6 @@ profile.phone1 = '+90 216 987 65 43'
 profile.phone2 = '+90 533 876 54 32'
 profile.email = 'info@haneyapim.com'
 profile.website = 'www.haneyapim.com'
-profile.base_currency = 'TRY'
 profile.save()
 print('✅ Şirket profili güncellendi.')
 
@@ -97,14 +96,14 @@ print(f'✅ {len(contacts)} cari hesap oluşturuldu.')
 
 # ── 5) Hesaplar (Accounts) ──────────────────────────────────────────────────
 accounts_data = [
-    {'name': 'Garanti BBVA TL',   'type': 'Banka',       'currency': 'TRY', 'opening_balance': 3450000.0,  'balance': 3450000.0,  'bank_logo_painter': 'Garanti',   'account_details': 'TR62 0006 2000 1234 0006 2987 45'},
-    {'name': 'Ziraat Bankası TL', 'type': 'Banka',       'currency': 'TRY', 'opening_balance': 1780000.0,  'balance': 1780000.0,  'bank_logo_painter': 'Ziraat',    'account_details': 'TR44 0001 0017 4567 0100 1234 56'},
-    {'name': 'İş Bankası USD',    'type': 'Banka',       'currency': 'USD', 'opening_balance': 45000.0,    'balance': 45000.0,    'bank_logo_painter': 'IsBankasi', 'account_details': 'TR89 0006 4000 0011 2345 6789 01'},
-    {'name': 'Yapı Kredi EUR',    'type': 'Banka',       'currency': 'EUR', 'opening_balance': 22000.0,    'balance': 22000.0,    'bank_logo_painter': 'YapiKredi', 'account_details': 'TR33 0006 7010 0001 0012 3456 78'},
-    {'name': 'Şantiye Kasası',    'type': 'Nakit',       'currency': 'TRY', 'opening_balance': 85000.0,    'balance': 85000.0,    'bank_logo_painter': '',           'account_details': 'Nakit'},
-    {'name': 'Merkez Kasa',       'type': 'Nakit',       'currency': 'TRY', 'opening_balance': 125000.0,   'balance': 125000.0,   'bank_logo_painter': '',           'account_details': 'Nakit'},
-    {'name': 'Garanti Bonus',     'type': 'Kredi Kartı', 'currency': 'TRY', 'opening_balance': 0.0,        'balance': -67500.0,   'credit_limit': 250000.0, 'bank_logo_painter': 'Garanti', 'account_details': '5432 **** **** 7890'},
-    {'name': 'Ziraat KGF',        'type': 'BCH',         'currency': 'TRY', 'opening_balance': 0.0,        'balance': -350000.0,  'credit_limit': 2000000.0,'bank_logo_painter': 'Ziraat',  'account_details': 'KGF Cari Hesap'},
+    {'name': 'Garanti BBVA TL',   'type': 'Banka',       'opening_balance': 3450000.0,  'balance': 3450000.0,  'bank_logo_painter': 'Garanti',   'account_details': 'TR62 0006 2000 1234 0006 2987 45'},
+    {'name': 'Ziraat Bankası TL', 'type': 'Banka',       'opening_balance': 1780000.0,  'balance': 1780000.0,  'bank_logo_painter': 'Ziraat',    'account_details': 'TR44 0001 0017 4567 0100 1234 56'},
+    {'name': 'İş Bankası 2',      'type': 'Banka',       'opening_balance': 45000.0,    'balance': 45000.0,    'bank_logo_painter': 'IsBankasi', 'account_details': 'TR89 0006 4000 0011 2345 6789 01'},
+    {'name': 'Yapı Kredi 2',      'type': 'Banka',       'opening_balance': 22000.0,    'balance': 22000.0,    'bank_logo_painter': 'YapiKredi', 'account_details': 'TR33 0006 7010 0001 0012 3456 78'},
+    {'name': 'Şantiye Kasası',    'type': 'Nakit',       'opening_balance': 85000.0,    'balance': 85000.0,    'bank_logo_painter': '',           'account_details': 'Nakit'},
+    {'name': 'Merkez Kasa',       'type': 'Nakit',       'opening_balance': 125000.0,   'balance': 125000.0,   'bank_logo_painter': '',           'account_details': 'Nakit'},
+    {'name': 'Garanti Bonus',     'type': 'Kredi Kartı', 'opening_balance': 0.0,        'balance': -67500.0,   'credit_limit': 250000.0, 'bank_logo_painter': 'Garanti', 'account_details': '5432 **** **** 7890'},
+    {'name': 'Ziraat KGF',        'type': 'BCH',         'opening_balance': 0.0,        'balance': -350000.0,  'credit_limit': 2000000.0,'bank_logo_painter': 'Ziraat',  'account_details': 'KGF Cari Hesap'},
 ]
 
 accounts = {}

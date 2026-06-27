@@ -8,8 +8,11 @@ import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/project.dart';
 import 'package:hane/models/financial_transaction.dart';
+import 'package:hane/models/finance_entities.dart';
 import 'package:hane/views/yeni_proje_view.dart';
 import 'package:hane/views/yeni_islem_view.dart';
+import 'package:hane/views/widgets/butce_form.dart';
+import 'package:hane/services/export_service.dart';
 final dateFormat = DateFormat('dd.MM.yyyy');
 
 class ProjeDetayView extends StatefulWidget {
@@ -84,6 +87,15 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
               ),
             ),
             actions: [
+              PopupMenuButton<String>(
+                icon: Icon(Icons.ios_share_rounded, color: context.colors.textPrimary),
+                onSelected: (format) =>
+                    _exportProjectReport(context, project, harcamalar, fp.getProjectBudgetLines(project.id!), format),
+                itemBuilder: (ctx) => const [
+                  PopupMenuItem(value: 'pdf', child: Text('PDF olarak dışa aktar')),
+                  PopupMenuItem(value: 'excel', child: Text('Excel olarak dışa aktar')),
+                ],
+              ),
               IconButton(
                 icon: Icon(Icons.edit, color: context.colors.textPrimary),
                 tooltip: 'Düzenle',
@@ -113,6 +125,8 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                 const SizedBox(height: 24),
                 _buildSummaryCards(context, totalGider, buAyHarcama, kalanButce),
                 const SizedBox(height: 32),
+                _buildBudgetSection(context, project, fp.getProjectBudgetLines(project.id!)),
+                const SizedBox(height: 32),
                 _buildSpendingDistribution(context, project, fp, totalGider),
                 const SizedBox(height: 40),
               ],
@@ -121,6 +135,26 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
         );
       },
     );
+  }
+
+  Future<void> _exportProjectReport(
+    BuildContext context,
+    Project project,
+    List<FinancialTransaction> harcamalar,
+    List<BudgetLine> budgetLines,
+    String format,
+  ) async {
+    try {
+      if (format == 'pdf') {
+        await ExportService.exportProjectCostReportPdf(project.name, harcamalar, budgetLines);
+      } else {
+        await ExportService.exportProjectCostReportExcel(project.name, harcamalar, budgetLines);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Dışa aktarılamadı: $e')));
+      }
+    }
   }
 
   bool _categoriesContains(String cat, List<String> cats) {
@@ -480,6 +514,145 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
         Text(amount, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: amountColor)),
       ],
     );
+  }
+
+  Widget _buildBudgetSection(BuildContext context, Project project, List<BudgetLine> budgetLines) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'BÜTÇE',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: context.colors.textPrimary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => showButceForm(context, project),
+              icon: Icon(Icons.add, size: 16, color: context.colors.brand),
+              label: Text('Bütçe Kalemi Ekle',
+                  style: TextStyle(color: context.colors.brand, fontWeight: FontWeight.bold, fontSize: 13)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (budgetLines.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24.0),
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.colors.border),
+            ),
+            alignment: Alignment.center,
+            child: Text('Henüz bütçe kalemi eklenmedi.', style: TextStyle(color: context.colors.textSecondary)),
+          )
+        else
+          Column(
+            children: budgetLines.map((line) => _buildBudgetLineCard(context, project, line)).toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBudgetLineCard(BuildContext context, Project project, BudgetLine line) {
+    final usedPct = line.budgetedAmount > 0 ? (line.actualAmount / line.budgetedAmount).clamp(0.0, 1.0) : 0.0;
+    final usedFlex = (usedPct * 100).round();
+    final overBudget = line.isOverBudget;
+    final barColor = overBudget ? context.colors.danger : context.colors.brand;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => showButceForm(context, project, existing: line),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.colors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: overBudget ? context.colors.danger : context.colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(line.category,
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.colors.textPrimary)),
+                  ),
+                  if (overBudget)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: context.colors.dangerBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('Aşıldı',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: context.colors.danger)),
+                    ),
+                  IconButton(
+                    icon: Icon(Icons.delete_outline_rounded, size: 18, color: context.colors.textSecondary),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _confirmDeleteBudgetLine(context, line),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${currencyFormat.format(line.actualAmount)} / ${currencyFormat.format(line.budgetedAmount)}',
+                    style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+                  ),
+                  Text('%${(usedPct * 100).toStringAsFixed(0)}',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: barColor)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: SizedBox(
+                  height: 8,
+                  child: Row(
+                    children: [
+                      Expanded(flex: usedFlex, child: Container(color: barColor)),
+                      Expanded(flex: 100 - usedFlex, child: Container(color: context.colors.surfaceVariant)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteBudgetLine(BuildContext context, BudgetLine line) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Bütçe Kalemini Sil'),
+        content: Text('"${line.category}" bütçe kalemini silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil')),
+        ],
+      ),
+    );
+    if (confirmed == true && line.id != null && context.mounted) {
+      await context.read<FinanceProvider>().deleteBudgetLine(line.id!);
+    }
   }
 
   Widget _buildSpendingDistribution(BuildContext context, Project project, FinanceProvider fp, double totalGider) {

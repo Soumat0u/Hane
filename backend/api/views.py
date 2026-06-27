@@ -1,18 +1,18 @@
 from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 
 from .models import (
     User, CompanyProfile, Contact, Category, Account, Project, BudgetLine,
-    FinancialTransaction, Loan, Cheque, Sale, Receivable,
+    FinancialTransaction, Loan, Cheque, Sale, Receivable, RecurringTransaction,
 )
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
     CompanyProfileSerializer, ContactSerializer, CategorySerializer,
     AccountSerializer, ProjectSerializer, BudgetLineSerializer,
     FinancialTransactionSerializer, LoanSerializer, ChequeSerializer,
-    SaleSerializer, ReceivableSerializer, apply_legacy_balance,
+    SaleSerializer, ReceivableSerializer, RecurringTransactionSerializer, apply_legacy_balance,
 )
 
 
@@ -191,3 +191,27 @@ class BudgetLineViewSet(viewsets.ModelViewSet):
         if project_id:
             qs = qs.filter(project_id=project_id)
         return qs
+
+
+class RecurringTransactionViewSet(_UserOwnedViewSet):
+    model = RecurringTransaction
+    serializer_class = RecurringTransactionSerializer
+
+    @action(detail=True, methods=['post'])
+    def confirm(self, request, pk=None):
+        """Şablonu onayla: gerçek bir FinancialTransaction oluştur, next_due_date'i ilerlet."""
+        template = self.get_object()
+        transaction = FinancialTransaction.objects.create(
+            user=request.user,
+            type=template.type,
+            amount=template.amount,
+            category=template.category,
+            description=template.description,
+            project=template.project,
+            contact=template.contact,
+            from_account=template.from_account,
+            to_account=template.to_account,
+            date=request.data.get('date') or template.next_due_date,
+        )
+        template.advance_next_due_date()
+        return Response(FinancialTransactionSerializer(transaction).data, status=status.HTTP_201_CREATED)

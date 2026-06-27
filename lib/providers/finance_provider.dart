@@ -6,6 +6,7 @@ import '../models/account.dart';
 import '../models/company_profile.dart';
 import '../models/finance_panel.dart';
 import '../models/finance_entities.dart';
+import '../models/recurring_transaction.dart';
 import '../services/api_service.dart';
 
 class FinanceProvider extends ChangeNotifier {
@@ -19,6 +20,7 @@ class FinanceProvider extends ChangeNotifier {
   List<Contact> _contacts = [];
   List<Category> _categories = [];
   List<BudgetLine> _budgetLines = [];
+  List<RecurringTransaction> _recurringTransactions = [];
   CompanyProfile? _companyProfile;
 
   List<Project> get projects => _projects;
@@ -31,6 +33,7 @@ class FinanceProvider extends ChangeNotifier {
   List<Contact> get contacts => _contacts;
   List<Category> get categories => _categories;
   List<BudgetLine> get budgetLines => _budgetLines;
+  List<RecurringTransaction> get recurringTransactions => _recurringTransactions;
   CompanyProfile? get companyProfile => _companyProfile;
 
   /// Uygulama başlığı/markası için firma adı (yoksa jenerik).
@@ -100,6 +103,8 @@ class FinanceProvider extends ChangeNotifier {
       _contacts = await _safe(ApiService.instance.readAllContacts, _contacts);
       _categories = await _safe(ApiService.instance.readAllCategories, _categories);
       _budgetLines = await _safe(ApiService.instance.readAllBudgetLines, _budgetLines);
+      _recurringTransactions =
+          await _safe(ApiService.instance.readAllRecurringTransactions, _recurringTransactions);
       try {
         _companyProfile = await ApiService.instance.getCompanyProfile();
       } catch (e) {
@@ -134,6 +139,12 @@ class FinanceProvider extends ChangeNotifier {
 
   Future<void> addTransaction(FinancialTransaction transaction) async {
     await ApiService.instance.createTransaction(transaction);
+    await refreshData();
+  }
+
+  /// `attachmentPath` verilirse fiş/fatura fotoğrafı ile birlikte işlem oluşturur.
+  Future<void> addTransactionWithAttachment(FinancialTransaction transaction, String? attachmentPath) async {
+    await ApiService.instance.createTransactionWithAttachment(transaction, attachmentPath);
     await refreshData();
   }
 
@@ -212,6 +223,38 @@ class FinanceProvider extends ChangeNotifier {
 
   List<BudgetLine> getProjectBudgetLines(int projectId) =>
       _budgetLines.where((b) => b.projectId == projectId).toList();
+
+  // --- Tekrarlayan İşlemler ---
+  Future<void> addRecurringTransaction(RecurringTransaction r) async {
+    await ApiService.instance.createRecurringTransaction(r);
+    await refreshData();
+  }
+
+  Future<void> updateRecurringTransaction(RecurringTransaction r) async {
+    await ApiService.instance.updateRecurringTransaction(r);
+    await refreshData();
+  }
+
+  Future<void> deleteRecurringTransaction(int id) async {
+    await ApiService.instance.deleteRecurringTransaction(id);
+    await refreshData();
+  }
+
+  /// Vadesi bugüne gelmiş veya geçmiş, aktif tekrarlayan işlem şablonları.
+  List<RecurringTransaction> getDueRecurringTemplates() {
+    final today = DateTime.now();
+    return _recurringTransactions.where((r) {
+      if (!r.isActive) return false;
+      final due = DateTime.tryParse(r.nextDueDate);
+      return due != null && !due.isAfter(today);
+    }).toList();
+  }
+
+  /// Şablonu onaylar: gerçek bir FinancialTransaction oluşturur ve next_due_date'i ilerletir.
+  Future<void> confirmRecurringTransaction(RecurringTransaction template, {String? date}) async {
+    await ApiService.instance.confirmRecurringTransaction(template.id!, date: date);
+    await refreshData();
+  }
 
   double getProjectBudgetTotal(int projectId) =>
       getProjectBudgetLines(projectId).fold(0.0, (s, b) => s + b.budgetedAmount);
@@ -300,6 +343,20 @@ class FinanceProvider extends ChangeNotifier {
     return getTransactionsForProject(projectId)
         .where((t) => t.type == 'Satış')
         .fold(0, (sum, item) => sum + item.amount);
+  }
+
+  // Cari Hesap Stats
+  List<FinancialTransaction> getTransactionsForContact(int contactId) {
+    return _allTransactions.where((t) => t.contactId == contactId).toList();
+  }
+
+  /// Carileri türe göre gruplar (Tedarikçi/Müşteri/Taşeron/Devlet/Banka/Diğer).
+  Map<String, List<Contact>> get contactsByKind {
+    final map = <String, List<Contact>>{};
+    for (final c in _contacts) {
+      map.putIfAbsent(c.kind, () => []).add(c);
+    }
+    return map;
   }
 
   Map<String, double> getProjectCategorySpending(int projectId) {
@@ -420,7 +477,7 @@ class FinanceProvider extends ChangeNotifier {
   int get unreadNotificationCount =>
       getAllDuePayments().where((p) => !isNotificationRead(p)).length;
 
-  bool get hasUnreadNotifications => unreadNotificationCount > 0;
+  bool get hasUnreadNotifications => unreadNotificationCount > 0 || getDueRecurringTemplates().isNotEmpty;
 
   Future<void> markNotificationRead(DuePayment p) async {
     if (_readNotificationKeys.add(notificationKey(p))) {

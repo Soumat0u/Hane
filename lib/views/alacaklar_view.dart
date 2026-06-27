@@ -301,7 +301,6 @@ class _AddReceivableFormState extends State<_AddReceivableForm> {
   final _descCtrl = TextEditingController();
   final _totalCtrl = TextEditingController();
   String _kind = 'customer';
-  String _currency = 'TRY';
   DateTime? _dueDate;
   int? _projectId;
   bool _saving = false;
@@ -331,7 +330,6 @@ class _AddReceivableFormState extends State<_AddReceivableForm> {
       projectId: _projectId,
       totalAmount: total,
       collectedAmount: 0,
-      currency: _currency,
       dueDate: _dueDate?.toIso8601String().split('T').first ?? '',
       description: _descCtrl.text.trim(),
     );
@@ -385,8 +383,6 @@ class _AddReceivableFormState extends State<_AddReceivableForm> {
               if (projectOptions.length > 1)
                 AppDropdown<int?>(
                     label: 'Proje', value: _projectId, options: projectOptions, onChanged: (v) => setState(() => _projectId = v)),
-              AppDropdown<String>(
-                  label: 'Para Birimi', value: _currency, options: kCurrencyOptions, onChanged: (v) => setState(() => _currency = v!)),
               AppDateField(label: 'Vade Tarihi', value: _dueDate, onChanged: (d) => setState(() => _dueDate = d)),
               const SizedBox(height: 8),
               AppSaveButton(saving: _saving, onPressed: _save),

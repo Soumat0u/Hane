@@ -24,7 +24,6 @@ class _YeniKrediViewState extends State<YeniKrediView> {
   final _termCtrl = TextEditingController();
 
   String _kind = 'loan';
-  String _currency = 'TRY';
   DateTime? _startDate;
   bool _saving = false;
 
@@ -57,7 +56,6 @@ class _YeniKrediViewState extends State<YeniKrediView> {
       paidAmount: _num(_paidCtrl),
       interestRate: _num(_rateCtrl),
       termMonths: int.tryParse(_termCtrl.text) ?? 0,
-      currency: _currency,
       startDate: _startDate?.toIso8601String().split('T').first ?? '',
     );
     try {
@@ -105,7 +103,6 @@ class _YeniKrediViewState extends State<YeniKrediView> {
                 Expanded(child: _field(_termCtrl, 'Vade (ay)', keyboard: true)),
               ],
             ),
-            _currencyDropdown(),
             _dateTile(),
             const SizedBox(height: 24),
             _saveButton(),
@@ -165,10 +162,6 @@ class _YeniKrediViewState extends State<YeniKrediView> {
       ),
     );
   }
-
-  Widget _currencyDropdown() =>
-      _dropdown('Para Birimi', _currency, const {'TRY': '₺ TRY', 'USD': '\$ USD', 'EUR': '€ EUR'},
-          (v) => setState(() => _currency = v!));
 
   Widget _dateTile() {
     return Padding(

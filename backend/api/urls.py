@@ -13,6 +13,7 @@ router.register(r'cheques', views.ChequeViewSet, basename='cheque')
 router.register(r'sales', views.SaleViewSet, basename='sale')
 router.register(r'receivables', views.ReceivableViewSet, basename='receivable')
 router.register(r'budget-lines', views.BudgetLineViewSet, basename='budgetline')
+router.register(r'recurring-transactions', views.RecurringTransactionViewSet, basename='recurringtransaction')
 
 urlpatterns = [
     # Auth

@@ -3,6 +3,7 @@ import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/finance_entities.dart';
+import 'package:hane/models/recurring_transaction.dart';
 import 'package:hane/utils/formatters.dart';
 
 class BildirimlerView extends StatelessWidget {
@@ -13,6 +14,8 @@ class BildirimlerView extends StatelessWidget {
     return Consumer<FinanceProvider>(
       builder: (context, fp, child) {
         final notifications = fp.getAllDuePayments();
+        final dueTemplates = fp.getDueRecurringTemplates();
+        final totalCount = dueTemplates.length + notifications.length;
 
         return Container(
           constraints: BoxConstraints(
@@ -75,14 +78,17 @@ class BildirimlerView extends StatelessWidget {
                 ),
                 Divider(height: 1, thickness: 1, color: context.colors.border),
                 Expanded(
-                  child: notifications.isEmpty
+                  child: totalCount == 0
                       ? _buildEmptyState(context)
                       : ListView.separated(
                           padding: const EdgeInsets.all(16.0),
-                          itemCount: notifications.length,
+                          itemCount: totalCount,
                           separatorBuilder: (context, index) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
-                            final notif = notifications[index];
+                            if (index < dueTemplates.length) {
+                              return _buildRecurringCard(context, fp, dueTemplates[index]);
+                            }
+                            final notif = notifications[index - dueTemplates.length];
                             final isOverdue = notif.isOverdue;
                             final isPayable = notif.isPayable;
                             final isRead = fp.isNotificationRead(notif);
@@ -182,6 +188,65 @@ class BildirimlerView extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildRecurringCard(BuildContext context, FinanceProvider fp, RecurringTransaction r) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.colors.accentBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.colors.accent.withValues(alpha: 0.3)),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.repeat_rounded, color: context.colors.accent, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  r.description.isNotEmpty ? r.description : r.category,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.colors.textPrimary),
+                ),
+              ),
+              Text(currencyFormat.format(r.amount),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.colors.textPrimary)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('Tekrarlanan ${r.intervalLabel.toLowerCase()} işlem — vadesi ${r.nextDueDate}',
+              style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                try {
+                  await fp.confirmRecurringTransaction(r);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text('İşlem oluşturuldu.')));
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Onaylanamadı: $e')));
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: context.colors.brand,
+                foregroundColor: context.colors.surface,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Onayla ve Kaydet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

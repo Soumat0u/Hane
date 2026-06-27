@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
@@ -56,6 +59,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   String _selectedCategory = 'Beton';
   String _selectedSource = 'Halkbank';
   bool _isSourceDropdownOpen = false;
+  XFile? _pickedAttachment;
 
   final TextEditingController _dateController = TextEditingController(text: '10 Haziran 2024');
   final TextEditingController _dueDateController = TextEditingController(text: 'Seçiniz');
@@ -402,8 +406,13 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     destName: dest,
                   );
 
-                  await fp.addTransaction(t);
+                  if (_selectedType == 'Ödeme' && _pickedAttachment != null) {
+                    await fp.addTransactionWithAttachment(t, _pickedAttachment!.path);
+                  } else {
+                    await fp.addTransaction(t);
+                  }
 
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Row(
@@ -448,6 +457,38 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _pickAttachment() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Kameradan Çek'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Galeriden Seç'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+    try {
+      final file = await ImagePicker().pickImage(source: source, imageQuality: 85, maxWidth: 1600);
+      if (file != null) setState(() => _pickedAttachment = file);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Dosya seçilemedi: $e')));
+      }
+    }
   }
 
   // --- ÖDEME FORM LAYOUT ---
@@ -716,17 +757,21 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                 ),
               ),
               const Spacer(),
-              IconButton(
-                icon: Icon(Icons.link_rounded, color: context.colors.brand, size: 22),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Dosya seçme simülasyonu aktif edildi!'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-                },
-              ),
+              if (_pickedAttachment != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.file(File(_pickedAttachment!.path), width: 32, height: 32, fit: BoxFit.cover),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(Icons.close_rounded, color: context.colors.textSecondary, size: 18),
+                  onPressed: () => setState(() => _pickedAttachment = null),
+                ),
+              ] else
+                IconButton(
+                  icon: Icon(Icons.link_rounded, color: context.colors.brand, size: 22),
+                  onPressed: _pickAttachment,
+                ),
             ],
           ),
         ),

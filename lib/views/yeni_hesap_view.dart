@@ -95,7 +95,6 @@ class _YeniHesapViewState extends State<YeniHesapView> {
       id: 0,
       name: _nameController.text,
       type: _selectedType,
-      currency: 'TRY',
       openingBalance: balance,
       balance: balance,
       creditLimit: limit,

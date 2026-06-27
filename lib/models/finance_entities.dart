@@ -115,7 +115,6 @@ class Loan {
   final double remaining;
   final double interestRate;
   final int termMonths;
-  final String currency;
   final String startDate;
   final bool isActive;
 
@@ -131,7 +130,6 @@ class Loan {
     this.remaining = 0.0,
     this.interestRate = 0.0,
     this.termMonths = 0,
-    this.currency = 'TRY',
     this.startDate = '',
     this.isActive = true,
   });
@@ -148,7 +146,6 @@ class Loan {
         remaining: _toDouble(m['remaining']),
         interestRate: _toDouble(m['interest_rate']),
         termMonths: m['term_months'] ?? 0,
-        currency: m['currency'] ?? 'TRY',
         startDate: m['start_date'] ?? '',
         isActive: m['is_active'] ?? true,
       );
@@ -165,7 +162,6 @@ class Loan {
         'paid_amount': paidAmount,
         'interest_rate': interestRate,
         'term_months': termMonths,
-        'currency': currency,
         'start_date': startDate,
         'is_active': isActive,
       };
@@ -177,7 +173,6 @@ class Cheque {
   final String direction; // received, issued
   final String status; // portfolio, deposited, cashed, given, bounced
   final double amount;
-  final String currency;
   final String dueDate;
   final String bankName;
   final String serialNo;
@@ -189,7 +184,6 @@ class Cheque {
     this.direction = 'received',
     this.status = 'portfolio',
     this.amount = 0.0,
-    this.currency = 'TRY',
     this.dueDate = '',
     this.bankName = '',
     this.serialNo = '',
@@ -205,7 +199,6 @@ class Cheque {
         direction: m['direction'] ?? 'received',
         status: m['status'] ?? 'portfolio',
         amount: _toDouble(m['amount']),
-        currency: m['currency'] ?? 'TRY',
         dueDate: m['due_date'] ?? '',
         bankName: m['bank_name'] ?? '',
         serialNo: m['serial_no'] ?? '',
@@ -218,7 +211,6 @@ class Cheque {
         'direction': direction,
         'status': status,
         'amount': amount,
-        'currency': currency,
         'due_date': dueDate,
         'bank_name': bankName,
         'serial_no': serialNo,
@@ -237,7 +229,6 @@ class Sale {
   final double salePrice;
   final double collected;
   final double remaining;
-  final String currency;
   final String saleDate;
   final bool isCompleted;
 
@@ -250,7 +241,6 @@ class Sale {
     this.salePrice = 0.0,
     this.collected = 0.0,
     this.remaining = 0.0,
-    this.currency = 'TRY',
     this.saleDate = '',
     this.isCompleted = false,
   });
@@ -264,7 +254,6 @@ class Sale {
         salePrice: _toDouble(m['sale_price']),
         collected: _toDouble(m['collected']),
         remaining: _toDouble(m['remaining']),
-        currency: m['currency'] ?? 'TRY',
         saleDate: m['sale_date'] ?? '',
         isCompleted: m['is_completed'] ?? false,
       );
@@ -277,7 +266,6 @@ class Sale {
         'unit_type': unitType,
         'unit_no': unitNo,
         'sale_price': salePrice,
-        'currency': currency,
         'sale_date': saleDate,
         'is_completed': isCompleted,
       };
@@ -294,7 +282,6 @@ class Receivable {
   final double totalAmount;
   final double collectedAmount;
   final double remaining;
-  final String currency;
   final String dueDate;
   final String description;
 
@@ -308,7 +295,6 @@ class Receivable {
     this.totalAmount = 0.0,
     this.collectedAmount = 0.0,
     this.remaining = 0.0,
-    this.currency = 'TRY',
     this.dueDate = '',
     this.description = '',
   });
@@ -323,7 +309,6 @@ class Receivable {
         totalAmount: _toDouble(m['total_amount']),
         collectedAmount: _toDouble(m['collected_amount']),
         remaining: _toDouble(m['remaining']),
-        currency: m['currency'] ?? 'TRY',
         dueDate: m['due_date'] ?? '',
         description: m['description'] ?? '',
       );
@@ -338,7 +323,6 @@ class Receivable {
         'sale': saleId,
         'total_amount': totalAmount,
         'collected_amount': collectedAmount,
-        'currency': currency,
         'due_date': dueDate,
         'description': description,
       };
@@ -352,7 +336,6 @@ class Receivable {
         saleId: saleId,
         totalAmount: totalAmount,
         collectedAmount: collectedAmount ?? this.collectedAmount,
-        currency: currency,
         dueDate: dueDate,
         description: description,
       );
@@ -365,7 +348,6 @@ class BudgetLine {
   final String category;
   final double budgetedAmount;
   final double actualAmount; // backend türetir (o kategorideki Gider toplamı)
-  final String currency;
 
   BudgetLine({
     this.id,
@@ -373,7 +355,6 @@ class BudgetLine {
     required this.category,
     this.budgetedAmount = 0.0,
     this.actualAmount = 0.0,
-    this.currency = 'TRY',
   });
 
   /// Kullanım yüzdesi (0..1+); bütçe 0 ise 0.
@@ -388,7 +369,6 @@ class BudgetLine {
         category: m['category'] ?? '',
         budgetedAmount: _toDouble(m['budgeted_amount']),
         actualAmount: _toDouble(m['actual_amount']),
-        currency: m['currency'] ?? 'TRY',
       );
 
   // actual_amount backend'de türetilir; yazarken gönderilmez.
@@ -397,6 +377,5 @@ class BudgetLine {
         'project': projectId,
         'category': category,
         'budgeted_amount': budgetedAmount,
-        'currency': currency,
       };
 }
