@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -13,10 +14,16 @@ import 'package:hane/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('tr_TR', null);
-  await NotificationService.instance.init();
+  if (!kIsWeb) await NotificationService.instance.init();
 
-  final token = await ApiService.instance.getToken();
-  final bool loggedIn = token != null;
+  bool loggedIn = false;
+  try {
+    final token = await ApiService.instance.getToken();
+    loggedIn = token != null;
+  } catch (e) {
+    debugPrint('Token okuma hatası: $e');
+    loggedIn = false;
+  }
 
   runApp(
     MultiProvider(
@@ -36,7 +43,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    // Giriş yapılmışsa biyometrik kilit kapısının arkasında ana ekran.
     final Widget home = loggedIn ? const RootScreen() : const LoginView();
 
     return MaterialApp(

@@ -23,7 +23,7 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
   int _hoveredIndex = -1;
 
   final List<DrawerItemData> _drawerItems = [
-    DrawerItemData(title: 'Finansal Durum', activeIcon: Icons.home_rounded, inactiveIcon: Icons.home_outlined, tabIndex: 0),
+    DrawerItemData(title: 'Genel Bakış', activeIcon: Icons.home_rounded, inactiveIcon: Icons.home_outlined, tabIndex: 0),
     DrawerItemData(title: 'Projeler', activeIcon: Icons.construction_rounded, inactiveIcon: Icons.construction_outlined, tabIndex: 1),
     DrawerItemData(title: 'Hareketler', activeIcon: Icons.receipt_long_rounded, inactiveIcon: Icons.receipt_long_outlined, tabIndex: 3),
     DrawerItemData(title: 'Cari Hesaplar', activeIcon: Icons.groups_rounded, inactiveIcon: Icons.groups_outlined, tabIndex: -1),

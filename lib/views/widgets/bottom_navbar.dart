@@ -30,7 +30,7 @@ class CustomBottomNavbar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildNavItem(context, 0, Icons.home_rounded, 'Finansal Durum'),
+            _buildNavItem(context, 0, Icons.home_rounded, 'Genel Bakış'),
             _buildNavItem(context, 1, Icons.folder_copy_rounded, 'Projeler'),
             // Center floating '+' button
             GestureDetector(

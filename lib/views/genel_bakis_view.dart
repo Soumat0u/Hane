@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
@@ -35,7 +36,7 @@ class GenelBakisScreen extends StatelessWidget {
 
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 16.0, bottom: 24.0),
+            padding: centeredPagePadding(context, maxContentWidth: 1000, top: 16.0, bottom: 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -120,7 +121,9 @@ class GenelBakisScreen extends StatelessWidget {
                 const SizedBox(height: 16),
 
                 // Projeler Listesi
-                ...projects.map((p) => _buildProjectCard(context, p, fp)),
+                ResponsiveWrap(
+                  children: projects.map((p) => _buildProjectCard(context, p, fp)).toList(),
+                ),
                 const SizedBox(height: 24),
 
                 // Son Hareketler Başlık

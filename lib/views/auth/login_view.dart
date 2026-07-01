@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/services/api_service.dart';
 import 'package:hane/providers/finance_provider.dart';
@@ -18,6 +19,7 @@ class _LoginViewState extends State<LoginView> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
 
   Future<void> _login() async {
     if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
@@ -61,7 +63,7 @@ class _LoginViewState extends State<LoginView> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+            padding: centeredPagePadding(context, maxContentWidth: 440, horizontal: 24, top: 40, bottom: 40),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -74,7 +76,7 @@ class _LoginViewState extends State<LoginView> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Hane App',
+                  'Hane',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 28,
@@ -107,19 +109,17 @@ class _LoginViewState extends State<LoginView> {
                   label: 'Şifre',
                   controller: _passwordController,
                   icon: Icons.lock_outline_rounded,
-                  obscureText: true,
-                ),
-                const SizedBox(height: 12),
-                
-                // Forgot Password Placeholder
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {},
-                    child: Text(
-                      'Şifremi Unuttum',
-                      style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600),
+                  obscureText: !_isPasswordVisible,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      color: context.colors.textSecondary,
                     ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -184,6 +184,7 @@ class _LoginViewState extends State<LoginView> {
     required IconData icon,
     bool obscureText = false,
     TextInputType? keyboardType,
+    Widget? suffixIcon,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,6 +216,7 @@ class _LoginViewState extends State<LoginView> {
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               prefixIcon: Icon(icon, color: context.colors.textSecondary, size: 22),
+              suffixIcon: suffixIcon,
               hintText: label,
               hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
             ),

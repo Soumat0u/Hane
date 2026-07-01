@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -111,7 +112,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
             ],
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding: centeredPagePadding(context, maxContentWidth: 900, horizontal: 16, top: 16, bottom: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -210,7 +211,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        project.projectCode.isNotEmpty ? project.projectCode : 'AKP-001',
+                        project.projectCode.isNotEmpty ? project.projectCode : '—',
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -251,9 +252,9 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
           // Pafta, Parsel, Alan
           Row(
             children: [
-              _buildProjectStatItem(context, 'Pafta', '125'),
+              _buildProjectStatItem(context, 'Pafta', project.pafta.isNotEmpty ? project.pafta : '-'),
               const SizedBox(width: 16),
-              _buildProjectStatItem(context, 'Parsel', '48'),
+              _buildProjectStatItem(context, 'Parsel', project.parsel.isNotEmpty ? project.parsel : '-'),
               const SizedBox(width: 16),
               _buildProjectStatItem(context, 'Alan (m²)', currencyFormat.format(project.areaSqMeters).replaceAll('₺', '').trim()),
             ],
@@ -314,7 +315,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
           icon: Icon(Icons.add, size: 16, color: context.colors.surface),
           label: Text('Yeni Harcama Ekle', style: TextStyle(color: context.colors.surface, fontWeight: FontWeight.bold)),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0F172A), // Dark blue almost black from mock
+            backgroundColor: const Color(0xFF0F172A),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -659,7 +660,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
     final categorySpending = fp.getProjectCategorySpending(project.id!);
     
     final categoryColors = {
-      'Beton': const Color(0xFF0F172A), // Dark blue from mock for chart
+      'Beton': const Color(0xFF0F172A),
       'Demir': const Color(0xFF3B82F6),
       'Duvar': const Color(0xFF10B981),
       'Kalıp & İskele': const Color(0xFF8B5CF6),
@@ -675,7 +676,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
       return SpendingData(e.key, currencyFormat.format(e.value), pct, categoryColors[e.key] ?? context.colors.brand);
     }).toList();
 
-    // Sort data to match mock
+    // En yüksek harcamadan en düşüğe sırala.
     data.sort((a, b) => b.percentage.compareTo(a.percentage));
 
     return Container(

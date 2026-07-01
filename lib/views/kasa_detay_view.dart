@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:hane/utils/formatters.dart';
@@ -46,7 +47,9 @@ class KasaDetayView extends StatelessWidget {
           // Sort by date descending
           relatedTx.sort((a, b) => b.date.compareTo(a.date));
 
-          return Column(
+          return ResponsiveCenter(
+            maxWidth: 820,
+            child: Column(
             children: [
               // Header Card with Balance
               Container(
@@ -195,7 +198,7 @@ class KasaDetayView extends StatelessWidget {
                       )
                     : ListView.separated(
                         physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 40),
+                        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 40, top: 4),
                         itemCount: relatedTx.length,
                         separatorBuilder: (context, index) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
@@ -221,6 +224,7 @@ class KasaDetayView extends StatelessWidget {
                       ),
               ),
             ],
+            ),
           );
         },
       ),

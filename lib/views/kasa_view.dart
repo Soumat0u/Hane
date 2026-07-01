@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
@@ -28,15 +29,13 @@ class KasaScreen extends StatelessWidget {
             final kasa = fp.getTotalBalance();
             final bankAccounts = fp.accounts.where((a) => a.type == 'Banka').toList();
             final cashAccounts = fp.accounts.where((a) => a.type == 'Nakit').toList();
-            final borsaAccounts = fp.accounts.where((a) => a.type == 'Borsa').toList(); // Varsayımsal
             
             final totalBankalar = bankAccounts.fold(0.0, (sum, a) => sum + a.balance);
             final totalNakit = cashAccounts.fold(0.0, (sum, a) => sum + a.balance);
-            final totalBorsa = borsaAccounts.fold(0.0, (sum, a) => sum + a.balance);
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 8.0, bottom: 24.0),
+              padding: centeredPagePadding(context, maxContentWidth: 760, top: 8.0, bottom: 24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -104,12 +103,6 @@ class KasaScreen extends StatelessWidget {
                   _buildGroupList(context, cashAccounts, iconData: Icons.payments_outlined, iconColor: Colors.green),
                   const SizedBox(height: 24),
 
-                  // BORSA
-                  _buildSectionHeader(context, 'BORSA', onNewTap: () {
-                    _showNewTransaction(context);
-                  }),
-                  _buildGroupList(context, borsaAccounts, iconData: Icons.trending_up_rounded, iconColor: Colors.purple),
-                  const SizedBox(height: 24),
 
                   // ÖZET
                   Text(
@@ -134,8 +127,6 @@ class KasaScreen extends StatelessWidget {
                         _buildSummaryRow(context, 'Toplam Bankalar', totalBankalar),
                         const SizedBox(height: 12),
                         _buildSummaryRow(context, 'Nakit', totalNakit),
-                        const SizedBox(height: 12),
-                        _buildSummaryRow(context, 'Borsa', totalBorsa),
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12.0),
                           child: Divider(height: 1),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/company_profile.dart';
@@ -37,6 +38,7 @@ class _FirmaDuzenleViewState extends State<FirmaDuzenleView> {
       'country': TextEditingController(text: p?.country ?? 'Türkiye'),
       'phone1': TextEditingController(text: p?.phone1 ?? ''),
       'email': TextEditingController(text: p?.email ?? ''),
+      'website': TextEditingController(text: p?.website ?? ''),
     };
   }
 
@@ -69,6 +71,7 @@ class _FirmaDuzenleViewState extends State<FirmaDuzenleView> {
       phone1: _v('phone1'),
       phone2: existing?.phone2 ?? '',
       email: _v('email'),
+      website: _v('website'),
     );
     try {
       await context.read<FinanceProvider>().updateCompanyProfile(profile);
@@ -105,7 +108,7 @@ class _FirmaDuzenleViewState extends State<FirmaDuzenleView> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: centeredPagePadding(context, maxContentWidth: 560, horizontal: 20, top: 20, bottom: 20),
           children: [
             if (widget.isOnboarding) ...[
               Text('Hoş geldiniz! 👷',
@@ -136,6 +139,7 @@ class _FirmaDuzenleViewState extends State<FirmaDuzenleView> {
             _section('İletişim'),
             AppTextField(controller: _c['phone1']!, label: 'Telefon'),
             AppTextField(controller: _c['email']!, label: 'E-posta'),
+            AppTextField(controller: _c['website']!, label: 'Web Sitesi'),
             const SizedBox(height: 16),
             AppSaveButton(saving: _saving, onPressed: _save, label: widget.isOnboarding ? 'Devam Et' : 'Kaydet'),
             const SizedBox(height: 24),

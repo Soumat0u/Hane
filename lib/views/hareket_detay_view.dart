@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/financial_transaction.dart';
@@ -95,7 +96,7 @@ class _HareketDetayViewState extends State<HareketDetayView> {
             ],
           ),
           body: SingleChildScrollView(
-            padding: const EdgeInsets.only(left: 16, right: 16, bottom: 24),
+            padding: centeredPagePadding(context, maxContentWidth: 700, horizontal: 16, bottom: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
@@ -8,11 +9,20 @@ import 'package:hane/views/kasa_view.dart';
 import 'package:hane/views/borclar_view.dart';
 import 'package:hane/views/finansman_gucu_view.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return SafeArea(
       child: Consumer<FinanceProvider>(
         builder: (context, fp, child) {
@@ -26,66 +36,66 @@ class DashboardScreen extends StatelessWidget {
           final finansmanGucu = fp.getFinansmanGucu();
           final netPozisyon = kasa + alacaklar - borclar;
 
+          // Nakit akışı grafiği son 6 ayın GERÇEK işlemlerinden hesaplanır.
+          final cashFlow = _computeCashFlow(fp);
+          final flowMax = _niceMax(cashFlow);
+
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 8.0, bottom: 16.0),
-            child: Column(
+            child: ResponsiveCenter(
+              maxWidth: 1100,
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
 
             // Grid of Cards: Kasa, Borclar, Alacaklar, Finansman Gucu
+            // Mobilde 2, geniş ekranda 4 sütuna kadar.
             LayoutBuilder(
               builder: (context, constraints) {
-                final double cardWidth = (constraints.maxWidth - 16) / 2;
-                return Column(
+                const double gap = 16;
+                final int cols = responsiveColumns(constraints.maxWidth, minCardWidth: 160, maxColumns: 4);
+                final double cardWidth = (constraints.maxWidth - gap * (cols - 1)) / cols;
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildMetricCard(context,
-                          width: cardWidth,
-                          title: 'KASA',
-                          value: currencyFormat.format(kasa),
-                          icon: Icons.account_balance_wallet_rounded,
-                          accentColor: context.colors.accent,
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const KasaScreen()));
-                          },
-                        ),
-                        _buildMetricCard(context,
-                          width: cardWidth,
-                          title: 'BORÇLAR',
-                          value: currencyFormat.format(borclar),
-                          icon: Icons.receipt_long_rounded,
-                          accentColor: Theme.of(context).extension<AppColors>()!.danger,
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const BorclarView()));
-                          },
-                        ),
-                      ],
+                    _buildMetricCard(context,
+                      width: cardWidth,
+                      title: 'KASA',
+                      value: currencyFormat.format(kasa),
+                      icon: Icons.account_balance_wallet_rounded,
+                      accentColor: context.colors.accent,
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const KasaScreen()));
+                      },
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildMetricCard(context,
-                          width: cardWidth,
-                          title: 'ALACAKLAR',
-                          value: currencyFormat.format(alacaklar > 0 ? alacaklar : 0),
-                          icon: Icons.assignment_returned_rounded,
-                          accentColor: Theme.of(context).extension<AppColors>()!.success,
-                        ),
-                        _buildMetricCard(context,
-                          width: cardWidth,
-                          title: 'FİNANSMAN GÜCÜ',
-                          value: currencyFormat.format(finansmanGucu),
-                          icon: Icons.shield_rounded,
-                          accentColor: const Color(0xFF8B5CF6),
-                          onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => const FinansmanGucuView()));
-                          },
-                        ),
-                      ],
+                    _buildMetricCard(context,
+                      width: cardWidth,
+                      title: 'BORÇLAR',
+                      value: currencyFormat.format(borclar),
+                      icon: Icons.receipt_long_rounded,
+                      accentColor: Theme.of(context).extension<AppColors>()!.danger,
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BorclarView()));
+                      },
+                    ),
+                    _buildMetricCard(context,
+                      width: cardWidth,
+                      title: 'ALACAKLAR',
+                      value: currencyFormat.format(alacaklar > 0 ? alacaklar : 0),
+                      icon: Icons.assignment_returned_rounded,
+                      accentColor: Theme.of(context).extension<AppColors>()!.success,
+                    ),
+                    _buildMetricCard(context,
+                      width: cardWidth,
+                      title: 'FİNANSMAN GÜCÜ',
+                      value: currencyFormat.format(finansmanGucu),
+                      icon: Icons.shield_rounded,
+                      accentColor: const Color(0xFF8B5CF6),
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const FinansmanGucuView()));
+                      },
                     ),
                   ],
                 );
@@ -192,17 +202,17 @@ class DashboardScreen extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Y-Axis labels
+                  // Y-Axis labels (grafik verisine göre dinamik ölçek)
                   Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildYLabel('8M'),
+                      _buildYLabel(_compactAmount(flowMax)),
                       const SizedBox(height: 20),
-                      _buildYLabel('6M'),
+                      _buildYLabel(_compactAmount(flowMax * 0.75)),
                       const SizedBox(height: 20),
-                      _buildYLabel('4M'),
+                      _buildYLabel(_compactAmount(flowMax * 0.5)),
                       const SizedBox(height: 20),
-                      _buildYLabel('2M'),
+                      _buildYLabel(_compactAmount(flowMax * 0.25)),
                       const SizedBox(height: 20),
                       _buildYLabel('0'),
                     ],
@@ -216,12 +226,8 @@ class DashboardScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          _buildMonthBarColumn(context, 'Oca', 5.0, 3.8),
-                          _buildMonthBarColumn(context, 'Şub', 7.0, 3.5),
-                          _buildMonthBarColumn(context, 'Mar', 5.0, 4.6),
-                          _buildMonthBarColumn(context, 'Nis', 5.6, 3.5),
-                          _buildMonthBarColumn(context, 'May', 5.0, 2.6),
-                          _buildMonthBarColumn(context, 'Haz', 7.0, 3.9),
+                          for (final f in cashFlow)
+                            _buildMonthBarColumn(context, f.label, f.income, f.expense, flowMax),
                         ],
                       ),
                     ),
@@ -231,7 +237,8 @@ class DashboardScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-        ),
+              ),
+            ),
       );
       },
       ),
@@ -342,11 +349,12 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMonthBarColumn(BuildContext context, String month, double incomeValue, double expenseValue) {
-    const double maxScale = 8.0;
+  Widget _buildMonthBarColumn(
+      BuildContext context, String month, double incomeValue, double expenseValue, double maxScale) {
     const double chartMaxHeight = 110.0;
-    final double incomeHeight = (incomeValue / maxScale) * chartMaxHeight;
-    final double expenseHeight = (expenseValue / maxScale) * chartMaxHeight;
+    final double safeScale = maxScale <= 0 ? 1 : maxScale;
+    final double incomeHeight = (incomeValue / safeScale) * chartMaxHeight;
+    final double expenseHeight = (expenseValue / safeScale) * chartMaxHeight;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
@@ -387,6 +395,56 @@ class DashboardScreen extends StatelessWidget {
       ],
     );
   }
+
+  static const List<String> _shortMonths = [
+    'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'
+  ];
+
+  /// Son 6 ayın (eskiden yeniye) gelir/gider toplamlarını gerçek işlemlerden hesaplar.
+  List<_MonthFlow> _computeCashFlow(FinanceProvider fp, {int count = 6}) {
+    final now = DateTime.now();
+    final flows = <_MonthFlow>[];
+    for (int i = count - 1; i >= 0; i--) {
+      final m = DateTime(now.year, now.month - i, 1);
+      double income = 0, expense = 0;
+      for (final t in fp.allTransactions) {
+        final d = DateTime.tryParse(t.date);
+        if (d == null || d.year != m.year || d.month != m.month) continue;
+        if (t.type == 'Tahsilat' || t.type == 'Gelir') {
+          income += t.amount;
+        } else if (t.type == 'Gider') {
+          expense += t.amount;
+        }
+      }
+      flows.add(_MonthFlow(_shortMonths[m.month - 1], income, expense));
+    }
+    return flows;
+  }
+
+  /// Grafik için üst ölçek: en yüksek gelir/gider değerine göre (0 ise 1).
+  double _niceMax(List<_MonthFlow> flows) {
+    double maxVal = 0;
+    for (final f in flows) {
+      if (f.income > maxVal) maxVal = f.income;
+      if (f.expense > maxVal) maxVal = f.expense;
+    }
+    return maxVal <= 0 ? 1 : maxVal;
+  }
+
+  /// Y ekseni etiketleri için kısa tutar biçimi (1.2M, 850B, 500).
+  String _compactAmount(double v) {
+    if (v >= 1e6) return '${(v / 1e6).toStringAsFixed(v >= 1e7 ? 0 : 1)}M';
+    if (v >= 1e3) return '${(v / 1e3).toStringAsFixed(0)}B';
+    return v.toStringAsFixed(0);
+  }
+}
+
+/// Bir ayın gelir/gider özeti (nakit akışı grafiği için).
+class _MonthFlow {
+  final String label;
+  final double income;
+  final double expense;
+  const _MonthFlow(this.label, this.income, this.expense);
 }
 
 class SparklinePainter extends CustomPainter {

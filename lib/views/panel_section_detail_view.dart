@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import '../models/finance_panel.dart';
 import '../utils/formatters.dart';
 
@@ -34,7 +35,7 @@ class PanelSectionDetailView extends StatelessWidget {
         top: false,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(left: 20, right: 20, top: 8, bottom: 24),
+          padding: centeredPagePadding(context, maxContentWidth: 900, horizontal: 20, top: 8, bottom: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

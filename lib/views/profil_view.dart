@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:flutter/services.dart';
 import 'package:hane/views/widgets/zeynep_logo.dart';
 import 'package:hane/views/kasa_view.dart';
@@ -8,9 +9,12 @@ import 'package:hane/views/ayarlar_view.dart';
 import 'package:hane/views/yardim_view.dart';
 import 'package:hane/models/company_profile.dart';
 import 'package:hane/models/account.dart';
+import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/services/api_service.dart';
+import 'package:hane/utils/formatters.dart';
 import 'package:hane/views/auth/login_view.dart';
 import 'package:hane/views/yeni_hesap_view.dart';
+import 'package:hane/views/firma_duzenle_view.dart';
 
 class ProfilScreen extends StatefulWidget {
   const ProfilScreen({super.key});
@@ -19,9 +23,13 @@ class ProfilScreen extends StatefulWidget {
   State<ProfilScreen> createState() => _ProfilScreenState();
 }
 
-class _ProfilScreenState extends State<ProfilScreen> {
+class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   CompanyProfile? _companyProfile;
   List<Account> _accounts = [];
+  List<FinancialTransaction> _transactions = [];
   bool _isLoading = true;
 
   bool _isKasaExpanded = false;
@@ -39,14 +47,36 @@ class _ProfilScreenState extends State<ProfilScreen> {
   Future<void> _loadData() async {
     final profile = await ApiService.instance.getCompanyProfile();
     final accounts = await ApiService.instance.readAllAccounts();
-    
+    List<FinancialTransaction> transactions = [];
+    try {
+      transactions = await ApiService.instance.readAllTransactions();
+    } catch (_) {
+      // İşlemler yüklenemezse kasa kartları yine de bakiyelerden hesaplanır.
+    }
+
     if (mounted) {
       setState(() {
         _companyProfile = profile;
         _accounts = accounts;
+        _transactions = transactions;
         _isLoading = false;
       });
     }
+  }
+
+  double _sumByType(String type) =>
+      _accounts.where((a) => a.type == type).fold(0.0, (s, a) => s + a.balance);
+
+  /// Bu ayın toplam tahsilat/gelir veya gider tutarı (nakit akışı özeti için).
+  double _thisMonthTotal({required bool income}) {
+    final now = DateTime.now();
+    return _transactions.where((t) {
+      final d = DateTime.tryParse(t.date);
+      if (d == null || d.year != now.year || d.month != now.month) return false;
+      return income
+          ? (t.type == 'Tahsilat' || t.type == 'Gelir')
+          : t.type == 'Gider';
+    }).fold(0.0, (s, t) => s + t.amount);
   }
 
   void _copyToClipboard(BuildContext context, String label, String value) {
@@ -76,6 +106,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     if (_isLoading) {
       return Scaffold(
         backgroundColor: context.colors.scaffold,
@@ -95,11 +126,23 @@ class _ProfilScreenState extends State<ProfilScreen> {
         backgroundColor: context.colors.surface,
         elevation: 0,
         iconTheme: IconThemeData(color: context.colors.textPrimary),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.edit_rounded, color: context.colors.brand),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FirmaDuzenleView(isOnboarding: false)),
+              ).then((_) => _loadData());
+            },
+            tooltip: 'Düzenle',
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 8.0, bottom: 16.0),
+          padding: centeredPagePadding(context, maxContentWidth: 760, horizontal: 20, top: 8, bottom: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -481,6 +524,12 @@ class _ProfilScreenState extends State<ProfilScreen> {
   }
 
   Widget _buildKasaDetails() {
+    final bankalar = _sumByType('Banka');
+    final nakit = _sumByType('Nakit');
+    final toplamKasa = bankalar + nakit;
+    final alacakBuAy = _thisMonthTotal(income: true);
+    final odenenBuAy = _thisMonthTotal(income: false);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -488,17 +537,17 @@ class _ProfilScreenState extends State<ProfilScreen> {
           children: [
             Row(
               children: [
-                _buildKasaCard('TOPLAM KASA', '₺8.450.000'),
+                _buildKasaCard('TOPLAM KASA', formatCurrency(toplamKasa)),
                 const SizedBox(width: 12),
-                _buildKasaCard('BANKALAR', '₺6.950.000'),
+                _buildKasaCard('BANKALAR', formatCurrency(bankalar)),
               ],
             ),
             const SizedBox(height: 12),
             Row(
               children: [
-                _buildKasaCard('NAKİT', '₺500.000'),
+                _buildKasaCard('NAKİT', formatCurrency(nakit)),
                 const SizedBox(width: 12),
-                _buildKasaCard('BORSA', '₺1.000.000'),
+                Expanded(child: const SizedBox()), // Empty space to keep layout
               ],
             ),
             SizedBox(height: 16),
@@ -509,8 +558,8 @@ class _ProfilScreenState extends State<ProfilScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildKasaFlowItem('alacak (bu ay)', '₺12.700.000', const Color(0xFF10B981)),
-                  _buildKasaFlowItem('ödenen (bu ay)', '₺9.250.000', const Color(0xFFEF4444)),
+                  _buildKasaFlowItem('tahsilat (bu ay)', formatCurrency(alacakBuAy), const Color(0xFF10B981)),
+                  _buildKasaFlowItem('ödenen (bu ay)', formatCurrency(odenenBuAy), const Color(0xFFEF4444)),
                 ],
               ),
             ),
@@ -723,7 +772,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
               _buildInfoRow(
                 Icons.language_rounded,
                 'Web Sitesi',
-                'www.hano.com', // No website in DB schema, hardcoded example
+                _companyProfile?.website ?? '',
               ),
             ],
           ),
@@ -799,7 +848,7 @@ class _ProfilScreenState extends State<ProfilScreen> {
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           'Çıkış Yap',
@@ -811,17 +860,17 @@ class _ProfilScreenState extends State<ProfilScreen> {
         content: const Text('Hesabınızdan çıkış yapmak istediğinize emin misiniz?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('İptal', style: TextStyle(color: context.colors.textSecondary, fontWeight: FontWeight.bold)),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await ApiService.instance.logout();
-              } catch (e) {
-                // Hata olsa da çıkış ekranına atalım
-              }
+              // Dialogu kapat
+              Navigator.pop(dialogContext);
+              
+              // API'den çıkış yapmayı beklemeden doğrudan yönlendir (hız için)
+              ApiService.instance.logout().catchError((_) {});
+              
               if (mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,

@@ -1,16 +1,31 @@
 """
 Django settings for hano_backend project.
+Lokal geliştirme ve Railway (üretim) ortamlarını destekler.
 """
 import os
+import dj_database_url
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-hano-dev-key-change-in-production-2024'
 
-DEBUG = True
+def _env_bool(name, default=False):
+    return os.environ.get(name, str(default)).lower() in ('1', 'true', 'yes', 'on')
 
-ALLOWED_HOSTS = ['*']
+
+def _env_list(name, default=''):
+    return [v.strip() for v in os.environ.get(name, default).split(',') if v.strip()]
+
+
+# Güvenlik
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-hano-dev-key-change-in-production-2024',
+)
+
+DEBUG = _env_bool('DJANGO_DEBUG', default=True)
+
+ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,10.0.2.2,*')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -30,6 +45,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Railway'de static dosyalar için
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -58,17 +74,29 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'hano_backend.wsgi.application'
 
-# Database - PostgreSQL (Docker)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'hano_db',
-        'USER': 'hano_user',
-        'PASSWORD': 'hano_pass_2024',
-        'HOST': 'localhost',
-        'PORT': '5432',
+# Database
+# Railway'de DATABASE_URL otomatik olarak ayarlanır → dj_database_url bunu çözer.
+# Lokalda doğrudan PostgreSQL bağlantısı kullanılır.
+_database_url = os.environ.get('DATABASE_URL')
+if _database_url:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=_database_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('DB_NAME', 'hano_db'),
+            'USER': os.environ.get('DB_USER', 'hano_user'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', 'hano_pass_2024'),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+        }
+    }
 
 # Custom user model
 AUTH_USER_MODEL = 'api.User'
@@ -91,8 +119,8 @@ REST_FRAMEWORK = {
     ],
 }
 
-# CORS - Allow Flutter app
-CORS_ALLOW_ALL_ORIGINS = True  # Dev only
+# CORS - Flutter uygulamasına izin ver
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Internationalization
 LANGUAGE_CODE = 'tr'
@@ -100,7 +128,10 @@ TIME_ZONE = 'Europe/Istanbul'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+# Static files (WhiteNoise ile Railway'de serve edilir)
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

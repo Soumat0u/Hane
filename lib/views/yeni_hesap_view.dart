@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/account.dart';
@@ -136,7 +137,7 @@ class _YeniHesapViewState extends State<YeniHesapView> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
+          padding: centeredPagePadding(context, maxContentWidth: 560, horizontal: 20, top: 20, bottom: 20),
           child: Form(
             key: _formKey,
             child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/finance_entities.dart';
@@ -97,7 +98,7 @@ class _YeniSatisViewState extends State<YeniSatisView> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: centeredPagePadding(context, maxContentWidth: 560, horizontal: 20, top: 20, bottom: 20),
           children: [
             Container(
               padding: const EdgeInsets.all(12),

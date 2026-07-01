@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
@@ -47,18 +48,23 @@ class AlacaklarView extends StatelessWidget {
 
           return RefreshIndicator(
             onRefresh: fp.refreshData,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-              padding: const EdgeInsets.all(20),
-              children: [
-                _buildTopCard(context, total),
-                const SizedBox(height: 24),
-                if (receivables.isEmpty)
-                  _buildEmptyState(context)
-                else
-                  ...receivables.map((r) => _buildReceivableCard(context, fp, r)),
-                const SizedBox(height: 80),
-              ],
+            child: ResponsiveCenter(
+              maxWidth: 1100,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.all(20),
+                children: [
+                  _buildTopCard(context, total),
+                  const SizedBox(height: 24),
+                  if (receivables.isEmpty)
+                    _buildEmptyState(context)
+                  else
+                    ResponsiveWrap(
+                      children: receivables.map((r) => _buildReceivableCard(context, fp, r)).toList(),
+                    ),
+                  const SizedBox(height: 80),
+                ],
+              ),
             ),
           );
         },

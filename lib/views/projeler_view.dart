@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/views/proje_detay_view.dart';
@@ -8,11 +9,20 @@ import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/project.dart';
 import 'package:hane/views/yeni_proje_view.dart';
 
-class ProjelerScreen extends StatelessWidget {
+class ProjelerScreen extends StatefulWidget {
   const ProjelerScreen({super.key});
 
   @override
+  State<ProjelerScreen> createState() => _ProjelerScreenState();
+}
+
+class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Consumer<FinanceProvider>(
       builder: (context, financeProvider, child) {
         if (financeProvider.isLoading) {
@@ -105,9 +115,7 @@ class ProjelerScreen extends StatelessWidget {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 20.0),
+                : ResponsiveCardGrid(
                     itemCount: projects.length,
                     itemBuilder: (context, index) {
                       final project = projects[index];

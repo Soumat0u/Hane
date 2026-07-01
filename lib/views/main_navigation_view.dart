@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:hane/views/dashboard_view.dart';
-import 'package:hane/views/kasa_view.dart';
 import 'package:hane/views/profil_view.dart';
 import 'package:hane/views/hareketler_view.dart';
 import 'package:hane/views/projeler_view.dart';
 import 'package:hane/views/yeni_islem_view.dart';
 import 'package:hane/views/bildirimler_view.dart' as hano_bildirimler;
 import 'package:hane/views/widgets/bottom_navbar.dart';
+import 'package:hane/views/widgets/desktop_sidebar.dart';
 import 'package:hane/views/widgets/zeynep_drawer.dart';
 import 'package:hane/views/widgets/new_transaction_panel.dart';
 import 'package:hane/views/yeni_proje_view.dart';
@@ -48,7 +49,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   String _getHeaderTitle(int index) {
     switch (index) {
       case 0:
-        return 'Finansal Durum';
+        return 'Genel Bakış';
       case 1:
         return 'Projeler';
       case 3:
@@ -56,7 +57,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       case 4:
         return 'Profil';
       default:
-        return 'Finansal Durum';
+        return 'Genel Bakış';
     }
   }
 
@@ -96,18 +97,25 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           _selectTab(2);
         },
       ),
-    );
+    ).whenComplete(() {
+      FocusManager.instance.primaryFocus?.unfocus();
+    });
   }
+
+  List<Widget> get _screens => [
+        DashboardScreen(),
+        ProjelerScreen(),
+        HareketlerView(),
+        const ProfilScreen(),
+      ];
 
   @override
   Widget build(BuildContext context) {
-    // Scaffold screens list
-    final List<Widget> screens = [
-      DashboardScreen(),
-      ProjelerScreen(),
-      HareketlerView(),
-      const ProfilScreen(),
-    ];
+    return context.isDesktop ? _buildDesktop(context) : _buildMobile(context);
+  }
+
+  Widget _buildMobile(BuildContext context) {
+    final List<Widget> screens = _screens;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -150,79 +158,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                           ],
                         ),
                         _currentTabIndex == 1
-                            ? TextButton(
-                                onPressed: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (context) => YeniProjeView()));
-                                },
-                                style: TextButton.styleFrom(
-                                  foregroundColor: context.colors.brand,
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                ),
-                                child: const Text(
-                                  '+ Yeni Proje Ekle',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              )
-                            : Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Stack(
-                                      alignment: Alignment.topRight,
-                                      children: [
-                                        IconButton(
-                                          icon: Icon(Icons.notifications_none_rounded, color: context.colors.textSecondary, size: 28),
-                                          onPressed: () {
-                                            showGeneralDialog(
-                                              context: context,
-                                              barrierDismissible: true,
-                                              barrierLabel: 'Dismiss',
-                                              barrierColor: Colors.black.withValues(alpha: 0.4),
-                                              transitionDuration: const Duration(milliseconds: 300),
-                                              pageBuilder: (context, anim1, anim2) {
-                                                return Align(
-                                                  alignment: Alignment.topCenter,
-                                                  child: Material(
-                                                    color: Colors.transparent,
-                                                    child: hano_bildirimler.BildirimlerView(),
-                                                  ),
-                                                );
-                                              },
-                                              transitionBuilder: (context, anim1, anim2, child) {
-                                                return SlideTransition(
-                                                  position: Tween<Offset>(
-                                                    begin: const Offset(0, -1),
-                                                    end: const Offset(0, 0),
-                                                  ).animate(CurvedAnimation(
-                                                    parent: anim1,
-                                                    curve: Curves.easeOutCubic,
-                                                  )),
-                                                  child: child,
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                        // Sadece okunmamış bildirim varken kırmızı nokta göster.
-                                        if (context.watch<FinanceProvider>().hasUnreadNotifications)
-                                          Positioned(
-                                            right: 10,
-                                            top: 10,
-                                            child: Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: const BoxDecoration(
-                                                color: Colors.red,
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                            ? _yeniProjeButton(context)
+                            : _notificationBell(context),
                       ],
                     ),
                   ),
@@ -271,6 +208,152 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                 }
               },
             ),
+    );
+  }
+
+  /// Geniş ekran (masaüstü/web) düzeni: kalıcı sol kenar menü + içerik.
+  Widget _buildDesktop(BuildContext context) {
+    final List<Widget> screens = _screens;
+    final bool showTopBar = _currentTabIndex != 2;
+
+    return Scaffold(
+      backgroundColor: context.colors.scaffold,
+      body: Row(
+        children: [
+          DesktopSidebar(
+            selectedIndex: _currentTabIndex,
+            onItemSelected: _selectTab,
+            onNewTransaction: () => _showNewTransactionOptions(context),
+          ),
+          Expanded(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  if (showTopBar)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(32, 20, 32, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _getHeaderTitle(_currentTabIndex),
+                            style: TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: context.colors.textPrimary,
+                            ),
+                          ),
+                          _currentTabIndex == 1
+                              ? _yeniProjeButton(context)
+                              : _notificationBell(context),
+                        ],
+                      ),
+                    ),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        PageView(
+                          controller: _pageController,
+                          onPageChanged: (index) {
+                            int navbarIndex = index;
+                            if (index >= 2) {
+                              navbarIndex = index + 1;
+                            }
+                            setState(() {
+                              _currentTabIndex = navbarIndex;
+                            });
+                          },
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: screens,
+                        ),
+                        AnimatedSlide(
+                          offset: _currentTabIndex == 2 ? Offset.zero : const Offset(1.0, 0.0),
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          child: IgnorePointer(
+                            ignoring: _currentTabIndex != 2,
+                            child: YeniIslemScreen(
+                              initialType: _selectedTransactionType,
+                              onBack: () => _selectTab(0),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// "+ Yeni Proje Ekle" butonu (Projeler sekmesinde gösterilir).
+  Widget _yeniProjeButton(BuildContext context) {
+    return TextButton(
+      onPressed: () {
+        Navigator.push(context, MaterialPageRoute(builder: (context) => YeniProjeView()));
+      },
+      style: TextButton.styleFrom(
+        foregroundColor: context.colors.brand,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      child: const Text(
+        '+ Yeni Proje Ekle',
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  /// Bildirim zili (üst köşe) — okunmamış varsa kırmızı nokta gösterir.
+  Widget _notificationBell(BuildContext context) {
+    return Stack(
+      alignment: Alignment.topRight,
+      children: [
+        IconButton(
+          icon: Icon(Icons.notifications_none_rounded, color: context.colors.textSecondary, size: 28),
+          onPressed: () {
+            showGeneralDialog(
+              context: context,
+              barrierDismissible: true,
+              barrierLabel: 'Dismiss',
+              barrierColor: Colors.black.withValues(alpha: 0.4),
+              transitionDuration: const Duration(milliseconds: 300),
+              pageBuilder: (context, anim1, anim2) {
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: hano_bildirimler.BildirimlerView(),
+                  ),
+                );
+              },
+              transitionBuilder: (context, anim1, anim2, child) {
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, -1),
+                    end: const Offset(0, 0),
+                  ).animate(CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic)),
+                  child: child,
+                );
+              },
+            );
+          },
+        ),
+        // Sadece okunmamış bildirim varken kırmızı nokta göster.
+        if (context.watch<FinanceProvider>().hasUnreadNotifications)
+          Positioned(
+            right: 10,
+            top: 10,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+            ),
+          ),
+      ],
     );
   }
 }

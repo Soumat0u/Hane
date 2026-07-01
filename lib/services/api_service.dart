@@ -1,8 +1,9 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/project.dart';
 import '../models/financial_transaction.dart';
 import '../models/account.dart';
@@ -11,30 +12,58 @@ import '../models/finance_entities.dart';
 import '../models/recurring_transaction.dart';
 
 class ApiService {
-  // Android emülatörü host makineye 10.0.2.2 üzerinden ulaşır; localhost cihazın kendisidir.
-  // Web ve masaüstünde localhost doğrudan çalışır.
+  // API adresi. Üretim/staging derlemelerinde tam URL derleme zamanında verilir:
+  //   flutter build apk --dart-define=API_BASE_URL=https://api.hano.com/api
+  // Böylece gerçek kullanıcılar HTTPS üzerinden erişir; sabit geliştirme IP'si yoktur.
   static String get baseUrl {
+    // 1) Tam URL (üretim/staging) — HTTPS önerilir.
+    const fullUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    if (fullUrl.isNotEmpty) return fullUrl;
+
+    // 2) Yalnızca host verildiyse (yerel geliştirme kolaylığı).
     const host = String.fromEnvironment('API_HOST', defaultValue: '');
     if (host.isNotEmpty) return 'http://$host:8000/api';
-    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8000/api';
-    return 'http://localhost:8000/api';
+
+    // 3) Geliştirme varsayılanları (Web paneliyle aynı veritabanını paylaşması için Railway'e yönlendirildi).
+    // Yerel Django sunucusunda test etmek isterseniz aşağıdaki localhost satırlarını aktifleştirebilirsiniz.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'https://web-production-77031.up.railway.app/api'; // Yerel emülatör için: 'http://10.0.2.2:8000/api'
+    }
+    return 'https://web-production-77031.up.railway.app/api'; // Yerel web/iOS için: 'http://localhost:8000/api'
   }
+
   static const String _tokenKey = 'auth_token';
+
+  // Auth token'ı platformun güvenli deposunda (Android Keystore / iOS Keychain) tutar.
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   static final ApiService instance = ApiService._init();
   ApiService._init();
 
+  final http.Client _client = http.Client();
+
   Future<String?> getToken() async {
+    final secureToken = await _secureStorage.read(key: _tokenKey);
+    if (secureToken != null) return secureToken;
+    // Eski sürümlerde token düz metin SharedPreferences'taydı — güvenli depoya taşı.
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    final legacy = prefs.getString(_tokenKey);
+    if (legacy != null) {
+      await _secureStorage.write(key: _tokenKey, value: legacy);
+      await prefs.remove(_tokenKey);
+    }
+    return legacy;
   }
 
   Future<void> setToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    await _secureStorage.write(key: _tokenKey, value: token);
   }
 
   Future<void> removeToken() async {
+    await _secureStorage.delete(key: _tokenKey);
+    // Olası eski düz metin token'ı da temizle.
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
   }
@@ -49,7 +78,7 @@ class ApiService {
 
   // Auth Methods
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/auth/login/'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
@@ -63,8 +92,13 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> register(String email, String password, {String firstName = '', String lastName = ''}) async {
-    final response = await http.post(
+  Future<Map<String, dynamic>> register(
+    String email,
+    String password, {
+    String firstName = '',
+    String lastName = '',
+  }) async {
+    final response = await _client.post(
       Uri.parse('$baseUrl/auth/register/'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -85,14 +119,17 @@ class ApiService {
 
   Future<void> logout() async {
     final headers = await _getHeaders();
-    await http.post(Uri.parse('$baseUrl/auth/logout/'), headers: headers);
+    await _client.post(Uri.parse('$baseUrl/auth/logout/'), headers: headers);
     await removeToken();
   }
 
   // Projects
   Future<List<Project>> readAllProjects() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/projects/'), headers: headers);
+    final response = await _client.get(
+      Uri.parse('$baseUrl/projects/'),
+      headers: headers,
+    );
     if (response.statusCode == 200) {
       List data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => Project.fromMap(json)).toList();
@@ -103,7 +140,7 @@ class ApiService {
 
   Future<Project> createProject(Project project) async {
     final headers = await _getHeaders();
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/projects/'),
       headers: headers,
       body: jsonEncode(project.toMap()),
@@ -117,7 +154,7 @@ class ApiService {
 
   Future<Project> updateProject(Project project) async {
     final headers = await _getHeaders();
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('$baseUrl/projects/${project.id}/'),
       headers: headers,
       body: jsonEncode(project.toMap()),
@@ -131,7 +168,7 @@ class ApiService {
 
   Future<void> deleteProject(int projectId) async {
     final headers = await _getHeaders();
-    final response = await http.delete(
+    final response = await _client.delete(
       Uri.parse('$baseUrl/projects/$projectId/'),
       headers: headers,
     );
@@ -143,7 +180,10 @@ class ApiService {
   // Accounts
   Future<List<Account>> readAllAccounts() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/accounts/'), headers: headers);
+    final response = await _client.get(
+      Uri.parse('$baseUrl/accounts/'),
+      headers: headers,
+    );
     if (response.statusCode == 200) {
       List data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => Account.fromMap(json)).toList();
@@ -154,7 +194,7 @@ class ApiService {
 
   Future<Account> createAccount(Account account) async {
     final headers = await _getHeaders();
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/accounts/'),
       headers: headers,
       body: jsonEncode(account.toMap()),
@@ -168,7 +208,7 @@ class ApiService {
 
   Future<Account> updateAccount(Account account) async {
     final headers = await _getHeaders();
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('$baseUrl/accounts/${account.id}/'),
       headers: headers,
       body: jsonEncode(account.toMap()),
@@ -183,7 +223,10 @@ class ApiService {
   // Transactions
   Future<List<FinancialTransaction>> readAllTransactions() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/transactions/'), headers: headers);
+    final response = await _client.get(
+      Uri.parse('$baseUrl/transactions/'),
+      headers: headers,
+    );
     if (response.statusCode == 200) {
       List data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => FinancialTransaction.fromMap(json)).toList();
@@ -192,9 +235,14 @@ class ApiService {
     }
   }
 
-  Future<List<FinancialTransaction>> readTransactionsForProject(int projectId) async {
+  Future<List<FinancialTransaction>> readTransactionsForProject(
+    int projectId,
+  ) async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/transactions/?project_id=$projectId'), headers: headers);
+    final response = await _client.get(
+      Uri.parse('$baseUrl/transactions/?project_id=$projectId'),
+      headers: headers,
+    );
     if (response.statusCode == 200) {
       List data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => FinancialTransaction.fromMap(json)).toList();
@@ -203,29 +251,37 @@ class ApiService {
     }
   }
 
-  Future<FinancialTransaction> createTransaction(FinancialTransaction transaction) async {
+  Future<FinancialTransaction> createTransaction(
+    FinancialTransaction transaction,
+  ) async {
     final headers = await _getHeaders();
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/transactions/'),
       headers: headers,
       body: jsonEncode(transaction.toMap()),
     );
     if (response.statusCode == 201) {
-      return FinancialTransaction.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+      return FinancialTransaction.fromMap(
+        jsonDecode(utf8.decode(response.bodyBytes)),
+      );
     } else {
-      throw Exception('İşlem oluşturulamadı');
+      throw Exception('İşlem oluşturulamadı: ${response.statusCode} - ${response.body}');
     }
   }
 
-  Future<FinancialTransaction> updateTransaction(FinancialTransaction transaction) async {
+  Future<FinancialTransaction> updateTransaction(
+    FinancialTransaction transaction,
+  ) async {
     final headers = await _getHeaders();
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('$baseUrl/transactions/${transaction.id}/'),
       headers: headers,
       body: jsonEncode(transaction.toMap()),
     );
     if (response.statusCode == 200) {
-      return FinancialTransaction.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+      return FinancialTransaction.fromMap(
+        jsonDecode(utf8.decode(response.bodyBytes)),
+      );
     } else {
       throw Exception('İşlem güncellenemedi');
     }
@@ -270,7 +326,7 @@ class ApiService {
 
   Future<void> deleteTransaction(int transactionId) async {
     final headers = await _getHeaders();
-    final response = await http.delete(
+    final response = await _client.delete(
       Uri.parse('$baseUrl/transactions/$transactionId/'),
       headers: headers,
     );
@@ -282,9 +338,14 @@ class ApiService {
   // Company Profile
   Future<CompanyProfile?> getCompanyProfile() async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/company-profile/'), headers: headers);
+    final response = await _client.get(
+      Uri.parse('$baseUrl/company-profile/'),
+      headers: headers,
+    );
     if (response.statusCode == 200) {
-      return CompanyProfile.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+      return CompanyProfile.fromMap(
+        jsonDecode(utf8.decode(response.bodyBytes)),
+      );
     } else if (response.statusCode == 401) {
       return null;
     } else {
@@ -294,22 +355,30 @@ class ApiService {
 
   Future<CompanyProfile> updateCompanyProfile(CompanyProfile profile) async {
     final headers = await _getHeaders();
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('$baseUrl/company-profile/'),
       headers: headers,
       body: jsonEncode(profile.toMap()),
     );
     if (response.statusCode == 200) {
-      return CompanyProfile.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+      return CompanyProfile.fromMap(
+        jsonDecode(utf8.decode(response.bodyBytes)),
+      );
     } else {
       throw Exception('Firma profili güncellenemedi');
     }
   }
 
   // --- Generic list helper ---
-  Future<List<T>> _readList<T>(String path, T Function(Map<String, dynamic>) fromMap) async {
+  Future<List<T>> _readList<T>(
+    String path,
+    T Function(Map<String, dynamic>) fromMap,
+  ) async {
     final headers = await _getHeaders();
-    final response = await http.get(Uri.parse('$baseUrl/$path'), headers: headers);
+    final response = await _client.get(
+      Uri.parse('$baseUrl/$path'),
+      headers: headers,
+    );
     if (response.statusCode == 200) {
       final List data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => fromMap(json as Map<String, dynamic>)).toList();
@@ -318,7 +387,8 @@ class ApiService {
     }
   }
 
-  Future<List<Category>> readAllCategories() => _readList('categories/', Category.fromMap);
+  Future<List<Category>> readAllCategories() =>
+      _readList('categories/', Category.fromMap);
 
   Future<Category> createCategory({
     required String name,
@@ -327,21 +397,31 @@ class ApiService {
     String group = '',
   }) async {
     final headers = await _getHeaders();
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/categories/'),
       headers: headers,
-      body: jsonEncode({'name': name, 'type': type, 'parent': parentId, 'group': group}),
+      body: jsonEncode({
+        'name': name,
+        'type': type,
+        'parent': parentId,
+        'group': group,
+      }),
     );
     if (response.statusCode == 201) {
       return Category.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
     } else {
-      throw Exception('Kategori eklenemedi: ${utf8.decode(response.bodyBytes)}');
+      throw Exception(
+        'Kategori eklenemedi: ${utf8.decode(response.bodyBytes)}',
+      );
     }
   }
 
   Future<void> deleteCategory(int id) async {
     final headers = await _getHeaders();
-    final response = await http.delete(Uri.parse('$baseUrl/categories/$id/'), headers: headers);
+    final response = await _client.delete(
+      Uri.parse('$baseUrl/categories/$id/'),
+      headers: headers,
+    );
     if (response.statusCode != 204 && response.statusCode != 200) {
       throw Exception('Kategori silinemedi');
     }
@@ -354,13 +434,15 @@ class ApiService {
     T Function(Map<String, dynamic>) fromMap,
   ) async {
     final headers = await _getHeaders();
-    final response = await http.post(
+    final response = await _client.post(
       Uri.parse('$baseUrl/$path'),
       headers: headers,
       body: jsonEncode(body),
     );
     if (response.statusCode == 201 || response.statusCode == 200) {
-      return fromMap(jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>);
+      return fromMap(
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+      );
     }
     throw Exception('$path oluşturulamadı: ${utf8.decode(response.bodyBytes)}');
   }
@@ -372,61 +454,80 @@ class ApiService {
     T Function(Map<String, dynamic>) fromMap,
   ) async {
     final headers = await _getHeaders();
-    final response = await http.put(
+    final response = await _client.put(
       Uri.parse('$baseUrl/$path$id/'),
       headers: headers,
       body: jsonEncode(body),
     );
     if (response.statusCode == 200) {
-      return fromMap(jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>);
+      return fromMap(
+        jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>,
+      );
     }
     throw Exception('$path güncellenemedi: ${utf8.decode(response.bodyBytes)}');
   }
 
   Future<void> _delete(String path, int id) async {
     final headers = await _getHeaders();
-    final response = await http.delete(Uri.parse('$baseUrl/$path$id/'), headers: headers);
+    final response = await _client.delete(
+      Uri.parse('$baseUrl/$path$id/'),
+      headers: headers,
+    );
     if (response.statusCode != 204 && response.statusCode != 200) {
       throw Exception('$path silinemedi');
     }
   }
 
   // Contacts
-  Future<List<Contact>> readAllContacts() => _readList('contacts/', Contact.fromMap);
-  Future<Contact> createContact(Contact c) => _create('contacts/', c.toMap(), Contact.fromMap);
-  Future<Contact> updateContact(Contact c) => _update('contacts/', c.id!, c.toMap(), Contact.fromMap);
+  Future<List<Contact>> readAllContacts() =>
+      _readList('contacts/', Contact.fromMap);
+  Future<Contact> createContact(Contact c) =>
+      _create('contacts/', c.toMap(), Contact.fromMap);
+  Future<Contact> updateContact(Contact c) =>
+      _update('contacts/', c.id!, c.toMap(), Contact.fromMap);
   Future<void> deleteContact(int id) => _delete('contacts/', id);
 
   // Loans
   Future<List<Loan>> readAllLoans() => _readList('loans/', Loan.fromMap);
   Future<Loan> createLoan(Loan l) => _create('loans/', l.toMap(), Loan.fromMap);
-  Future<Loan> updateLoan(Loan l) => _update('loans/', l.id!, l.toMap(), Loan.fromMap);
+  Future<Loan> updateLoan(Loan l) =>
+      _update('loans/', l.id!, l.toMap(), Loan.fromMap);
   Future<void> deleteLoan(int id) => _delete('loans/', id);
 
   // Cheques
-  Future<List<Cheque>> readAllCheques() => _readList('cheques/', Cheque.fromMap);
-  Future<Cheque> createCheque(Cheque c) => _create('cheques/', c.toMap(), Cheque.fromMap);
-  Future<Cheque> updateCheque(Cheque c) => _update('cheques/', c.id!, c.toMap(), Cheque.fromMap);
+  Future<List<Cheque>> readAllCheques() =>
+      _readList('cheques/', Cheque.fromMap);
+  Future<Cheque> createCheque(Cheque c) =>
+      _create('cheques/', c.toMap(), Cheque.fromMap);
+  Future<Cheque> updateCheque(Cheque c) =>
+      _update('cheques/', c.id!, c.toMap(), Cheque.fromMap);
   Future<void> deleteCheque(int id) => _delete('cheques/', id);
 
   // Sales
   Future<List<Sale>> readAllSales() => _readList('sales/', Sale.fromMap);
   Future<Sale> createSale(Sale s) => _create('sales/', s.toMap(), Sale.fromMap);
-  Future<Sale> updateSale(Sale s) => _update('sales/', s.id!, s.toMap(), Sale.fromMap);
+  Future<Sale> updateSale(Sale s) =>
+      _update('sales/', s.id!, s.toMap(), Sale.fromMap);
   Future<void> deleteSale(int id) => _delete('sales/', id);
 
   // Receivables
-  Future<List<Receivable>> readAllReceivables() => _readList('receivables/', Receivable.fromMap);
-  Future<Receivable> createReceivable(Receivable r) => _create('receivables/', r.toMap(), Receivable.fromMap);
-  Future<Receivable> updateReceivable(Receivable r) => _update('receivables/', r.id!, r.toMap(), Receivable.fromMap);
+  Future<List<Receivable>> readAllReceivables() =>
+      _readList('receivables/', Receivable.fromMap);
+  Future<Receivable> createReceivable(Receivable r) =>
+      _create('receivables/', r.toMap(), Receivable.fromMap);
+  Future<Receivable> updateReceivable(Receivable r) =>
+      _update('receivables/', r.id!, r.toMap(), Receivable.fromMap);
   Future<void> deleteReceivable(int id) => _delete('receivables/', id);
 
   // Budget Lines
-  Future<List<BudgetLine>> readAllBudgetLines() => _readList('budget-lines/', BudgetLine.fromMap);
+  Future<List<BudgetLine>> readAllBudgetLines() =>
+      _readList('budget-lines/', BudgetLine.fromMap);
   Future<List<BudgetLine>> readBudgetLinesForProject(int projectId) =>
       _readList('budget-lines/?project_id=$projectId', BudgetLine.fromMap);
-  Future<BudgetLine> createBudgetLine(BudgetLine b) => _create('budget-lines/', b.toMap(), BudgetLine.fromMap);
-  Future<BudgetLine> updateBudgetLine(BudgetLine b) => _update('budget-lines/', b.id!, b.toMap(), BudgetLine.fromMap);
+  Future<BudgetLine> createBudgetLine(BudgetLine b) =>
+      _create('budget-lines/', b.toMap(), BudgetLine.fromMap);
+  Future<BudgetLine> updateBudgetLine(BudgetLine b) =>
+      _update('budget-lines/', b.id!, b.toMap(), BudgetLine.fromMap);
   Future<void> deleteBudgetLine(int id) => _delete('budget-lines/', id);
 
   // Recurring Transactions

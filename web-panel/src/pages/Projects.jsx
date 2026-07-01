@@ -1,0 +1,153 @@
+import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, ArrowRight, ChevronRight } from 'lucide-react'
+import { useData } from '../context/DataContext'
+import { formatCurrency, num, parseStatusColor, withAlpha15, projectImage } from '../utils'
+
+export default function Projects() {
+  const navigate = useNavigate()
+  const { projects, transactions, loading, loaded, error } = useData()
+
+  // İşlemleri proje bazında grupla (mobil provider mantığı).
+  const txByProject = useMemo(() => {
+    const map = new Map()
+    for (const t of transactions) {
+      const pid = t.project_id
+      if (pid == null) continue
+      if (!map.has(pid)) map.set(pid, [])
+      map.get(pid).push(t)
+    }
+    return map
+  }, [transactions])
+
+  const computeCard = (project) => {
+    const list = txByProject.get(project.id) || []
+    const totalCost = num(project.estimated_total_cost)
+    const totalGider = list.filter((t) => t.type === 'Gider').reduce((s, t) => s + num(t.amount), 0)
+    const tahsilat = list.filter((t) => t.type === 'Tahsilat' || t.type === 'Gelir').reduce((s, t) => s + num(t.amount), 0)
+    const satis = list.filter((t) => t.type === 'Satış').reduce((s, t) => s + num(t.amount), 0)
+    const realizationPercent = totalCost > 0 ? Math.trunc((totalGider / totalCost) * 100) : 0
+    const kar = satis - totalCost
+    const karPercent = satis > 0 ? Math.trunc((kar / satis) * 100) : 0
+    return { totalCost, tahsilat, satis, realizationPercent, karPercent }
+  }
+
+  if (loading && !loaded) {
+    return (
+      <div className="page-loader">
+        <span className="loader" style={{ borderTopColor: 'var(--color-accent)', borderColor: 'var(--color-border)', borderTopWidth: 3, width: 32, height: 32 }} />
+      </div>
+    )
+  }
+
+  if (error && !loaded) {
+    return (
+      <div className="summary-box">
+        <div className="empty-state">
+          <span className="text-danger" style={{ fontWeight: 700 }}>{error}</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {projects.length > 0 && (
+        <div className="section-header" style={{ marginTop: 0 }}>
+          <span className="section-title" style={{ color: 'var(--color-primary)' }}>DEVAM EDEN PROJELER</span>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn-inline-text" disabled>
+              Tümü <ArrowRight size={14} />
+            </button>
+            <button className="btn-inline-text" disabled>
+              <Plus size={16} /> Yeni Proje
+            </button>
+          </div>
+        </div>
+      )}
+
+      {projects.length === 0 ? (
+        <div className="empty-state" style={{ padding: '5rem 0' }}>
+          <div className="empty-circle">
+            <Plus size={40} />
+          </div>
+          <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+            Henüz bir projeniz yok
+          </span>
+        </div>
+      ) : (
+        <div className="projects-grid">
+          {projects.map((project) => {
+            const { totalCost, tahsilat, satis, realizationPercent, karPercent } = computeCard(project)
+            const statusColor = parseStatusColor(project.status_color_hex)
+            const isZero = realizationPercent === 0
+            const percentColor = isZero ? 'var(--color-text-muted)' : 'var(--color-success)'
+            const imgUrl = projectImage(project)
+
+            return (
+              <div
+                key={project.id}
+                className="project-card"
+                onClick={() => navigate(`/dashboard/projects/${project.id}`)}
+              >
+                {/* Üst satır */}
+                <div className="pcard-top">
+                  <div className="project-thumb" style={{ backgroundImage: `url(${imgUrl})` }} />
+
+                  <div className="pcard-info">
+                    <span
+                      className="status-badge-inline"
+                      style={{ color: statusColor, backgroundColor: withAlpha15(statusColor) }}
+                    >
+                      {project.status || '—'}
+                    </span>
+                    <div className="project-title">{project.name}</div>
+                    <div className="pcard-cost-label">Toplam Maliyet</div>
+                    <div className="pcard-cost-value">{formatCurrency(totalCost)}</div>
+                  </div>
+
+                  <div className="pcard-realization">
+                    <span className="pcard-mini-label">Gerçekleşme</span>
+                    <span className="pcard-percent" style={{ color: percentColor }}>%{realizationPercent}</span>
+                    <div className="pcard-progress">
+                      <div
+                        className="pcard-progress-fill"
+                        style={{ width: `${Math.min(realizationPercent, 100)}%`, background: percentColor }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pcard-divider" />
+
+                {/* Orta satır: Tahsilat / Satış / Kâr */}
+                <div className="pcard-stats">
+                  <div className="pcard-stat">
+                    <span className="pcard-mini-label">Tahsilat</span>
+                    <span className="pcard-stat-value">{formatCurrency(tahsilat)}</span>
+                  </div>
+                  <div className="pcard-stat">
+                    <span className="pcard-mini-label">Satış</span>
+                    <span className="pcard-stat-value">{formatCurrency(satis)}</span>
+                  </div>
+                  <div className="pcard-stat">
+                    <span className="pcard-mini-label">Kâr</span>
+                    <span className="pcard-stat-value" style={{ color: karPercent > 0 ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                      %{karPercent}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Detay linki */}
+                <div className="pcard-detail-link">
+                  <span>Detay</span>
+                  <ChevronRight size={14} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}

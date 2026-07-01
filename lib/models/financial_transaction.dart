@@ -93,10 +93,16 @@ class FinancialTransaction {
     return FinancialTransaction(
       id: map['id'],
       projectId: map['project_id'],
-      type: map['type'],
+      type: map['type'] ?? '',
       amount: map['amount']?.toDouble() ?? 0.0,
+<<<<<<< HEAD
       date: map['date'],
       category: map['category'],
+=======
+      currency: map['currency'] ?? 'TRY',
+      date: map['date'] ?? '',
+      category: map['category'] ?? '',
+>>>>>>> c55ac82 (a)
       description: map['description'] ?? '',
       fromAccountId: map['from_account'],
       toAccountId: map['to_account'],

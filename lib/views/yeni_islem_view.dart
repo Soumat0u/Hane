@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/models/finance_entities.dart';
-import 'package:hane/views/kasa_view.dart';
 import 'package:hane/views/widgets/bank_logo.dart';
 
 class YeniIslemScreen extends StatefulWidget {
@@ -35,13 +35,27 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   void initState() {
     super.initState();
     _selectedType = widget.initialType;
-    if (widget.initialProject != null) {
-      if (!_projects.contains(widget.initialProject!)) {
-        _projects.add(widget.initialProject!);
-      }
-      _selectedProject = widget.initialProject!;
-    }
   }
+
+  // Dropdown seçenekleri GERÇEK kullanıcı verisinden gelir (sabit demo listesi yok).
+  List<String> get _projectNames =>
+      Provider.of<FinanceProvider>(context, listen: false).projects.map((p) => p.name).toList();
+  List<String> get _accountNames =>
+      Provider.of<FinanceProvider>(context, listen: false).accounts.map((a) => a.name).toList();
+  List<String> get _bankNames => Provider.of<FinanceProvider>(context, listen: false)
+      .accounts
+      .where((a) => a.type == 'Banka')
+      .map((a) => a.name)
+      .toList();
+  List<String> get _contactNames =>
+      Provider.of<FinanceProvider>(context, listen: false).contacts.map((c) => c.name).toList();
+  List<String> _categoryNames(bool income) => Provider.of<FinanceProvider>(context, listen: false)
+      .categories
+      .where((c) => income ? c.isIncome : c.isCost)
+      .map((c) => c.name)
+      .toList();
+
+  bool _defaultsSet = false;
 
   @override
   void didUpdateWidget(covariant YeniIslemScreen oldWidget) {
@@ -55,50 +69,52 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
 
   // --- Ödeme Form States ---
   bool _isIncome = false; // false = Gider, true = Gelir
+<<<<<<< HEAD
   String _selectedProject = 'Akpınar';
   String _selectedCategory = 'Beton';
   String _selectedSource = 'Halkbank';
   bool _isSourceDropdownOpen = false;
   XFile? _pickedAttachment;
+=======
+  String _selectedProject = '';
+  String _selectedCategory = '';
+  String _selectedSource = '';
+>>>>>>> c55ac82 (a)
 
-  final TextEditingController _dateController = TextEditingController(text: '10 Haziran 2024');
-  final TextEditingController _dueDateController = TextEditingController(text: 'Seçiniz');
-  final TextEditingController _buyerSellerController = TextEditingController(text: 'Betoncu');
-  final TextEditingController _amountController = TextEditingController(text: '250.000');
-  final TextEditingController _descriptionController = TextEditingController(text: 'C25 beton ödemesi');
-
-  List<String> _projects = ['Akpınar', 'Sarayatik', 'Edibecan', 'Yenişehir', 'Güneşli', 'Beykent'];
-  final List<String> _categories = ['Beton', 'Demir', 'Hafriyat', 'İşçilik', 'Genel Gider'];
+  final TextEditingController _dateController = TextEditingController();
+  final TextEditingController _buyerSellerController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
 
   // --- Transfer Form States ---
-  String _transferTarih = '11 Haziran 2024';
-  String _transferGonderen = 'Nakit Kasa';
-  String _transferAlan = 'Halkbank';
+  String _transferTarih = '';
+  String _transferGonderen = '';
+  String _transferAlan = '';
   final TextEditingController _transferTutarController = TextEditingController();
   final TextEditingController _transferAciklamaController = TextEditingController();
 
   // --- Borclanma Form States ---
-  String _borclanmaTarih = '11 Haziran 2024';
+  String _borclanmaTarih = '';
   String _borclanmaVade = 'Seçiniz';
   String _borclanmaKategori = 'Tedarikçi Borcu';
-  String _borclanmaProje = 'Akpınar';
+  String _borclanmaProje = '';
   final TextEditingController _borclanilanKisiController = TextEditingController();
   final TextEditingController _borclanmaTutarController = TextEditingController();
   final TextEditingController _borclanmaAciklamaController = TextEditingController();
   final List<String> _borclanmaKategorileri = ['Tedarikçi Borcu', 'Banka Kredisi', 'Ortaklara Borçlar', 'Diğer'];
 
   // --- Kredi Kullanimi Form States ---
-  String _krediTarih = '11 Haziran 2024';
-  String _krediBanka = 'Halkbank';
-  String _krediProje = 'Akpınar';
+  String _krediTarih = '';
+  String _krediBanka = '';
+  String _krediProje = '';
   final TextEditingController _krediTutarController = TextEditingController();
   final TextEditingController _krediVadeController = TextEditingController();
   final TextEditingController _krediTaksitController = TextEditingController();
   final TextEditingController _krediAciklamaController = TextEditingController();
 
   // --- Satis Form States ---
-  String _satisTarih = '11 Haziran 2024';
-  String _satisProje = 'Akpınar Projesi';
+  String _satisTarih = '';
+  String _satisProje = '';
   final TextEditingController _satisMusteriController = TextEditingController();
   final TextEditingController _satisBlokDaireController = TextEditingController();
   final TextEditingController _satisBedeliController = TextEditingController();
@@ -106,36 +122,58 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   final TextEditingController _satisAciklamaController = TextEditingController();
 
   // --- Tahsilat Form States ---
-  String _tahsilatTarih = '27 Mayıs 2024';
+  String _tahsilatTarih = '';
   String _tahsilatKaynagi = 'Müşteri Alacakları';
-  String _tahsilatProje = 'Akpınar Projesi';
-  String _tahsilatMusteri = 'Mehmet Yılmaz';
+  String _tahsilatProje = '';
+  String _tahsilatMusteri = '';
   String _tahsilatOdemeYontemi = 'Banka';
-  String _tahsilatBankaHesabi = 'Halkbank - TR90 0001 2009 1234 5678 9000 01';
+  String _tahsilatBankaHesabi = '';
 
-  final TextEditingController _tahsilatAmountController = TextEditingController(text: '1.200.000');
-  final TextEditingController _tahsilatAciklamaController = TextEditingController(text: 'Daire Satışı - A Blok No:12');
+  final TextEditingController _tahsilatAmountController = TextEditingController();
+  final TextEditingController _tahsilatAciklamaController = TextEditingController();
   final TextEditingController _tahsilatNotController = TextEditingController();
 
   final List<String> _tahsilatKaynaklari = ['Müşteri Alacakları', 'Ortaklar Borç', 'Diğer Alacaklar'];
-  final List<String> _tahsilatProjeler = ['Akpınar Projesi', 'Sarayatik Projesi', 'Edibecan Projesi', 'Yenişehir Projesi', 'Güneşli Projesi', 'Beykent Projesi'];
-  final List<String> _tahsilatMusteriler = ['Mehmet Yılmaz', 'Ahmet Kaya', 'Caner Demir', 'Zeynep Kaya'];
-  final List<String> _bankAccounts = [
-    'Halkbank - TR90 0001 2009 1234 5678 9000 01',
-    'Ziraat - TR67 0001 0007 2345 6789 0000 02',
-    'Garanti - TR55 0008 2000 1230 0035 2987 03'
-  ];
-
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Varsayılan seçimleri bir kez gerçek kullanıcı verisinden ata.
+    if (!_defaultsSet) {
+      String first(List<String> l) => l.isNotEmpty ? l.first : '';
+      final projects = _projectNames;
+      final accounts = _accountNames;
+      final banks = _bankNames;
+      final contacts = _contactNames;
+
+      // Tarih alanları bugüne varsayılansın.
+      final today = _formatDate(DateTime.now());
+      _dateController.text = today;
+      _transferTarih = today;
+      _borclanmaTarih = today;
+      _krediTarih = today;
+      _satisTarih = today;
+      _tahsilatTarih = today;
+
+      _selectedProject = widget.initialProject ?? first(projects);
+      _selectedCategory = first(_categoryNames(_isIncome));
+      _selectedSource = first(accounts);
+      _transferGonderen = first(accounts);
+      _transferAlan = accounts.length > 1 ? accounts[1] : first(accounts);
+      _borclanmaProje = first(projects);
+      _krediProje = first(projects);
+      _krediBanka = first(banks);
+      _satisProje = first(projects);
+      _tahsilatProje = first(projects);
+      _tahsilatMusteri = first(contacts);
+      _tahsilatBankaHesabi = first(banks);
+      _defaultsSet = true;
+    }
   }
 
   @override
   void dispose() {
     _dateController.dispose();
-    _dueDateController.dispose();
     _buyerSellerController.dispose();
     _amountController.dispose();
     _descriptionController.dispose();
@@ -161,6 +199,33 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     _satisPesinatController.dispose();
     _satisAciklamaController.dispose();
     super.dispose();
+  }
+
+  static const List<String> _months = [
+    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  ];
+
+  // Tarihi "gün Ay yıl" (Türkçe) biçiminde döndürür.
+  static String _formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
+
+  // Türkçe "gün Ay yıl" veya ISO metni her zaman "yyyy-MM-dd" ISO biçimine çevirir.
+  // Backend ve tüm listeleme/özet ekranları tutarlı biçimde ayrıştırabilsin diye.
+  static String _isoDate(String display) {
+    final s = display.trim();
+    if (s.isEmpty || s == 'Seçiniz') return DateTime.now().toIso8601String().split('T').first;
+    final direct = DateTime.tryParse(s);
+    if (direct != null) return direct.toIso8601String().split('T').first;
+    final parts = s.split(RegExp(r'\s+'));
+    if (parts.length == 3) {
+      final day = int.tryParse(parts[0]);
+      final monthIdx = _months.indexOf(parts[1]) + 1;
+      final year = int.tryParse(parts[2]);
+      if (day != null && monthIdx > 0 && year != null) {
+        return DateTime(year, monthIdx, day).toIso8601String().split('T').first;
+      }
+    }
+    return DateTime.now().toIso8601String().split('T').first;
   }
 
   String _getAmountText() {
@@ -236,7 +301,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 10.0),
+                padding: centeredPagePadding(context, maxContentWidth: 560, horizontal: 20, top: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -264,11 +329,30 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                 onPressed: () async {
                   final amountText = _getAmountText().replaceAll(RegExp(r'[^0-9]'), '');
                   final amount = double.tryParse(amountText) ?? 0.0;
-                  
+
                   final fp = Provider.of<FinanceProvider>(context, listen: false);
+
+                  // Girdi doğrulaması: tutar ve para hareketi olan tiplerde hesap zorunlu.
+                  if (amount <= 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Lütfen geçerli bir tutar girin.'), backgroundColor: Colors.red),
+                    );
+                    return;
+                  }
+                  const accountRequiredTypes = {'Ödeme', 'Transfer', 'Tahsilat', 'Kredi Kullanımı'};
+                  if (accountRequiredTypes.contains(_selectedType) && fp.accounts.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Bu işlem için önce Kasa bölümünden bir hesap eklemelisiniz.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
                   int? projectId;
                   String selectedProjectName = '';
-                  
+
                   if (_selectedType == 'Tahsilat') {
                     selectedProjectName = _tahsilatProje;
                   } else if (_selectedType == 'Borçlanma') {
@@ -282,7 +366,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   }
 
                   if (selectedProjectName.isNotEmpty) {
-                    final p = fp.projects.where((p) => p.name.contains(selectedProjectName) || selectedProjectName.contains(p.name)).firstOrNull;
+                    final p = fp.projects.where((p) => p.name == selectedProjectName).firstOrNull ??
+                        fp.projects
+                            .where((p) => p.name.contains(selectedProjectName) || selectedProjectName.contains(p.name))
+                            .firstOrNull;
                     if (p != null) projectId = p.id;
                   }
 
@@ -315,11 +402,11 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                      type = _isIncome ? 'Gelir' : 'Gider';
                      category = _selectedCategory;
                      source = _selectedSource;
-                     date = _dateController.text;
+                     date = _isoDate(_dateController.text);
                   } else if (_selectedType == 'Kredi Kullanımı') {
                      category = 'Kredi Kullanımı';
                      source = _krediBanka;
-                     date = _krediTarih;
+                     date = _isoDate(_krediTarih);
                      
                      // Ayrıca bir Kredi (Loan) kaydı oluştur
                      final l = Loan(
@@ -331,7 +418,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   } else if (_selectedType == 'Borçlanma') {
                      category = 'Borçlanma';
                      source = _borclanilanKisiController.text;
-                     date = _borclanmaVade;
+                     date = _isoDate(_borclanmaVade);
                      
                      // Önce tedarikçiyi bul veya yarat
                      Contact? contact = fp.contacts.where((c) => c.name.toLowerCase() == _borclanilanKisiController.text.toLowerCase()).firstOrNull;
@@ -359,41 +446,50 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                        description: _borclanmaAciklamaController.text,
                      );
 
-                     await fp.addTransaction(t);
+                      try {
+                        await fp.addTransaction(t);
 
-                     ScaffoldMessenger.of(context).showSnackBar(
-                       SnackBar(
-                         content: Row(
-                           children: [
-                             Icon(Icons.check_circle_rounded, color: context.colors.surface, size: 20),
-                             const SizedBox(width: 10),
-                             Expanded(
-                               child: Text(
-                                 '$_selectedType başarıyla kaydedildi!',
-                                 style: const TextStyle(fontWeight: FontWeight.w600),
-                               ),
-                             ),
-                           ],
-                         ),
-                         backgroundColor: context.colors.success,
-                       ),
-                     );
-                     if (widget.onBack != null) {
-                       widget.onBack!();
-                     }
-                     return; // Metottan çık
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                Icon(Icons.check_circle_rounded, color: context.colors.surface, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    '$_selectedType başarıyla kaydedildi!',
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: context.colors.success,
+                          ),
+                        );
+                        if (widget.onBack != null) {
+                          widget.onBack!();
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                        );
+                      }
+                      return; // Metottan çık
                   } else if (_selectedType == 'Tahsilat') {
                      category = 'Satış';
                      source = _tahsilatBankaHesabi.split(' - ').first;
-                     date = _tahsilatTarih;
+                     date = _isoDate(_tahsilatTarih);
                   } else if (_selectedType == 'Transfer') {
                      category = 'Transfer';
                      source = _transferGonderen;
                      dest = _transferAlan;
-                     date = _transferTarih;
+                     date = _isoDate(_transferTarih);
+                  } else if (_selectedType == 'Satış') {
+                     category = 'Satış';
+                     date = _isoDate(_satisTarih);
                   } else {
                      category = 'Diğer';
-                     date = DateTime.now().toString();
+                     date = DateTime.now().toIso8601String().split('T').first;
                   }
 
                   final t = FinancialTransaction(
@@ -558,6 +654,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   onTap: () {
                     setState(() {
                       _isIncome = true;
+                      final cats = _categoryNames(true);
+                      _selectedCategory = cats.contains(_selectedCategory)
+                          ? _selectedCategory
+                          : (cats.isNotEmpty ? cats.first : '');
                     });
                   },
                   child: Container(
@@ -587,6 +687,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   onTap: () {
                     setState(() {
                       _isIncome = false;
+                      final cats = _categoryNames(false);
+                      _selectedCategory = cats.contains(_selectedCategory)
+                          ? _selectedCategory
+                          : (cats.isNotEmpty ? cats.first : '');
                     });
                   },
                   child: Container(
@@ -619,7 +723,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'PROJE',
           child: _buildSimpleDropdown(
             value: _selectedProject,
-            items: _projects,
+            items: _projectNames,
+            emptyHint: 'Önce proje ekleyin',
             onChanged: (val) {
               setState(() {
                 _selectedProject = val!;
@@ -633,7 +738,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'KATEGORİ',
           child: _buildSimpleDropdown(
             value: _selectedCategory,
-            items: _categories,
+            items: _categoryNames(_isIncome),
+            emptyHint: 'Kategori bulunamadı',
             onChanged: (val) {
               setState(() {
                 _selectedCategory = val!;
@@ -907,7 +1013,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             prefixIcon: Icons.business_center_outlined,
             prefixColor: context.colors.accent,
             value: _tahsilatProje,
-            items: _tahsilatProjeler,
+            items: _projectNames,
+            emptyHint: 'Önce proje ekleyin',
             onChanged: (val) {
               setState(() {
                 _tahsilatProje = val!;
@@ -924,7 +1031,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             prefixIcon: Icons.account_circle_outlined,
             prefixColor: const Color(0xFF8B5CF6),
             value: _tahsilatMusteri,
-            items: _tahsilatMusteriler,
+            items: _contactNames,
+            emptyHint: 'Önce cari ekleyin',
             onChanged: (val) {
               setState(() {
                 _tahsilatMusteri = val!;
@@ -1003,7 +1111,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
               prefixIcon: Icons.account_balance_rounded,
               prefixColor: context.colors.accent,
               value: _tahsilatBankaHesabi,
-              items: _bankAccounts,
+              items: _bankNames,
+              emptyHint: 'Önce banka hesabı ekleyin',
               onChanged: (val) {
                 setState(() {
                   _tahsilatBankaHesabi = val!;
@@ -1140,11 +1249,14 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     required String value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
+    String emptyHint = 'Kayıt bulunamadı',
   }) {
+    if (items.isEmpty) return _buildEmptyDropdownHint(emptyHint);
+    final safeValue = items.contains(value) ? value : items.first;
     return SizedBox(
       height: 48,
       child: DropdownButtonFormField<String>(
-        initialValue: value,
+        initialValue: safeValue,
         items: items
             .map((item) => DropdownMenuItem(
                   value: item,
@@ -1226,7 +1338,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'GÖNDEREN',
           child: _buildSimpleDropdown(
             value: _transferGonderen,
-            items: ['Nakit Kasa', 'Halkbank', 'Ziraat', 'Garanti', 'Akbank'],
+            items: _accountNames,
+            emptyHint: 'Önce hesap ekleyin',
             onChanged: (val) {
               setState(() {
                 _transferGonderen = val!;
@@ -1238,7 +1351,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'ALICI',
           child: _buildSimpleDropdown(
             value: _transferAlan,
-            items: ['Nakit Kasa', 'Halkbank', 'Ziraat', 'Garanti', 'Akbank'],
+            items: _accountNames,
+            emptyHint: 'Önce hesap ekleyin',
             onChanged: (val) {
               setState(() {
                 _transferAlan = val!;
@@ -1329,7 +1443,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'PROJE',
           child: _buildSimpleDropdown(
             value: _borclanmaProje,
-            items: _projects,
+            items: _projectNames,
+            emptyHint: 'Önce proje ekleyin',
             onChanged: (val) {
               setState(() {
                 _borclanmaProje = val!;
@@ -1442,7 +1557,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'BANKA',
           child: _buildSimpleDropdown(
             value: _krediBanka,
-            items: ['Halkbank', 'Ziraat', 'Garanti', 'Akbank', 'İş Bankası', 'Vakıfbank'],
+            items: _bankNames,
+            emptyHint: 'Önce banka hesabı ekleyin',
             onChanged: (val) {
               setState(() {
                 _krediBanka = val!;
@@ -1454,7 +1570,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'PROJE',
           child: _buildSimpleDropdown(
             value: _krediProje,
-            items: _projects,
+            items: _projectNames,
+            emptyHint: 'Önce proje ekleyin',
             onChanged: (val) {
               setState(() {
                 _krediProje = val!;
@@ -1542,7 +1659,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'PROJE',
           child: _buildSimpleDropdown(
             value: _satisProje,
-            items: _tahsilatProjeler, // Reusing projeler from Tahsilat
+            items: _projectNames,
+            emptyHint: 'Önce proje ekleyin',
             onChanged: (val) {
               setState(() {
                 _satisProje = val!;
@@ -1652,22 +1770,44 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     );
   }
 
+  // Boş liste durumunda gösterilen bilgilendirme kutusu (dropdown yerine).
+  Widget _buildEmptyDropdownHint(String hint) {
+    return Container(
+      height: 44,
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: context.colors.border),
+      ),
+      child: Text(
+        hint,
+        style: TextStyle(fontSize: 13, color: context.colors.textSecondary, fontStyle: FontStyle.italic),
+      ),
+    );
+  }
+
   // Simple Dropdown helper (Ödeme form)
   Widget _buildSimpleDropdown({
     required String value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
+    String emptyHint = 'Kayıt bulunamadı',
   }) {
+    if (items.isEmpty) return _buildEmptyDropdownHint(emptyHint);
+    final safeValue = items.contains(value) ? value : items.first;
     return SizedBox(
       height: 44,
       child: DropdownButtonFormField<String>(
-        initialValue: value,
+        isExpanded: true,
+        initialValue: safeValue,
         items: items
             .map((item) => DropdownMenuItem(
                   value: item,
                   child: Text(
                     item,
                     style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.w500),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ))
             .toList(),

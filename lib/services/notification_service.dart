@@ -17,6 +17,7 @@ class NotificationService {
   static const _channelName = 'Vade Hatırlatmaları';
 
   Future<void> init() async {
+    if (kIsWeb) return;
     if (_initialized) return;
     try {
       tz.initializeTimeZones();
@@ -32,6 +33,7 @@ class NotificationService {
   }
 
   Future<void> requestPermission() async {
+    if (kIsWeb) return;
     try {
       await _plugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
@@ -46,6 +48,7 @@ class NotificationService {
 
   /// Tüm zamanlanmış bildirimleri iptal eder.
   Future<void> cancelAll() async {
+    if (kIsWeb) return;
     try {
       await _plugin.cancelAll();
     } catch (e) {
@@ -67,6 +70,7 @@ class NotificationService {
   /// Verilen vade listesinden, gelecekteki (bugünden sonraki ~30 gün) kalemler için
   /// bildirim zamanlar. Önce mevcut bildirimleri temizler.
   Future<void> syncDueReminders(List<DuePayment> items) async {
+    if (kIsWeb) return;
     if (!_initialized) await init();
     if (!_initialized) return;
     await cancelAll();

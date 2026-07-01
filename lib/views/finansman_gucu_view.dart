@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
@@ -37,7 +38,7 @@ class FinansmanGucuView extends StatelessWidget {
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 8.0, bottom: 24.0),
+              padding: centeredPagePadding(context, maxContentWidth: 760, top: 8.0, bottom: 24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

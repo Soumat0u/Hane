@@ -92,6 +92,7 @@ class FinanceProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+<<<<<<< HEAD
       _projects = await ApiService.instance.readAllProjects();
       _accounts = await ApiService.instance.readAllAccounts();
       _allTransactions = await ApiService.instance.readAllTransactions();
@@ -105,6 +106,32 @@ class FinanceProvider extends ChangeNotifier {
       _budgetLines = await _safe(ApiService.instance.readAllBudgetLines, _budgetLines);
       _recurringTransactions =
           await _safe(ApiService.instance.readAllRecurringTransactions, _recurringTransactions);
+=======
+      final results = await Future.wait([
+        ApiService.instance.readAllProjects(),
+        ApiService.instance.readAllAccounts(),
+        ApiService.instance.readAllTransactions(),
+        _safe(ApiService.instance.readAllLoans, _loans),
+        _safe(ApiService.instance.readAllCheques, _cheques),
+        _safe(ApiService.instance.readAllSales, _sales),
+        _safe(ApiService.instance.readAllReceivables, _receivables),
+        _safe(ApiService.instance.readAllContacts, _contacts),
+        _safe(ApiService.instance.readAllCategories, _categories),
+        _safe(ApiService.instance.readAllBudgetLines, _budgetLines),
+      ]);
+
+      _projects = results[0] as List<Project>;
+      _accounts = results[1] as List<Account>;
+      _allTransactions = results[2] as List<FinancialTransaction>;
+      _loans = results[3] as List<Loan>;
+      _cheques = results[4] as List<Cheque>;
+      _sales = results[5] as List<Sale>;
+      _receivables = results[6] as List<Receivable>;
+      _contacts = results[7] as List<Contact>;
+      _categories = results[8] as List<Category>;
+      _budgetLines = results[9] as List<BudgetLine>;
+
+>>>>>>> c55ac82 (a)
       try {
         _companyProfile = await ApiService.instance.getCompanyProfile();
       } catch (e) {

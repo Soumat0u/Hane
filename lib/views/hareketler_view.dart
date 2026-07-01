@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/financial_transaction.dart';
@@ -33,7 +34,10 @@ class HareketlerView extends StatefulWidget {
   State<HareketlerView> createState() => _HareketlerViewState();
 }
 
-class _HareketlerViewState extends State<HareketlerView> {
+class _HareketlerViewState extends State<HareketlerView> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
   String _selectedFilter = 'Tümü';
   String _selectedProje = 'Tümü';
   String _selectedCari = 'Tümü';
@@ -98,6 +102,7 @@ class _HareketlerViewState extends State<HareketlerView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: context.colors.scaffold,
       body: Consumer<FinanceProvider>(
@@ -271,13 +276,16 @@ class _HareketlerViewState extends State<HareketlerView> {
                           ],
                         ),
                       )
-                    : ListView.separated(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        itemCount: filtered.length,
-                        separatorBuilder: (context, i) =>
-                            Divider(color: context.colors.border, height: 1),
-                        itemBuilder: (context, i) =>
-                            _buildTransactionItem(context, filtered[i], projectNames),
+                    : ResponsiveCenter(
+                        maxWidth: 820,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          itemCount: filtered.length,
+                          separatorBuilder: (context, i) =>
+                              Divider(color: context.colors.border, height: 1),
+                          itemBuilder: (context, i) =>
+                              _buildTransactionItem(context, filtered[i], projectNames),
+                        ),
                       ),
               ),
             ],

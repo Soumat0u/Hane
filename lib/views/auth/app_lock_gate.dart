@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:hane/theme/app_theme.dart';
 import 'package:local_auth/local_auth.dart';
@@ -22,7 +23,8 @@ class _AppLockGateState extends State<AppLockGate> {
   @override
   void initState() {
     super.initState();
-    if (!widget.enabled) {
+    if (kIsWeb || !widget.enabled) {
+      // Web'de biyometrik desteklenmez; kilidi açık geç.
       _unlocked = true;
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) => _authenticate());

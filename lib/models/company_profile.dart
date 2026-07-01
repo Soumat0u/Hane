@@ -13,6 +13,7 @@ class CompanyProfile {
   final String phone1;
   final String phone2;
   final String email;
+  final String website;
 
   CompanyProfile({
     this.id,
@@ -29,6 +30,7 @@ class CompanyProfile {
     required this.phone1,
     required this.phone2,
     required this.email,
+    required this.website,
   });
 
   Map<String, dynamic> toMap() {
@@ -47,6 +49,7 @@ class CompanyProfile {
       'phone1': phone1,
       'phone2': phone2,
       'email': email,
+      'website': website,
     };
   }
 
@@ -66,6 +69,7 @@ class CompanyProfile {
       phone1: map['phone1'] ?? '',
       phone2: map['phone2'] ?? '',
       email: map['email'] ?? '',
+      website: map['website'] ?? '',
     );
   }
 }

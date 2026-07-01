@@ -5,6 +5,7 @@ import 'package:hane/providers/settings_provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/services/notification_service.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 
 class AyarlarView extends StatefulWidget {
   const AyarlarView({super.key});
@@ -51,7 +52,7 @@ class _AyarlarViewState extends State<AyarlarView> {
         centerTitle: true,
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16.0),
+        padding: centeredPagePadding(context, maxContentWidth: 700, horizontal: 16, top: 16, bottom: 16),
         physics: const BouncingScrollPhysics(),
         children: [
           _buildSectionTitle('Uygulama Tercihleri'),
@@ -79,7 +80,6 @@ class _AyarlarViewState extends State<AyarlarView> {
             settings.biometricEnabled,
             (val) => context.read<SettingsProvider>().setBiometric(val),
           ),
-          _buildActionTile('Şifre Değiştir', 'Hesap şifrenizi yenileyin', Icons.lock_outline, () {}),
 
           const SizedBox(height: 40),
           Center(
@@ -131,31 +131,6 @@ class _AyarlarViewState extends State<AyarlarView> {
           ),
           child: Icon(icon, color: context.colors.brand, size: 20),
         ),
-      ),
-    );
-  }
-
-  Widget _buildActionTile(String title, String subtitle, IconData icon, VoidCallback onTap) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.colors.border),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: context.colors.textPrimary)),
-        subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: context.colors.surfaceVariant,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: context.colors.brand, size: 20),
-        ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: context.colors.textSecondary),
       ),
     );
   }

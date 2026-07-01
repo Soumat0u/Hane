@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/services/api_service.dart';
 import 'package:hane/providers/finance_provider.dart';
@@ -70,7 +71,7 @@ class _RegisterViewState extends State<RegisterView> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+            padding: centeredPagePadding(context, maxContentWidth: 440, horizontal: 24, top: 20, bottom: 20),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
