@@ -76,9 +76,9 @@ class NewTransactionPanel extends StatelessWidget {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.surface,
+        color: iconColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.colors.border),
+        border: Border.all(color: iconColor.withValues(alpha: 0.20)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(5),
@@ -102,7 +102,7 @@ class NewTransactionPanel extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
+                  color: iconColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: iconColor, size: 24),
@@ -113,7 +113,7 @@ class NewTransactionPanel extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: context.colors.textSecondary,
+                  color: iconColor,
                 ),
                 textAlign: TextAlign.center,
               ),
