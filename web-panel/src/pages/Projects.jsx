@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ArrowRight, ChevronRight, CheckCircle, Circle } from 'lucide-react'
+import { Plus, ArrowRight, ChevronRight, CheckCircle, Circle, Edit2, Trash2, X } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num, parseStatusColor, withAlpha15, projectImage } from '../utils'
 import ProjectFormModal from '../components/ProjectFormModal'
@@ -91,25 +91,56 @@ export default function Projects() {
           >
             {isEditMode ? `${selectedIds.length} SEÇİLİ` : 'DEVAM EDEN PROJELER'}
           </span>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             {isEditMode ? (
               <>
                 <button
                   className="btn-inline-text text-danger"
                   onClick={handleDeleteSelected}
                   disabled={selectedIds.length === 0}
-                  style={{ color: 'var(--color-danger, #ef4444)', opacity: selectedIds.length === 0 ? 0.5 : 1 }}
+                  style={{
+                    color: 'var(--color-danger, #ef4444)',
+                    opacity: selectedIds.length === 0 ? 0.5 : 1,
+                    padding: '6px',
+                    minWidth: 'auto',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Seçilenleri Sil"
                 >
-                  Seçilenleri Sil
+                  <Trash2 size={16} />
                 </button>
-                <button className="btn-inline-text" onClick={handleToggleEditMode}>
-                  Vazgeç
+                <button
+                  className="btn-inline-text"
+                  onClick={handleToggleEditMode}
+                  style={{
+                    padding: '6px',
+                    minWidth: 'auto',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Vazgeç"
+                >
+                  <X size={16} />
                 </button>
               </>
             ) : (
               <>
-                <button className="btn-inline-text" onClick={handleToggleEditMode}>
-                  Düzenle
+                <button
+                  className="btn-inline-text"
+                  onClick={handleToggleEditMode}
+                  style={{
+                    padding: '6px',
+                    minWidth: 'auto',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Düzenle"
+                >
+                  <Edit2 size={16} />
                 </button>
                 <button className="btn-inline-text" onClick={() => setCreateOpen(true)}>
                   <Plus size={16} /> Yeni Proje

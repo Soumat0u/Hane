@@ -355,11 +355,18 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   /// "+ Yeni Proje Ekle" butonu (Projeler sekmesinde gösterilir).
   Widget _yeniProjeButton(BuildContext context) {
-    return IconButton(
-      icon: Icon(Icons.add_rounded, color: context.colors.brand, size: 28),
+    return TextButton(
       onPressed: () {
         Navigator.push(context, MaterialPageRoute(builder: (context) => YeniProjeView()));
       },
+      style: TextButton.styleFrom(
+        foregroundColor: context.colors.brand,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      child: const Text(
+        '+ Yeni Proje Ekle',
+        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+      ),
     );
   }
 
