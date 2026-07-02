@@ -494,7 +494,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     sourceName: source,
                     destName: dest,
                     quantity: double.tryParse(_quantityController.text),
-                    unit: _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : null,
+                    unit: _unitController.text.trim(),
                   );
 
                   if (_selectedType == 'Ödeme' && _pickedAttachment != null) {
@@ -878,34 +878,21 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
 
-        // MİKTAR VE BİRİM (Opsiyonel)
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 2,
-                child: _buildFormRow(
-                  label: 'MİKTAR (Opsiyonel)',
-                  child: _buildTextField(
-                    controller: _quantityController,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 1,
-                child: _buildFormRow(
-                  label: 'BİRİM',
-                  child: _buildTextField(
-                    controller: _unitController,
-                    hintText: 'kg, adet...',
-                  ),
-                ),
-              ),
-            ],
+        // MİKTAR (Opsiyonel)
+        _buildFormRow(
+          label: 'MİKTAR (Opsiyonel)',
+          child: _buildTextField(
+            controller: _quantityController,
+            keyboardType: TextInputType.number,
+          ),
+        ),
+
+        // BİRİM (Opsiyonel)
+        _buildFormRow(
+          label: 'BİRİM',
+          child: _buildTextField(
+            controller: _unitController,
+            hintText: 'kg, adet, m2...',
           ),
         ),
 

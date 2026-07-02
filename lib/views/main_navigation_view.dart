@@ -132,7 +132,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             bottom: false,
             child: Column(
               children: [
-                if (_currentTabIndex != 2 && _currentTabIndex != 4)
+                if (_currentTabIndex != 2)
                   Padding(
                     padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 12.0, bottom: 4.0),
                     child: Row(

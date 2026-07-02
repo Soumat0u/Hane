@@ -110,43 +110,18 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
     if (_isLoading) {
       return Scaffold(
         backgroundColor: context.colors.scaffold,
-        appBar: AppBar(
-          title: Text('Profil', style: TextStyle(color: context.colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-          backgroundColor: context.colors.surface,
-          elevation: 0,
-          iconTheme: IconThemeData(color: context.colors.textPrimary),
-        ),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
     return Scaffold(
       backgroundColor: context.colors.scaffold,
-      appBar: AppBar(
-        title: Text('Profil', style: TextStyle(color: context.colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-        backgroundColor: context.colors.surface,
-        elevation: 0,
-        iconTheme: IconThemeData(color: context.colors.textPrimary),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.edit_rounded, color: context.colors.brand),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FirmaDuzenleView(isOnboarding: false)),
-              ).then((_) => _loadData());
-            },
-            tooltip: 'Düzenle',
-          ),
-        ],
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: centeredPagePadding(context, maxContentWidth: 760, horizontal: 20, top: 8, bottom: 16),
+          padding: centeredPagePadding(context, maxContentWidth: 760, horizontal: 20, top: 16, bottom: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-
             // Company Info Card
             Container(
               decoration: BoxDecoration(
@@ -167,7 +142,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                       shape: BoxShape.circle,
                       border: Border.all(color: context.colors.border),
                     ),
-                    padding: EdgeInsets.all(6.0),
+                    padding: const EdgeInsets.all(6.0),
                     child: CustomPaint(
                       painter: LogoPainter(brandColor: context.colors.brand),
                     ),
@@ -178,13 +153,35 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _companyProfile?.companyName ?? 'Şirket Adı',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: context.colors.brand,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _companyProfile?.companyName ?? 'Şirket Adı',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: context.colors.brand,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const FirmaDuzenleView(isOnboarding: false)),
+                                ).then((_) => _loadData());
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Icon(Icons.edit_rounded, color: context.colors.brand, size: 18),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         _buildMetaRow('Vergi Dairesi', _companyProfile?.taxOffice ?? ''),

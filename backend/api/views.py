@@ -148,16 +148,7 @@ class CategoryViewSet(_UserOwnedViewSet):
     serializer_class = CategorySerializer
 
     def get_queryset(self):
-        from django.core.management import call_command
-        import io
-        from rest_framework.exceptions import ValidationError
-        out = io.StringIO()
-        try:
-            call_command('migrate', interactive=False, stdout=out, stderr=out)
-            res = out.getvalue()
-        except Exception as e:
-            res = f"Exception: {e}\n{out.getvalue()}"
-        raise ValidationError({"migration_output": res})
+        qs = Category.objects.filter(user=self.request.user)
         # ?type=cost|income, ?parent=<id>, ?main=1 (sadece ana kategoriler)
         ctype = self.request.query_params.get('type')
         if ctype:
