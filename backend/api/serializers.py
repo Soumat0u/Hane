@@ -144,7 +144,7 @@ def apply_legacy_balance(user, transaction, sign):
         return
     if t.type == 'Gider':
         _adjust_account_balance(user, t.source_name, -t.amount * sign)
-    elif t.type in ('Gelir', 'Tahsilat'):
+    elif t.type in ('Gelir', 'Tahsilat', 'Kredi Kullanımı'):
         _adjust_account_balance(user, t.source_name, t.amount * sign)
     elif t.type == 'Transfer':
         _adjust_account_balance(user, t.source_name, -t.amount * sign)

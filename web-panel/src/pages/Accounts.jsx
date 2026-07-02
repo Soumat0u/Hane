@@ -1,13 +1,77 @@
+import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Plus, Wallet, Banknote, ArrowRight } from 'lucide-react'
+import { useData } from '../context/DataContext'
+import { formatCurrency, num } from '../utils'
+
+function AccountGroup({ title, accounts, iconClass, onItemClick }) {
+  return (
+    <div>
+      <div className="section-header">
+        <span className="section-title">{title}</span>
+        <button className="btn-inline-text" disabled>
+          <Plus size={16} /> Yeni İşlem
+        </button>
+      </div>
+      {accounts.length === 0 ? (
+        <div className="summary-box">
+          <div className="empty-state" style={{ padding: '1.5rem 0' }}>
+            <span>Kayıt bulunamadı.</span>
+          </div>
+        </div>
+      ) : (
+        <div className="list-group">
+          {accounts.map((a) => (
+            <div className="list-item" key={a.id} onClick={() => onItemClick(a)} style={{ cursor: 'pointer' }}>
+              <div className="list-icon-box">
+                <Banknote size={20} className={iconClass} />
+              </div>
+              <div className="list-item-content">
+                <div className="list-item-title">{a.name}</div>
+              </div>
+              <div className="list-item-value-box">
+                <div className="list-item-value">{formatCurrency(a.balance)}</div>
+              </div>
+              <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Accounts() {
-  const formatCurrency = (val) => {
-    return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val)
+  const navigate = useNavigate()
+  const { accounts, loading, loaded, error } = useData()
+
+  const bankAccounts = useMemo(() => accounts.filter((a) => a.type === 'Banka'), [accounts])
+  const cashAccounts = useMemo(() => accounts.filter((a) => a.type === 'Nakit'), [accounts])
+
+  const totalBankalar = useMemo(() => bankAccounts.reduce((s, a) => s + num(a.balance), 0), [bankAccounts])
+  const totalNakit = useMemo(() => cashAccounts.reduce((s, a) => s + num(a.balance), 0), [cashAccounts])
+  // Mobildeki `getTotalBalance()` ile aynı: TÜM hesapların (kredi kartı dahil) bakiye toplamı.
+  const kasaTotal = useMemo(() => accounts.reduce((s, a) => s + num(a.balance), 0), [accounts])
+
+  const goToAccount = (account) => navigate(`/dashboard/accounts/${account.id}`)
+
+  if (loading && !loaded) {
+    return (
+      <div className="page-loader">
+        <span className="loader" style={{ borderTopColor: 'var(--color-accent)', borderColor: 'var(--color-border)', borderTopWidth: 3, width: 32, height: 32 }} />
+      </div>
+    )
   }
 
-  const kasaTotal = 750000.00
-  const totalBankalar = 700000.00
-  const totalNakit = 50000.00
+  if (error && !loaded) {
+    return (
+      <div className="summary-box">
+        <div className="empty-state">
+          <span className="text-danger" style={{ fontWeight: 700 }}>{error}</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -22,68 +86,11 @@ export default function Accounts() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '2rem', alignItems: 'start' }}>
-        
+
         {/* SOL SÜTUN: Bankalar & Nakit */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          {/* BANKALAR */}
-          <div>
-            <div className="section-header">
-              <span className="section-title">BANKALAR</span>
-              <button className="btn-inline-text">
-                <Plus size={16} /> Yeni İşlem
-              </button>
-            </div>
-            <div className="list-group">
-              <div className="list-item">
-                <div className="list-icon-box">
-                  <Banknote size={20} className="text-info" />
-                </div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Halkbank</div>
-                </div>
-                <div className="list-item-value-box">
-                  <div className="list-item-value">{formatCurrency(500000)}</div>
-                </div>
-                <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
-              </div>
-              <div className="list-item">
-                <div className="list-icon-box">
-                  <Banknote size={20} className="text-danger" />
-                </div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Ziraat</div>
-                </div>
-                <div className="list-item-value-box">
-                  <div className="list-item-value">{formatCurrency(200000)}</div>
-                </div>
-                <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
-              </div>
-            </div>
-          </div>
-
-          {/* NAKİT */}
-          <div>
-            <div className="section-header">
-              <span className="section-title">NAKİT</span>
-              <button className="btn-inline-text">
-                <Plus size={16} /> Yeni İşlem
-              </button>
-            </div>
-            <div className="list-group">
-              <div className="list-item">
-                <div className="list-icon-box">
-                  <Banknote size={20} className="text-success" />
-                </div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Merkez Kasa</div>
-                </div>
-                <div className="list-item-value-box">
-                  <div className="list-item-value">{formatCurrency(50000)}</div>
-                </div>
-                <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
-              </div>
-            </div>
-          </div>
+          <AccountGroup title="BANKALAR" accounts={bankAccounts} iconClass="text-info" onItemClick={goToAccount} />
+          <AccountGroup title="NAKİT" accounts={cashAccounts} iconClass="text-success" onItemClick={goToAccount} />
         </div>
 
         {/* SAĞ SÜTUN: Özet */}

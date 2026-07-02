@@ -1,14 +1,28 @@
+import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Shield, Plus, Building, CreditCard, PiggyBank, ArrowRight } from 'lucide-react'
+import { useData } from '../context/DataContext'
+import { num } from '../utils'
 
 export default function FinancePower() {
+  const navigate = useNavigate()
+  const { accounts } = useData()
+
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val)
   }
 
+  const creditCardAccounts = useMemo(() => accounts.filter((a) => a.type === 'Kredi Kartı'), [accounts])
+
   const fTotal = 18250000.0
   const bchTotal = 8000000.0
-  const cardLimitTotal = 500000.0
+  const cardLimitTotal = useMemo(
+    () => creditCardAccounts.reduce((s, a) => s + num(a.available_limit), 0),
+    [creditCardAccounts],
+  )
   const esnekTotal = 1750000.0
+
+  const goToAccount = (account) => navigate(`/dashboard/accounts/${account.id}`)
 
   return (
     <div>
@@ -65,34 +79,33 @@ export default function FinancePower() {
           <div>
             <div className="section-header">
               <span className="section-title">KART LİMİTLERİ</span>
-              <button className="btn-inline-text">
+              <button className="btn-inline-text" disabled>
                 <Plus size={16} /> Yeni Limit
               </button>
             </div>
-            <div className="list-group">
-              <div className="list-item">
-                <div className="list-icon-box"><CreditCard size={20} className="text-danger" /></div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Ziraat Bankkart</div>
-                  <div className="list-item-subtitle">Kullanılabilir</div>
+            {creditCardAccounts.length === 0 ? (
+              <div className="summary-box">
+                <div className="empty-state" style={{ padding: '1.5rem 0' }}>
+                  <span>Kayıtlı kredi kartı bulunamadı.</span>
                 </div>
-                <div className="list-item-value-box">
-                  <div className="list-item-value">{formatCurrency(300000)}</div>
-                </div>
-                <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
               </div>
-              <div className="list-item">
-                <div className="list-icon-box"><CreditCard size={20} className="text-primary" /></div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Finansbank CardFinans</div>
-                  <div className="list-item-subtitle">Kullanılabilir</div>
-                </div>
-                <div className="list-item-value-box">
-                  <div className="list-item-value">{formatCurrency(200000)}</div>
-                </div>
-                <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
+            ) : (
+              <div className="list-group">
+                {creditCardAccounts.map((a) => (
+                  <div className="list-item" key={a.id} onClick={() => goToAccount(a)} style={{ cursor: 'pointer' }}>
+                    <div className="list-icon-box"><CreditCard size={20} className="text-danger" /></div>
+                    <div className="list-item-content">
+                      <div className="list-item-title">{a.name}</div>
+                      <div className="list-item-subtitle">Kullanılabilir</div>
+                    </div>
+                    <div className="list-item-value-box">
+                      <div className="list-item-value">{formatCurrency(a.available_limit)}</div>
+                    </div>
+                    <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
           {/* ESNEK HESAPLAR */}

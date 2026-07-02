@@ -105,18 +105,18 @@ function DeleteModal({ onClose, onConfirm }) {
   }
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
+      <div className="modal" style={{ maxWidth: 340 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ padding: '1rem 1.25rem' }}>
           <span className="modal-title">İşlemi Sil</span>
-          <button className="modal-close" onClick={onClose} title="Kapat"><X size={20} /></button>
+          <button className="modal-close" onClick={onClose} title="Kapat"><X size={18} /></button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body" style={{ padding: '0.25rem 1.25rem 1.1rem' }}>
           {err && <div className="error-message">{err}</div>}
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.92rem' }}>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', margin: 0 }}>
             Bu işlemi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
           </p>
         </div>
-        <div className="modal-footer">
+        <div className="modal-footer" style={{ padding: '0 1.25rem 1.1rem' }}>
           <button type="button" className="btn-ghost" onClick={onClose} disabled={deleting}>Vazgeç</button>
           <button type="button" className="btn-danger" onClick={handleDelete} disabled={deleting}>
             {deleting ? <><span className="loader" /> Siliniyor...</> : 'Sil'}
@@ -263,11 +263,19 @@ export default function TransactionDetail() {
             {menuOpen && (
               <>
                 <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
-                <div className="tx-menu" style={{ position: 'absolute', right: 0, top: '100%', marginTop: '0.5rem', background: '#fff', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '0.5rem', zIndex: 20, minWidth: '150px' }}>
-                  <button onClick={() => { setMenuOpen(false); setEditOpen(true) }} style={{ width: '100%', textAlign: 'left', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', borderRadius: '4px' }}>
+                <div
+                  className="tx-menu"
+                  style={{
+                    position: 'absolute', right: 0, top: '100%', marginTop: '0.5rem',
+                    background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                    borderRadius: '10px', boxShadow: 'var(--shadow-lg)', padding: '0.4rem',
+                    zIndex: 20, minWidth: '160px',
+                  }}
+                >
+                  <button className="tx-menu-item" onClick={() => { setMenuOpen(false); setEditOpen(true) }}>
                     <Pencil size={16} /> Düzenle
                   </button>
-                  <button onClick={() => { setMenuOpen(false); setDeleteOpen(true) }} style={{ width: '100%', textAlign: 'left', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--color-danger)', borderRadius: '4px' }}>
+                  <button className="tx-menu-item danger" onClick={() => { setMenuOpen(false); setDeleteOpen(true) }}>
                     <Trash2 size={16} /> Sil
                   </button>
                 </div>

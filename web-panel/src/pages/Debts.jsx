@@ -322,7 +322,7 @@ export default function Debts() {
 
         {/* SAĞ SÜTUN: Takvim & Yaklaşan Ödemeler */}
         <div>
-          <div className="section-header">
+          <div className="section-header" style={{ justifyContent: 'center', textAlign: 'center' }}>
             <span className="section-title">VADESİ DOLAN VE YAKLAŞAN ÖDEMELER</span>
           </div>
           <div className="calendar-card">

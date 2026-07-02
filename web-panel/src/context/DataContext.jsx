@@ -17,6 +17,7 @@ export function DataProvider({ children }) {
   const [cheques, setCheques] = useState([])
   const [receivables, setReceivables] = useState([])
   const [accounts, setAccounts] = useState([])
+  const [budgetLines, setBudgetLines] = useState([])
   const [loans, setLoans] = useState([])
   const [contacts, setContacts] = useState([])
   const [categories, setCategories] = useState([])
@@ -52,6 +53,7 @@ export function DataProvider({ children }) {
         api.get('/loans/'),
         api.get('/contacts/'),
         api.get('/categories/'),
+        api.get('/budget-lines/'),
       ])
 
       const projs = results[0].status === 'fulfilled' ? results[0].value : []
@@ -63,6 +65,7 @@ export function DataProvider({ children }) {
       const lns = results[6].status === 'fulfilled' ? results[6].value : []
       const cnts = results[7].status === 'fulfilled' ? results[7].value : []
       const cats = results[8].status === 'fulfilled' ? results[8].value : []
+      const bls = results[9].status === 'fulfilled' ? results[9].value : []
 
       setProjects(Array.isArray(projs) ? projs : [])
       setTransactions(Array.isArray(txns) ? txns : [])
@@ -72,6 +75,7 @@ export function DataProvider({ children }) {
       setLoans(Array.isArray(lns) ? lns : [])
       setContacts(Array.isArray(cnts) ? cnts : [])
       setCategories(Array.isArray(cats) ? cats : [])
+      setBudgetLines(Array.isArray(bls) ? bls : [])
       setCompanyProfile(profile)
       setLoaded(true)
     } catch {
@@ -143,6 +147,26 @@ export function DataProvider({ children }) {
     [load],
   )
 
+  /** Yeni bir işlem oluşturur (POST) ve veriyi tazeler. */
+  const addTransaction = useCallback(
+    async (body) => {
+      const created = await api.post('/transactions/', body)
+      await load()
+      return created
+    },
+    [load],
+  )
+
+  /** Yeni bir kredi (Loan) kaydı oluşturur ve veriyi tazeler. */
+  const addLoan = useCallback(
+    async (body) => {
+      const created = await api.post('/loans/', body)
+      await load()
+      return created
+    },
+    [load],
+  )
+
   /** Bir projeyi günceller (PUT) ve veriyi tazeler. */
   const updateProject = useCallback(
     async (id, body) => {
@@ -152,6 +176,32 @@ export function DataProvider({ children }) {
     },
     [load],
   )
+
+  /** Bir projeyi siler (DELETE) ve veriyi tazeler. */
+  const deleteProject = useCallback(
+    async (id) => {
+      await api.delete(`/projects/${id}/`)
+      await load()
+    },
+    [load],
+  )
+
+  const addBudgetLine = useCallback(async (body) => {
+    const created = await api.post('/budget-lines/', body)
+    await load()
+    return created
+  }, [load])
+
+  const updateBudgetLine = useCallback(async (id, body) => {
+    const updated = await api.put(`/budget-lines/${id}/`, body)
+    await load()
+    return updated
+  }, [load])
+
+  const deleteBudgetLine = useCallback(async (id) => {
+    await api.delete(`/budget-lines/${id}/`)
+    await load()
+  }, [load])
 
   const addCategory = useCallback(async (body) => {
     const created = await api.post('/categories/', body)
@@ -278,13 +328,20 @@ export function DataProvider({ children }) {
       loans,
       contacts,
       categories,
+      budgetLines,
       companyProfile,
       updateCompanyProfile,
       updateProject,
+      deleteProject,
       addCategory,
       updateCategory,
       deleteCategory,
+      addBudgetLine,
+      updateBudgetLine,
+      deleteBudgetLine,
       addDebt,
+      addTransaction,
+      addLoan,
       updateTransaction,
       deleteTransaction,
       notifications,
@@ -307,13 +364,20 @@ export function DataProvider({ children }) {
       loans,
       contacts,
       categories,
+      budgetLines,
       companyProfile,
       updateCompanyProfile,
       updateProject,
+      deleteProject,
       addCategory,
       updateCategory,
       deleteCategory,
+      addBudgetLine,
+      updateBudgetLine,
+      deleteBudgetLine,
       addDebt,
+      addTransaction,
+      addLoan,
       updateTransaction,
       deleteTransaction,
       notifications,

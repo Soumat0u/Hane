@@ -9,6 +9,7 @@ import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/account.dart';
 import 'package:hane/views/kasa_view.dart'; // For Kasa Painters (Garanti, etc)
+import 'package:hane/views/hareket_detay_view.dart';
 final dateFormat = DateFormat('dd.MM.yyyy HH:mm');
 
 class KasaDetayView extends StatelessWidget {
@@ -206,7 +207,7 @@ class KasaDetayView extends StatelessWidget {
                           // Determine if this transaction adds or subtracts from this account
                           bool isIncome = false;
                           
-                          if (t.type == 'Gelir' || t.type == 'Borçlanma' || t.type == 'Sermaye') {
+                          if (t.type == 'Gelir' || t.type == 'Borçlanma' || t.type == 'Sermaye' || t.type == 'Tahsilat' || t.type == 'Satış') {
                             // Money comes in, goes to destName
                             if (t.destName == account.name) isIncome = true;
                           } else if (t.type == 'Gider' || t.type == 'Geri Ödeme' || t.type == 'Kar Dağıtımı') {
@@ -257,59 +258,70 @@ class KasaDetayView extends StatelessWidget {
       counterpartyText = 'Bilinmeyen';
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.colors.border),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: bgColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 20),
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HareketDetayView(transaction: t),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  t.description.isNotEmpty ? t.description : t.type,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: context.colors.textPrimary,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.colors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.description.isNotEmpty ? t.description : t.type,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: context.colors.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${t.date} • $counterpartyText',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
+                  const SizedBox(height: 4),
+                  Text(
+                    '${t.date} • $counterpartyText',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${isIncome ? '+' : '-'}${currencyFormat.format(t.amount)}',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: color,
+            const SizedBox(width: 8),
+            Text(
+              '${isIncome ? '+' : '-'}${currencyFormat.format(t.amount)}',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

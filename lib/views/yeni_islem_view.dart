@@ -7,6 +7,7 @@ import 'package:hane/theme/app_theme.dart';
 import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/models/account.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/models/finance_entities.dart';
 import 'package:hane/views/widgets/bank_logo.dart';
@@ -35,6 +36,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   void initState() {
     super.initState();
     _selectedType = widget.initialType;
+    _isIncome = _selectedType == 'Tahsilat' || _selectedType == 'Gelir';
   }
 
   // Dropdown seçenekleri GERÇEK kullanıcı verisinden gelir (sabit demo listesi yok).
@@ -47,9 +49,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       .where((a) => a.type == 'Banka')
       .map((a) => a.name)
       .toList();
-  List<String> get _contactNames =>
-      Provider.of<FinanceProvider>(context, listen: false).contacts.map((c) => c.name).toList();
-
   bool _defaultsSet = false;
 
   @override
@@ -58,6 +57,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     if (widget.initialType != oldWidget.initialType) {
       setState(() {
         _selectedType = widget.initialType;
+        _isIncome = _selectedType == 'Tahsilat' || _selectedType == 'Gelir';
+        _updateCategoriesForType(_isIncome);
       });
     }
   }
@@ -112,20 +113,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   final TextEditingController _satisPesinatController = TextEditingController();
   final TextEditingController _satisAciklamaController = TextEditingController();
 
-  // --- Tahsilat Form States ---
-  String _tahsilatTarih = '';
-  String _tahsilatKaynagi = 'Müşteri Alacakları';
-  String _tahsilatProje = '';
-  String _tahsilatMusteri = '';
-  String _tahsilatOdemeYontemi = 'Banka';
-  String _tahsilatBankaHesabi = '';
-
-  final TextEditingController _tahsilatAmountController = TextEditingController();
-  final TextEditingController _tahsilatAciklamaController = TextEditingController();
-  final TextEditingController _tahsilatNotController = TextEditingController();
-
-  final List<String> _tahsilatKaynaklari = ['Müşteri Alacakları', 'Ortaklar Borç', 'Diğer Alacaklar'];
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -135,7 +122,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       final projects = _projectNames;
       final accounts = _accountNames;
       final banks = _bankNames;
-      final contacts = _contactNames;
 
       // Tarih alanları bugüne varsayılansın.
       final today = _formatDate(DateTime.now());
@@ -144,7 +130,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       _borclanmaTarih = today;
       _krediTarih = today;
       _satisTarih = today;
-      _tahsilatTarih = today;
 
       _selectedProject = widget.initialProject ?? first(projects);
       _updateCategoriesForType(_isIncome);
@@ -155,9 +140,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       _krediProje = first(projects);
       _krediBanka = first(banks);
       _satisProje = first(projects);
-      _tahsilatProje = first(projects);
-      _tahsilatMusteri = first(contacts);
-      _tahsilatBankaHesabi = first(banks);
       _defaultsSet = true;
     }
   }
@@ -170,10 +152,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     _quantityController.dispose();
     _unitController.dispose();
     _descriptionController.dispose();
-    _tahsilatAmountController.dispose();
-    _tahsilatAciklamaController.dispose();
-    _tahsilatNotController.dispose();
-    
+
     _transferTutarController.dispose();
     _transferAciklamaController.dispose();
     
@@ -223,12 +202,12 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
 
   String _getAmountText() {
     switch (_selectedType) {
-      case 'Tahsilat': return _tahsilatAmountController.text;
       case 'Transfer': return _transferTutarController.text;
       case 'Borçlanma': return _borclanmaTutarController.text;
       case 'Kredi Kullanımı': return _krediTutarController.text;
       case 'Satış': return _satisBedeliController.text;
       case 'Ödeme':
+      case 'Tahsilat':
       default: return _amountController.text;
     }
   }
@@ -298,9 +277,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (_selectedType == 'Tahsilat')
-                      _buildTahsilatForm()
-                    else if (_selectedType == 'Transfer')
+                    if (_selectedType == 'Transfer')
                       _buildTransferForm()
                     else if (_selectedType == 'Borçlanma')
                       _buildBorclanmaForm()
@@ -346,15 +323,13 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   int? projectId;
                   String selectedProjectName = '';
 
-                  if (_selectedType == 'Tahsilat') {
-                    selectedProjectName = _tahsilatProje;
-                  } else if (_selectedType == 'Borçlanma') {
+                  if (_selectedType == 'Borçlanma') {
                     selectedProjectName = _borclanmaProje;
                   } else if (_selectedType == 'Kredi Kullanımı') {
                     selectedProjectName = _krediProje;
                   } else if (_selectedType == 'Satış') {
                     selectedProjectName = _satisProje;
-                  } else if (_selectedType == 'Ödeme' || _selectedType == 'Gider' || _selectedType == 'Gelir') {
+                  } else if (_selectedType == 'Ödeme' || _selectedType == 'Tahsilat' || _selectedType == 'Gider' || _selectedType == 'Gelir') {
                     selectedProjectName = _selectedProject;
                   }
 
@@ -390,22 +365,30 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   String source = '';
                   String dest = '';
                   String date = '';
+                  String description = '';
+                  String contactName = '';
 
-                  if (_selectedType == 'Ödeme') {
+                  if (_selectedType == 'Ödeme' || _selectedType == 'Tahsilat') {
+                     // Tahsilat, Ödeme ekranının gelir tarafına sabitlenmiş halidir (_isIncome her zaman true).
                      type = _isIncome ? 'Gelir' : 'Gider';
                      category = _selectedSubCategory?.name ?? _selectedMainCategory?.name ?? '';
                      source = _selectedSource;
                      date = _isoDate(_dateController.text);
+                     contactName = _buyerSellerController.text.trim();
+                     description = _descriptionController.text.trim();
                   } else if (_selectedType == 'Kredi Kullanımı') {
                      category = 'Kredi Kullanımı';
                      source = _krediBanka;
                      date = _isoDate(_krediTarih);
-                     
-                     // Ayrıca bir Kredi (Loan) kaydı oluştur
+                     description = _krediAciklamaController.text.trim();
+
+                     // Ayrıca bir Kredi (Loan) kaydı oluştur (vade/taksit burada saklanır)
                      final l = Loan(
                        name: '$_krediBanka Kredisi',
                        principal: amount,
                        totalPayable: amount,
+                       termMonths: int.tryParse(_krediVadeController.text) ?? 0,
+                       startDate: date,
                      );
                      await fp.addLoan(l);
                   } else if (_selectedType == 'Borçlanma') {
@@ -468,18 +451,26 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                         );
                       }
                       return; // Metottan çık
-                  } else if (_selectedType == 'Tahsilat') {
-                     category = 'Satış';
-                     source = _tahsilatBankaHesabi.split(' - ').first;
-                     date = _isoDate(_tahsilatTarih);
                   } else if (_selectedType == 'Transfer') {
                      category = 'Transfer';
                      source = _transferGonderen;
                      dest = _transferAlan;
                      date = _isoDate(_transferTarih);
+                     description = _transferAciklamaController.text.trim();
                   } else if (_selectedType == 'Satış') {
                      category = 'Satış';
                      date = _isoDate(_satisTarih);
+                     contactName = _satisMusteriController.text.trim();
+                     description = _satisAciklamaController.text.trim();
+                     final blokDaire = _satisBlokDaireController.text.trim();
+                     final pesinat = _satisPesinatController.text.trim();
+                     final extras = [
+                       if (blokDaire.isNotEmpty) blokDaire,
+                       if (pesinat.isNotEmpty) 'Peşinat: ₺$pesinat',
+                     ].join(' • ');
+                     if (extras.isNotEmpty) {
+                       description = description.isEmpty ? extras : '$extras • $description';
+                     }
                   } else {
                      category = 'Diğer';
                      date = DateTime.now().toIso8601String().split('T').first;
@@ -493,11 +484,13 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     category: category,
                     sourceName: source,
                     destName: dest,
+                    contactName: contactName,
+                    description: description,
                     quantity: double.tryParse(_quantityController.text),
                     unit: _unitController.text.trim(),
                   );
 
-                  if (_selectedType == 'Ödeme' && _pickedAttachment != null) {
+                  if ((_selectedType == 'Ödeme' || _selectedType == 'Tahsilat') && _pickedAttachment != null) {
                     await fp.addTransactionWithAttachment(t, _pickedAttachment!.path);
                   } else {
                     await fp.addTransaction(t);
@@ -582,7 +575,9 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     }
   }
 
-  // --- ÖDEME FORM LAYOUT ---
+  // --- ÖDEME / TAHSİLAT FORM LAYOUT ---
+  // Tahsilat ekranı, Ödeme ekranının birebir aynısıdır; sadece Gelir/Gider seçici
+  // başlangıçta Gelir'e sabitlenir (kullanıcı isterse yine değiştirebilir).
   Widget _buildOdemeForm() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -639,73 +634,73 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
 
-        // GELIR / GIDER Toggle
+        // GELİR / GİDER Toggle
         _buildFormRow(
-          label: 'GELİR / GİDER',
-          child: Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _isIncome = true;
-                      _updateCategoriesForType(true);
-                    });
-                  },
-                  child: Container(
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: _isIncome ? context.colors.successBg : context.colors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: _isIncome ? context.colors.success : context.colors.border,
+            label: 'GELİR / GİDER',
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isIncome = true;
+                        _updateCategoriesForType(true);
+                      });
+                    },
+                    child: Container(
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _isIncome ? context.colors.successBg : context.colors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: _isIncome ? context.colors.success : context.colors.border,
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      'Gelir',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: _isIncome ? context.colors.success : context.colors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _isIncome = false;
-                      _updateCategoriesForType(false);
-                    });
-                  },
-                  child: Container(
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: !_isIncome ? context.colors.dangerBg : context.colors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: !_isIncome ? context.colors.danger : context.colors.border,
-                      ),
-                    ),
-                    child: Text(
-                      'Gider',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: !_isIncome ? context.colors.danger : context.colors.textSecondary,
+                      child: Text(
+                        'Gelir',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: _isIncome ? context.colors.success : context.colors.textSecondary,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isIncome = false;
+                        _updateCategoriesForType(false);
+                      });
+                    },
+                    child: Container(
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: !_isIncome ? context.colors.dangerBg : context.colors.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: !_isIncome ? context.colors.danger : context.colors.border,
+                        ),
+                      ),
+                      child: Text(
+                        'Gider',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: !_isIncome ? context.colors.danger : context.colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
 
         // PROJE Dropdown
         _buildFormRow(
@@ -789,10 +784,16 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
 
-        // ODEME KAYNAGI Custom Dropdown
+        // ODEME KAYNAGI Custom Dropdown (hesap türüne göre gruplu)
         Consumer<FinanceProvider>(
           builder: (context, fp, child) {
-            final accounts = fp.accounts.where((a) => a.type == 'Banka' || a.type == 'Kredi Kartı' || a.type == 'Nakit').toList();
+            const typeOrder = ['Banka', 'Kredi Kartı', 'Nakit'];
+            final grouped = <String, List<Account>>{};
+            for (final type in typeOrder) {
+              final list = fp.accounts.where((a) => a.type == type).toList();
+              if (list.isNotEmpty) grouped[type] = list;
+            }
+            final accounts = grouped.values.expand((l) => l).toList();
             if (accounts.isNotEmpty && !accounts.any((a) => a.name == _selectedSource)) {
                WidgetsBinding.instance.addPostFrameCallback((_) {
                  if (mounted) setState(() => _selectedSource = accounts.first.name);
@@ -800,12 +801,55 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             }
             if (accounts.isEmpty) return const SizedBox.shrink();
 
+            final items = <DropdownMenuItem<String>>[];
+            grouped.forEach((type, list) {
+              items.add(DropdownMenuItem<String>(
+                value: '__header_$type',
+                enabled: false,
+                child: Text(
+                  type.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: context.colors.textSecondary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ));
+              for (final a in list) {
+                items.add(DropdownMenuItem<String>(
+                  value: a.name,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Row(
+                      children: [
+                        _getSourceIcon(a.name, size: 14),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            a.name,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: context.colors.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ));
+              }
+            });
+
             return _buildFormRow(
-              label: 'ÖDEME KAYNAĞI',
+              label: _isIncome ? 'TAHSİLAT HESABI' : 'ÖDEME KAYNAĞI',
               child: SizedBox(
                 height: 44,
                 child: DropdownButtonFormField<String>(
-                  value: accounts.any((a) => a.name == _selectedSource) ? _selectedSource : (accounts.isNotEmpty ? accounts.first.name : null),
+                  value: accounts.any((a) => a.name == _selectedSource) ? _selectedSource : accounts.first.name,
                   isExpanded: true,
                   icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary, size: 20),
                   decoration: InputDecoration(
@@ -823,31 +867,9 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                       borderSide: BorderSide(color: context.colors.accent, width: 1.5),
                     ),
                   ),
-                  items: accounts.map((a) => a.name).toSet().map((accountName) {
-                    return DropdownMenuItem<String>(
-                      value: accountName,
-                      child: Row(
-                        children: [
-                          _getSourceIcon(accountName, size: 14),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              accountName,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: context.colors.textPrimary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+                  items: items,
                   onChanged: (val) {
-                    if (val != null) {
+                    if (val != null && !val.startsWith('__header_')) {
                       setState(() {
                         _selectedSource = val;
                       });
@@ -859,12 +881,12 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           }
         ),
 
-        // ALICI / SATICI Text Field
+        // ALICI / SATICI (Tahsilatta: MÜŞTERİ) Text Field
         _buildFormRow(
-          label: 'ALICI / SATICI',
+          label: _isIncome ? 'MÜŞTERİ' : 'ALICI / SATICI',
           child: _buildTextField(
             controller: _buyerSellerController,
-            hintText: 'Betoncu',
+            hintText: _isIncome ? 'Müşteri adı' : 'Betoncu',
           ),
         ),
 
@@ -940,413 +962,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  // --- TAHSİLAT FORM LAYOUT ---
-  Widget _buildTahsilatForm() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // TUTAR (Large input field inside a border container)
-        _buildTahsilatInputRow(
-          label: 'TUTAR',
-          child: Container(
-            height: 58,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: context.colors.border),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            alignment: Alignment.center,
-            child: TextField(
-              controller: _tahsilatAmountController,
-              keyboardType: TextInputType.number,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: context.colors.textPrimary,
-              ),
-              decoration: InputDecoration(
-                prefixText: '₺ ',
-                prefixStyle: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: context.colors.textPrimary,
-                ),
-                suffixIcon: IconButton(
-                  icon: Icon(Icons.cancel_rounded, color: context.colors.textSecondary, size: 22),
-                  onPressed: () {
-                    _tahsilatAmountController.clear();
-                  },
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // TARİH
-        _buildTahsilatInputRow(
-          label: 'TARİH',
-          child: InkWell(
-            onTap: () async {
-              final DateTime? picked = await showDatePicker(
-                context: context,
-                initialDate: DateTime.now(),
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
-              );
-              if (picked != null) {
-                setState(() {
-                  _tahsilatTarih =
-                      "${picked.day} ${[
-                    'Ocak',
-                    'Şubat',
-                    'Mart',
-                    'Nisan',
-                    'Mayıs',
-                    'Haziran',
-                    'Temmuz',
-                    'Ağustos',
-                    'Eylül',
-                    'Ekim',
-                    'Kasım',
-                    'Aralık'
-                  ][picked.month - 1]} ${picked.year}";
-                });
-              }
-            },
-            child: Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: context.colors.border),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.calendar_month_outlined, color: context.colors.accent, size: 20),
-                  const SizedBox(width: 12),
-                  Text(
-                    _tahsilatTarih,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: context.colors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary, size: 20),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // TAHSİLAT KAYNAĞI
-        _buildTahsilatInputRow(
-          label: 'TAHSİLAT KAYNAĞI',
-          child: _buildPrefixDropdown(
-            prefixIcon: Icons.person_outline_rounded,
-            prefixColor: context.colors.success,
-            value: _tahsilatKaynagi,
-            items: _tahsilatKaynaklari,
-            onChanged: (val) {
-              setState(() {
-                _tahsilatKaynagi = val!;
-              });
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // PROJE
-        _buildTahsilatInputRow(
-          label: 'PROJE',
-          child: _buildPrefixDropdown(
-            prefixIcon: Icons.business_center_outlined,
-            prefixColor: context.colors.accent,
-            value: _tahsilatProje,
-            items: _projectNames,
-            emptyHint: 'Önce proje ekleyin',
-            onChanged: (val) {
-              setState(() {
-                _tahsilatProje = val!;
-              });
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // MÜŞTERİ
-        _buildTahsilatInputRow(
-          label: 'MÜŞTERİ',
-          child: _buildPrefixDropdown(
-            prefixIcon: Icons.account_circle_outlined,
-            prefixColor: const Color(0xFF8B5CF6),
-            value: _tahsilatMusteri,
-            items: _contactNames,
-            emptyHint: 'Önce cari ekleyin',
-            onChanged: (val) {
-              setState(() {
-                _tahsilatMusteri = val!;
-              });
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // AÇIKLAMA (Input row with bubble icon left and clean cancel right)
-        _buildTahsilatInputRow(
-          label: 'AÇIKLAMA',
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: context.colors.border),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                Icon(Icons.chat_bubble_outline_rounded, color: context.colors.textSecondary, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _tahsilatAciklamaController,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: context.colors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.zero,
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.cancel_rounded, color: Color(0xFFCBD5E1), size: 18),
-                  onPressed: () {
-                    _tahsilatAciklamaController.clear();
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // ÖDEME YÖNTEMİ
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'ÖDEME YÖNTEMİ',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: context.colors.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildPaymentMethodRow(),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // BANKA HESABI dropdown (Conditional displays if 'Banka' selected)
-        if (_tahsilatOdemeYontemi == 'Banka') ...[
-          _buildTahsilatInputRow(
-            label: 'BANKA HESABI',
-            child: _buildPrefixDropdown(
-              prefixIcon: Icons.account_balance_rounded,
-              prefixColor: context.colors.accent,
-              value: _tahsilatBankaHesabi,
-              items: _bankNames,
-              emptyHint: 'Önce banka hesabı ekleyin',
-              onChanged: (val) {
-                setState(() {
-                  _tahsilatBankaHesabi = val!;
-                });
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
-
-        // NOT (İSTEĞE BAĞLI) Text Field
-        _buildTahsilatInputRow(
-          label: 'NOT (İSTEĞE BAĞLI)',
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: context.colors.border),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.center,
-            child: Row(
-              children: [
-                Icon(Icons.sticky_note_2_outlined, color: context.colors.textSecondary, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _tahsilatNotController,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: context.colors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Not ekleyebilirsiniz...',
-                      hintStyle: TextStyle(color: context.colors.textSecondary, fontSize: 14),
-                      contentPadding: EdgeInsets.zero,
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-      ],
-    );
-  }
-
-  // Row container for labels and input fields in Tahsilat form
-  Widget _buildTahsilatInputRow({required String label, required Widget child}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: context.colors.textSecondary,
-            letterSpacing: 0.5,
-          ),
-        ),
-        const SizedBox(height: 8),
-        child,
-      ],
-    );
-  }
-
-  // Horizontal Payment Method row
-  Widget _buildPaymentMethodRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildMethodItem('Banka', Icons.account_balance_rounded),
-        const SizedBox(width: 6),
-        _buildMethodItem('Nakit', Icons.money_rounded),
-        const SizedBox(width: 6),
-        _buildMethodItem('Çek', Icons.text_snippet_outlined),
-        const SizedBox(width: 6),
-        _buildMethodItem('Kredi Kartı', Icons.credit_card_rounded),
-        const SizedBox(width: 6),
-        _buildMethodItem('Diğer', Icons.more_horiz_rounded),
-      ],
-    );
-  }
-
-  Widget _buildMethodItem(String method, IconData icon) {
-    final bool isSelected = _tahsilatOdemeYontemi == method;
-    final Color bgColor = isSelected ? context.colors.accentBg : context.colors.surface;
-    final Color borderColor = isSelected ? context.colors.accent : context.colors.border;
-    final Color color = isSelected ? context.colors.accent : context.colors.textSecondary;
-
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _tahsilatOdemeYontemi = method;
-          });
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          height: 60,
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1.0),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(height: 6),
-              Text(
-                method,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Custom Dropdown with Left Prefix Icon
-  Widget _buildPrefixDropdown({
-    required IconData prefixIcon,
-    required Color prefixColor,
-    required String value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-    String emptyHint = 'Kayıt bulunamadı',
-  }) {
-    if (items.isEmpty) return _buildEmptyDropdownHint(emptyHint);
-    final safeValue = items.contains(value) ? value : items.first;
-    return SizedBox(
-      height: 48,
-      child: DropdownButtonFormField<String>(
-        initialValue: safeValue,
-        items: items
-            .map((item) => DropdownMenuItem(
-                  value: item,
-                  child: Text(
-                    item,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: context.colors.textPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ))
-            .toList(),
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          prefixIcon: Icon(prefixIcon, color: prefixColor, size: 20),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: context.colors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: context.colors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: context.colors.accent, width: 1.5),
-          ),
-        ),
-        icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary, size: 20),
-      ),
     );
   }
 

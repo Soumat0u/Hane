@@ -49,13 +49,30 @@ class _BorclarViewState extends State<BorclarView> {
             final cekler = borclarSection.groups.firstWhere((g) => g.title == 'Çekler', orElse: () => PanelGroup('Çekler', [])).items;
             
             final payments = fp.getUpcomingPayments();
-            
-            // Eğer kullanıcı takvimden bir gün seçtiyse sadece o günkü ödemeleri göster,
-            // değilse (tümünü görmek istiyorsa) vadesi yaklaşan ve geçmiş ilk 10 ödemeyi göster.
-            // Başlangıçta _selectedDay bugüne eşittir. Eğer bugün ödeme yoksa, genel listeyi göstermek daha mantıklı olabilir.
-            var displayedPayments = payments.where((p) => p.date != null && isSameDay(p.date, _selectedDay)).toList();
-            if (displayedPayments.isEmpty) {
-              displayedPayments = payments.take(10).toList(); // Seçili günde ödeme yoksa yaklaşan 10 ödemeyi göster
+
+            final today = DateTime.now();
+            final todayOnly = DateTime(today.year, today.month, today.day);
+            final selectedOnly = _selectedDay != null
+                ? DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)
+                : null;
+            final isPastSelected = selectedOnly != null && selectedOnly.isBefore(todayOnly);
+
+            // Web panelindeki (Debts.jsx) ile aynı mantık:
+            // - Geçmiş bir gün seçiliyse sadece o güne ait ödemeler gösterilir.
+            // - Bugün/gelecek bir gün seçiliyse önce o güne ait ödemeler denenir,
+            //   yoksa bugünden itibaren gelecekteki tüm ödemeler listelenir.
+            List<DuePayment> displayedPayments;
+            if (isPastSelected) {
+              displayedPayments = payments.where((p) => p.date != null && isSameDay(p.date, selectedOnly)).toList();
+            } else {
+              final forDay = selectedOnly != null
+                  ? payments.where((p) => p.date != null && isSameDay(p.date, selectedOnly)).toList()
+                  : <DuePayment>[];
+              if (forDay.isNotEmpty) {
+                displayedPayments = forDay;
+              } else {
+                displayedPayments = payments.where((p) => p.date != null && !p.date!.isBefore(todayOnly)).toList();
+              }
             }
 
             return SingleChildScrollView(
@@ -206,8 +223,10 @@ class _BorclarViewState extends State<BorclarView> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                           child: Column(
-                            children: displayedPayments.isEmpty 
-                              ? <Widget>[const Text('Yaklaşan ödeme bulunmuyor.')]
+                            children: displayedPayments.isEmpty
+                              ? <Widget>[Text(isPastSelected
+                                  ? 'Bu tarihte geçmiş bir ödeme kaydı bulunmuyor.'
+                                  : 'Yaklaşan ödeme bulunmuyor.')]
                               : displayedPayments.map((p) => Padding(
                                   padding: const EdgeInsets.only(bottom: 12.0),
                                   child: _buildPaymentItem(context, p.rawDate, p.title, p.amount),

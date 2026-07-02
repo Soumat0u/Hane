@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
@@ -10,11 +11,24 @@ import {
   Settings,
   LogOut,
   User,
+  ArrowUpFromLine,
+  Landmark,
+  FileCheck2,
 } from 'lucide-react'
 import appIcon from '../assets/icon.png'
+import NewTransactionFormModal from './NewTransactionFormModal'
+
+const NEW_TRANSACTION_TYPES = [
+  { name: 'Ödeme', icon: ArrowUpFromLine },
+  { name: 'Transfer', icon: ArrowRightLeft },
+  { name: 'Borçlanma', icon: Landmark },
+  { name: 'Kredi Kullanımı', icon: Wallet },
+  { name: 'Satış', icon: FileCheck2 },
+]
 
 export default function Sidebar() {
   const navigate = useNavigate()
+  const [activeTxType, setActiveTxType] = useState(null)
 
   const navGroups = [
     {
@@ -63,6 +77,23 @@ export default function Sidebar() {
       <nav className="sidebar-nav">
         {navGroups.map((group) => (
           <div key={group.label}>
+            {/* Insert Yeni İşlem section after Finans */}
+            {group.label === 'Sistem' && (
+              <div>
+                <div className="nav-section-label">Yeni İşlem</div>
+                {NEW_TRANSACTION_TYPES.map((item) => (
+                  <button
+                    key={item.name}
+                    type="button"
+                    className="nav-item"
+                    onClick={() => setActiveTxType(item.name)}
+                  >
+                    <item.icon size={20} className="nav-icon" />
+                    <span>{item.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="nav-section-label">{group.label}</div>
             {group.items.map((item) => (
               <NavLink
@@ -80,12 +111,15 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="sidebar-footer">
-        <button onClick={handleLogout} className="logout-btn" title="Çıkış Yap">
-          <LogOut size={20} className="nav-icon" />
-          <span>Çıkış Yap</span>
-        </button>
-      </div>
+
+
+
+      {activeTxType && (
+        <NewTransactionFormModal
+          type={activeTxType}
+          onClose={() => setActiveTxType(null)}
+        />
+      )}
     </aside>
   )
 }

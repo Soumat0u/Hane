@@ -10,9 +10,10 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="dashboard-content-grid" style={{ gridTemplateColumns: '1fr', gap: '2rem' }}>
-        
-        {/* PROFİL BİLGİLERİ */}
+      {/* Grid yapısı iki sütun (1fr 1fr) olarak güncellendi */}
+      <div className="dashboard-content-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem' }}>
+
+        {/* PROFİL BİLGİLERİ (1. Sütun) */}
         <div>
           <div className="section-header">
             <span className="section-title">HESAP</span>
@@ -41,7 +42,7 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* UYGULAMA TERCİHLERİ */}
+        {/* UYGULAMA TERCİHLERİ (2. Sütun) */}
         <div>
           <div className="section-header">
             <span className="section-title">UYGULAMA VE VERİ</span>
@@ -79,8 +80,8 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* ÇIKIŞ YAP */}
-        <div>
+        {/* ÇIKIŞ YAP (İki sütunun ortasında en altta yer alacak şekilde hizalandı) */}
+        <div style={{ gridColumn: 'span 2', justifySelf: 'center', width: '100%', maxWidth: '280px', marginTop: '1rem' }}>
           <button className="list-item" style={{ width: '100%', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', justifyContent: 'center', color: 'var(--color-danger)' }}>
             <LogOut size={18} style={{ marginRight: '0.5rem' }} />
             <span style={{ fontWeight: '600' }}>Güvenli Çıkış Yap</span>

@@ -1,12 +1,28 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import {
-  ArrowLeft, Pencil, Plus, MapPin, Building2, ChevronRight, X,
+  ArrowLeft, Pencil, Plus, MapPin, Building2, ChevronRight, X, Trash2,
   Truck, Grid3x3, BrickWall, Zap, Droplet, HardHat, Construction, Wrench,
+  Home, Store, Landmark, MoreHorizontal,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, formatNumber, num, projectImage } from '../utils'
+
+const PROJECT_TYPES = [
+  { value: 'Konut', icon: Home },
+  { value: 'İşyeri', icon: Store },
+  { value: 'Ofis', icon: Landmark },
+  { value: 'Diğer', icon: MoreHorizontal },
+]
+
+const STATUS_OPTIONS = [
+  { status: 'Planlama Aşaması', color: 'F59E0B', bg: 'FFF7ED' },
+  { status: 'İhale Aşaması', color: '3B82F6', bg: 'EFF6FF' },
+  { status: 'Devam Ediyor', color: '10B981', bg: 'ECFDF5' },
+  { status: 'Tamamlandı', color: '64748B', bg: 'F8FAFC' },
+]
 
 const CATEGORY_COLORS = {
   'Beton': '#0F172A',
@@ -45,8 +61,11 @@ function formatDate(raw) {
 export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { projects, transactions, loading, loaded, error, updateProject } = useData()
+  const { projects, transactions, budgetLines, loading, loaded, error, updateProject, deleteProject, addBudgetLine, updateBudgetLine, deleteBudgetLine } = useData()
   const [selectedCategory, setSelectedCategory] = useState('Tümü')
+  const [budgetModal, setBudgetModal] = useState(null) // null | { line: existing|null }
+  const [budgetForm, setBudgetForm] = useState({ category: '', budgeted_amount: '' })
+  const [savingBudget, setSavingBudget] = useState(false)
 
   const project = useMemo(
     () => projects.find((p) => String(p.id) === String(id)) || null,
@@ -55,6 +74,7 @@ export default function ProjectDetail() {
 
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [editForm, setEditForm] = useState({})
 
   const handleEditClick = () => {
@@ -67,13 +87,31 @@ export default function ProjectDetail() {
   const handleSave = async () => {
     try {
       setIsSaving(true)
-      await updateProject(project.id, editForm)
+      const selectedStatus = STATUS_OPTIONS.find((s) => s.status === editForm.status)
+      await updateProject(project.id, {
+        ...editForm,
+        status_color_hex: selectedStatus?.color ?? editForm.status_color_hex,
+        status_bg_color_hex: selectedStatus?.bg ?? editForm.status_bg_color_hex,
+      })
       setIsEditing(false)
       alert('Proje başarıyla güncellendi!')
     } catch (err) {
       alert('Hata: Proje güncellenemedi.')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!window.confirm('Bu projeyi silmek istediğinize emin misiniz? Tüm proje verileri silinecektir.')) return
+    try {
+      setIsDeleting(true)
+      await deleteProject(project.id)
+      navigate('/dashboard/projects')
+    } catch (err) {
+      alert('Hata: Proje silinemedi.')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -107,6 +145,51 @@ export default function ProjectDetail() {
     () => (selectedCategory === 'Tümü' ? harcamalar : harcamalar.filter((t) => t.category === selectedCategory)),
     [harcamalar, selectedCategory],
   )
+
+  const projectBudgetLines = useMemo(
+    () => budgetLines.filter((b) => String(b.project) === String(id)),
+    [budgetLines, id],
+  )
+
+  const openAddBudget = () => {
+    setBudgetForm({ category: '', budgeted_amount: '' })
+    setBudgetModal({ line: null })
+  }
+
+  const openEditBudget = (line) => {
+    setBudgetForm({ category: line.category || '', budgeted_amount: line.budgeted_amount || '' })
+    setBudgetModal({ line })
+  }
+
+  const handleSaveBudget = async () => {
+    try {
+      setSavingBudget(true)
+      const body = {
+        project: project.id,
+        category: budgetForm.category,
+        budgeted_amount: budgetForm.budgeted_amount,
+      }
+      if (budgetModal.line) {
+        await updateBudgetLine(budgetModal.line.id, body)
+      } else {
+        await addBudgetLine(body)
+      }
+      setBudgetModal(null)
+    } catch {
+      alert('Bütçe kalemi kaydedilemedi.')
+    } finally {
+      setSavingBudget(false)
+    }
+  }
+
+  const handleDeleteBudget = async (line) => {
+    if (!window.confirm(`"${line.category}" bütçe kalemini silmek istediğinize emin misiniz?`)) return
+    try {
+      await deleteBudgetLine(line.id)
+    } catch {
+      alert('Bütçe kalemi silinemedi.')
+    }
+  }
 
   const spendingData = useMemo(() => {
     const sums = new Map()
@@ -278,8 +361,70 @@ export default function ProjectDetail() {
         </div>
       </div>
 
+      {/* Bütçe */}
+      <div className="detail-section-head" style={{ marginTop: '2rem' }}>
+        <h2 className="detail-section-title">BÜTÇE</h2>
+        <button className="btn-inline-text" style={{ color: 'var(--color-primary)' }} onClick={openAddBudget}>
+          <Plus size={16} /> Bütçe Kalemi Ekle
+        </button>
+      </div>
+
+      {projectBudgetLines.length === 0 ? (
+        <div className="summary-box">
+          <div className="empty-state" style={{ padding: '1.5rem 0' }}>
+            <span>Henüz bütçe kalemi eklenmedi.</span>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {projectBudgetLines.map((line) => {
+            const budgeted = num(line.budgeted_amount)
+            const actual = num(line.actual_amount)
+            const usedPct = budgeted > 0 ? Math.min(actual / budgeted, 1) : 0
+            const overBudget = budgeted > 0 && actual > budgeted
+            const barColor = overBudget ? 'var(--color-danger)' : 'var(--color-primary)'
+
+            return (
+              <div
+                key={line.id}
+                className="summary-box"
+                style={{ padding: '1rem 1.25rem', cursor: 'pointer', border: overBudget ? '1px solid var(--color-danger)' : undefined }}
+                onClick={() => openEditBudget(line)}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: '0.95rem' }}>{line.category}</span>
+                  {overBudget && (
+                    <span style={{
+                      marginRight: '0.5rem', padding: '2px 8px', borderRadius: 8,
+                      fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-danger)', background: 'var(--color-dangerBg)',
+                    }}>
+                      Aşıldı
+                    </span>
+                  )}
+                  <button
+                    className="icon-btn"
+                    style={{ width: 28, height: 28 }}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteBudget(line) }}
+                    title="Sil"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+                  <span>{formatCurrency(actual)} / {formatCurrency(budgeted)}</span>
+                  <span style={{ fontWeight: 700, color: barColor }}>%{(usedPct * 100).toFixed(0)}</span>
+                </div>
+                <div className="pcard-progress">
+                  <div className="pcard-progress-fill" style={{ width: `${usedPct * 100}%`, background: barColor }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Harcama Dağılımı */}
-      <div className="spending-card">
+      <div className="spending-card" style={{ marginTop: '2rem' }}>
         <div className="spending-head">
           <h2 className="detail-section-title" style={{ margin: 0 }}>Harcama Dağılımı</h2>
           <span className="btn-inline-text" style={{ color: 'var(--color-primary)', cursor: 'default' }}>
@@ -330,79 +475,248 @@ export default function ProjectDetail() {
           </div>
         )}
       </div>
-      {isEditing && (
+      {isEditing && createPortal(
         <div className="modal-overlay" onClick={() => !isSaving && setIsEditing(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: 760 }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">Projeyi Düzenle</h2>
               <button className="modal-close" onClick={() => setIsEditing(false)} disabled={isSaving}>
                 <X size={20} />
               </button>
             </div>
-            <div className="modal-body" style={{ display: 'grid', gap: '1rem' }}>
+            <div className="modal-body" style={{ display: 'grid', gap: '0.25rem' }}>
               <div className="form-group">
                 <label className="form-label">Proje Adı</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={editForm.name || ''} 
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} 
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editForm.name || ''}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                 />
               </div>
+
               <div className="form-group">
                 <label className="form-label">Proje Kodu</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={editForm.project_code || ''} 
-                  onChange={(e) => setEditForm({ ...editForm, project_code: e.target.value })} 
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="örn. AKP-001"
+                  value={editForm.project_code || ''}
+                  onChange={(e) => setEditForm({ ...editForm, project_code: e.target.value })}
                 />
               </div>
+
+              <div className="form-group">
+                <label className="form-label">Proje Tipi</label>
+                <div className="type-chip-grid">
+                  {PROJECT_TYPES.map(({ value, icon: Icon }) => (
+                    <button
+                      type="button"
+                      key={value}
+                      className={`type-chip ${editForm.project_type === value ? 'active' : ''}`}
+                      onClick={() => setEditForm({ ...editForm, project_type: value })}
+                    >
+                      <Icon size={20} />
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="form-group">
                 <label className="form-label">Lokasyon</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={editForm.location || ''} 
-                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })} 
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editForm.location || ''}
+                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
                 />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Pafta</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    value={editForm.pafta || ''} 
-                    onChange={(e) => setEditForm({ ...editForm, pafta: e.target.value })} 
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editForm.pafta || ''}
+                    onChange={(e) => setEditForm({ ...editForm, pafta: e.target.value })}
                   />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Parsel</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    value={editForm.parsel || ''} 
-                    onChange={(e) => setEditForm({ ...editForm, parsel: e.target.value })} 
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editForm.parsel || ''}
+                    onChange={(e) => setEditForm({ ...editForm, parsel: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Alan (m²)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={editForm.area_sq_meters || ''}
+                    onChange={(e) => setEditForm({ ...editForm, area_sq_meters: e.target.value })}
                   />
                 </div>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Toplam Bağımsız Bölüm</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="örn. 48"
+                    value={editForm.total_independent_sections || ''}
+                    onChange={(e) => setEditForm({ ...editForm, total_independent_sections: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Konut Sayısı</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="örn. 40"
+                    value={editForm.unit_count || ''}
+                    onChange={(e) => setEditForm({ ...editForm, unit_count: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">İşyeri Sayısı</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="örn. 8"
+                    value={editForm.shop_count || ''}
+                    onChange={(e) => setEditForm({ ...editForm, shop_count: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Başlangıç Tarihi</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={editForm.start_date || ''}
+                    onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Tahmini Bitiş Tarihi</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={editForm.end_date || ''}
+                    onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Öngörülen Toplam Maliyet (₺)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={editForm.estimated_total_cost || ''}
+                    onChange={(e) => setEditForm({ ...editForm, estimated_total_cost: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Öngörülen Toplam Gelir (₺)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={editForm.estimated_total_revenue || ''}
+                    onChange={(e) => setEditForm({ ...editForm, estimated_total_revenue: e.target.value })}
+                  />
+                </div>
+              </div>
+
               <div className="form-group">
-                <label className="form-label">Alan (m²)</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={editForm.area_sq_meters || ''} 
-                  onChange={(e) => setEditForm({ ...editForm, area_sq_meters: e.target.value })} 
+                <label className="form-label">Durum</label>
+                <select
+                  className="form-input"
+                  value={editForm.status || ''}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                >
+                  {STATUS_OPTIONS.map((s) => (
+                    <option key={s.status} value={s.status}>{s.status}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Açıklama (Opsiyonel)</label>
+                <textarea
+                  className="form-input textarea-field"
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Proje hakkında not ekleyebilirsiniz..."
+                  value={editForm.description || ''}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                 />
               </div>
             </div>
             <div className="modal-footer">
+              <button className="btn-danger-outline" onClick={handleDelete} disabled={isSaving || isDeleting}>
+                {isDeleting ? <span className="loader"></span> : 'Projeyi Sil'}
+              </button>
               <button className="btn-secondary" onClick={() => setIsEditing(false)} disabled={isSaving}>
                 İptal
               </button>
-              <button className="btn-primary" onClick={handleSave} disabled={isSaving}>
+              <button className="btn-primary" style={{ width: 'auto', marginTop: 0 }} onClick={handleSave} disabled={isSaving}>
                 {isSaving ? <span className="loader"></span> : 'Kaydet'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+      {budgetModal && (
+        <div className="modal-overlay" onClick={() => !savingBudget && setBudgetModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">{budgetModal.line ? 'Bütçe Kalemini Düzenle' : 'Bütçe Kalemi Ekle'}</h2>
+              <button className="modal-close" onClick={() => setBudgetModal(null)} disabled={savingBudget}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: 'grid', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Kategori</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={budgetForm.category}
+                  onChange={(e) => setBudgetForm({ ...budgetForm, category: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Planlanan Tutar</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  value={budgetForm.budgeted_amount}
+                  onChange={(e) => setBudgetForm({ ...budgetForm, budgeted_amount: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setBudgetModal(null)} disabled={savingBudget}>
+                İptal
+              </button>
+              <button
+                className="btn-primary"
+                onClick={handleSaveBudget}
+                disabled={savingBudget || !budgetForm.category}
+              >
+                {savingBudget ? <span className="loader"></span> : 'Kaydet'}
               </button>
             </div>
           </div>

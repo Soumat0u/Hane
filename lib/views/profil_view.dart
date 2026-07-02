@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:hane/theme/responsive.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/widgets/zeynep_logo.dart';
 import 'package:hane/views/kasa_view.dart';
 import 'package:hane/views/widgets/bank_logo.dart';
 import 'package:hane/views/ayarlar_view.dart';
 import 'package:hane/views/yardim_view.dart';
-import 'package:hane/models/company_profile.dart';
 import 'package:hane/models/account.dart';
+import 'package:hane/models/company_profile.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/services/api_service.dart';
 import 'package:hane/utils/formatters.dart';
@@ -27,50 +29,19 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
   @override
   bool get wantKeepAlive => true;
 
-  CompanyProfile? _companyProfile;
-  List<Account> _accounts = [];
-  List<FinancialTransaction> _transactions = [];
-  bool _isLoading = true;
-
   bool _isKasaExpanded = false;
   bool _isIbanExpanded = false;
   bool _isKrediKartiExpanded = false;
   bool _isAdresExpanded = false;
   bool _isIletisimExpanded = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    final profile = await ApiService.instance.getCompanyProfile();
-    final accounts = await ApiService.instance.readAllAccounts();
-    List<FinancialTransaction> transactions = [];
-    try {
-      transactions = await ApiService.instance.readAllTransactions();
-    } catch (_) {
-      // İşlemler yüklenemezse kasa kartları yine de bakiyelerden hesaplanır.
-    }
-
-    if (mounted) {
-      setState(() {
-        _companyProfile = profile;
-        _accounts = accounts;
-        _transactions = transactions;
-        _isLoading = false;
-      });
-    }
-  }
-
-  double _sumByType(String type) =>
-      _accounts.where((a) => a.type == type).fold(0.0, (s, a) => s + a.balance);
+  double _sumByType(List<Account> accounts, String type) =>
+      accounts.where((a) => a.type == type).fold(0.0, (s, a) => s + a.balance);
 
   /// Bu ayın toplam tahsilat/gelir veya gider tutarı (nakit akışı özeti için).
-  double _thisMonthTotal({required bool income}) {
+  double _thisMonthTotal(List<FinancialTransaction> transactions, {required bool income}) {
     final now = DateTime.now();
-    return _transactions.where((t) {
+    return transactions.where((t) {
       final d = DateTime.tryParse(t.date);
       if (d == null || d.year != now.year || d.month != now.month) return false;
       return income
@@ -107,13 +78,17 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: context.colors.scaffold,
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-    return Scaffold(
+    return Consumer<FinanceProvider>(
+      builder: (context, fp, child) {
+        if (fp.isLoading && fp.companyProfile == null && fp.accounts.isEmpty) {
+          return Scaffold(
+            backgroundColor: context.colors.scaffold,
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
+        final companyProfile = fp.companyProfile;
+        final accounts = fp.accounts;
+        return Scaffold(
       backgroundColor: context.colors.scaffold,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -159,7 +134,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                           children: [
                             Expanded(
                               child: Text(
-                                _companyProfile?.companyName ?? 'Şirket Adı',
+                                companyProfile?.companyName ?? 'Şirket Adı',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -174,7 +149,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(builder: (_) => const FirmaDuzenleView(isOnboarding: false)),
-                                ).then((_) => _loadData());
+                                );
                               },
                               child: Padding(
                                 padding: const EdgeInsets.all(4.0),
@@ -184,10 +159,10 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                           ],
                         ),
                         const SizedBox(height: 12),
-                        _buildMetaRow('Vergi Dairesi', _companyProfile?.taxOffice ?? ''),
-                        _buildMetaRow('Vergi No', _companyProfile?.taxNumber ?? ''),
-                        _buildMetaRow('Ticari Sicil No', _companyProfile?.commercialRegistry ?? ''),
-                        _buildMetaRow('Mersis No', _companyProfile?.mersisNo ?? ''),
+                        _buildMetaRow('Vergi Dairesi', companyProfile?.taxOffice ?? ''),
+                        _buildMetaRow('Vergi No', companyProfile?.taxNumber ?? ''),
+                        _buildMetaRow('Ticari Sicil No', companyProfile?.commercialRegistry ?? ''),
+                        _buildMetaRow('Mersis No', companyProfile?.mersisNo ?? ''),
                       ],
                     ),
                   ),
@@ -213,7 +188,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                 child: InkWell(
                   borderRadius: BorderRadius.circular(6),
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Banka'))).then((_) => _loadData());
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Banka')));
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -228,7 +203,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                   ),
                 ),
               ),
-              expandedContent: _buildIbanDetails(),
+              expandedContent: _buildIbanDetails(accounts),
             ),
             _buildOptionItem(
               icon: Icons.credit_card_outlined,
@@ -245,7 +220,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                 child: InkWell(
                   borderRadius: BorderRadius.circular(6),
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Kredi Kartı'))).then((_) => _loadData());
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Kredi Kartı')));
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -260,7 +235,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                   ),
                 ),
               ),
-              expandedContent: _buildKrediKartiDetails(),
+              expandedContent: _buildKrediKartiDetails(accounts),
             ),
             _buildOptionItem(
               icon: Icons.assignment_ind_outlined,
@@ -271,7 +246,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                   _isAdresExpanded = !_isAdresExpanded;
                 });
               },
-              expandedContent: _buildAdresDetails(),
+              expandedContent: _buildAdresDetails(companyProfile),
             ),
             _buildOptionItem(
               icon: Icons.contact_phone_outlined,
@@ -282,7 +257,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                   _isIletisimExpanded = !_isIletisimExpanded;
                 });
               },
-              expandedContent: _buildIletisimDetails(),
+              expandedContent: _buildIletisimDetails(companyProfile),
             ),
             const SizedBox(height: 12),
             _buildSimpleOptionItem(
@@ -296,6 +271,8 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
         ),
       ),
     ),
+        );
+      },
     );
   }
 
@@ -520,12 +497,12 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
     );
   }
 
-  Widget _buildKasaDetails() {
-    final bankalar = _sumByType('Banka');
-    final nakit = _sumByType('Nakit');
+  Widget _buildKasaDetails(List<Account> accounts, List<FinancialTransaction> transactions) {
+    final bankalar = _sumByType(accounts, 'Banka');
+    final nakit = _sumByType(accounts, 'Nakit');
     final toplamKasa = bankalar + nakit;
-    final alacakBuAy = _thisMonthTotal(income: true);
-    final odenenBuAy = _thisMonthTotal(income: false);
+    final alacakBuAy = _thisMonthTotal(transactions, income: true);
+    final odenenBuAy = _thisMonthTotal(transactions, income: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -567,8 +544,8 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
   }
 
   // --- Banka Iban Builders ---
-  Widget _buildIbanDetails() {
-    final bankAccounts = _accounts.where((a) => a.type == 'Banka').toList();
+  Widget _buildIbanDetails(List<Account> accounts) {
+    final bankAccounts = accounts.where((a) => a.type == 'Banka').toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -654,8 +631,8 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
   }
 
   // --- Kredi Kartı Builders ---
-  Widget _buildKrediKartiDetails() {
-    final cardAccounts = _accounts.where((a) => a.type == 'Kredi Kartı').toList();
+  Widget _buildKrediKartiDetails(List<Account> accounts) {
+    final cardAccounts = accounts.where((a) => a.type == 'Kredi Kartı').toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -691,7 +668,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
   }
 
   // --- Adres Details Builders ---
-  Widget _buildAdresDetails() {
+  Widget _buildAdresDetails(CompanyProfile? companyProfile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -706,8 +683,8 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
             children: [
               _buildInfoRow(
                 Icons.location_on_outlined,
-                _companyProfile?.addressTitle ?? 'Adres',
-                '${_companyProfile?.addressLine1 ?? ''} ${_companyProfile?.addressLine2 ?? ''} ${_companyProfile?.city ?? ''} / ${_companyProfile?.country ?? ''}',
+                companyProfile?.addressTitle ?? 'Adres',
+                '${companyProfile?.addressLine1 ?? ''} ${companyProfile?.addressLine2 ?? ''} ${companyProfile?.city ?? ''} / ${companyProfile?.country ?? ''}',
               ),
               Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
@@ -719,19 +696,19 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
               _buildInfoRow(
                 Icons.business_outlined,
                 'Vergi No',
-                _companyProfile?.taxNumber ?? '',
+                companyProfile?.taxNumber ?? '',
               ),
               Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.article_outlined,
                 'Ticari Sicil No',
-                _companyProfile?.commercialRegistry ?? '',
+                companyProfile?.commercialRegistry ?? '',
               ),
               Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.assignment_outlined,
                 'Mersis No',
-                _companyProfile?.mersisNo ?? '',
+                companyProfile?.mersisNo ?? '',
               ),
             ],
           ),
@@ -741,7 +718,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
   }
 
   // --- İletişim Details Builders ---
-  Widget _buildIletisimDetails() {
+  Widget _buildIletisimDetails(CompanyProfile? companyProfile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -757,19 +734,19 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
               _buildInfoRow(
                 Icons.phone_outlined,
                 'Telefon',
-                _companyProfile?.phone1 ?? '',
+                companyProfile?.phone1 ?? '',
               ),
               Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.mail_outline_rounded,
                 'E-posta',
-                _companyProfile?.email ?? '',
+                companyProfile?.email ?? '',
               ),
               Divider(height: 20, color: context.colors.surfaceVariant),
               _buildInfoRow(
                 Icons.language_rounded,
                 'Web Sitesi',
-                _companyProfile?.website ?? '',
+                companyProfile?.website ?? '',
               ),
             ],
           ),

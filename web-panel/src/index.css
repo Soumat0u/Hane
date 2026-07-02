@@ -214,6 +214,113 @@ textarea {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 
+.form-group {
+  margin-bottom: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.form-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  margin-bottom: 0.4rem;
+}
+
+.form-input {
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-surface-variant);
+  color: var(--color-text-main);
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: var(--color-accent);
+  background-color: var(--color-surface);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.btn-secondary {
+  padding: 0.7rem 1.25rem;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-main);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--color-surface-variant);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-danger-outline {
+  padding: 0.7rem 1.25rem;
+  background: transparent;
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-md);
+  color: var(--color-danger);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.18s ease;
+  margin-right: auto;
+}
+
+.btn-danger-outline:hover:not(:disabled) {
+  background: var(--color-dangerBg);
+}
+
+.btn-danger-outline:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.type-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+}
+
+.type-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.85rem 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.type-chip:hover {
+  border-color: var(--color-accent);
+}
+
+.type-chip.active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
 .btn-primary {
   width: 100%;
   margin-top: 0.5rem;
@@ -242,6 +349,35 @@ textarea {
 }
 
 .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  padding: 0.7rem 1.5rem;
+  background-color: var(--color-danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.btn-danger:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-danger:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -375,14 +511,20 @@ textarea {
 .nav-item {
   display: flex;
   align-items: center;
+  width: 100%;
   padding: 0.7rem 1rem;
   color: var(--color-text-muted);
   text-decoration: none;
   font-weight: 500;
   font-size: 0.92rem;
+  font-family: inherit;
   border-radius: var(--radius-md);
   transition: background-color 0.18s ease, color 0.18s ease;
   position: relative;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
 }
 
 .nav-item:hover {
@@ -1403,6 +1545,47 @@ textarea {
   cursor: default;
 }
 
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+}
+
+.tx-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.tx-menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  transition: background-color 0.15s ease;
+}
+
+.tx-menu-item:hover {
+  background: var(--color-surface-variant);
+}
+
+.tx-menu-item.danger {
+  color: var(--color-danger);
+}
+
+.tx-menu-item.danger:hover {
+  background: var(--color-dangerBg);
+}
+
 /* Hero kart */
 .detail-hero {
   display: flex;
@@ -2075,7 +2258,9 @@ textarea {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  padding: 1rem 1.25rem 1.25rem;
+  padding: 1.1rem 1.3rem 1.35rem;
+  max-width: 440px;
+  margin: 0 auto;
 }
 
 .calendar {
@@ -2086,11 +2271,11 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.5rem 0.25rem 1rem;
+  padding: 0.25rem 0.15rem 0.6rem;
 }
 
 .calendar-title {
-  font-size: 1rem;
+  font-size: 1.02rem;
   font-weight: 700;
   color: var(--color-text-main);
 }
@@ -2122,20 +2307,21 @@ textarea {
 
 .calendar-weekday {
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
   color: var(--color-text-muted);
-  padding-bottom: 0.4rem;
+  padding-bottom: 0.35rem;
   text-transform: uppercase;
 }
 
 .calendar-day {
   position: relative;
   aspect-ratio: 1 / 1;
+  max-height: 42px;
   border: none;
   background: transparent;
   color: var(--color-text-main);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 500;
   border-radius: 50%;
   cursor: pointer;
@@ -2183,7 +2369,7 @@ textarea {
 .calendar-divider {
   height: 1px;
   background: var(--color-border);
-  margin: 1rem 0;
+  margin: 0.75rem 0;
 }
 
 /* ---------- Ödeme listesi ---------- */
@@ -2254,6 +2440,8 @@ textarea {
   max-width: 460px;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
   animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

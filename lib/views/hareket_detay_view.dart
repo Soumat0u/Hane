@@ -100,88 +100,74 @@ class _HareketDetayViewState extends State<HareketDetayView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Centered Premium Header
-                const SizedBox(height: 16),
-                Center(
-                  child: Column(
+                // Başlık kartı
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: visuals.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Circular Icon
                       Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: visuals.color.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(visuals.icon, color: visuals.color, size: 32),
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(color: visuals.color, shape: BoxShape.circle),
+                        child: Icon(visuals.icon, color: Colors.white, size: 24),
                       ),
-                      const SizedBox(height: 16),
-                      // Amount
-                      Text(
-                        '${_incomeTypes.contains(t.type) ? '+' : '-'} ${currencyFormat.format(t.amount)}',
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(t.type.toUpperCase(),
                         style: TextStyle(
-                          fontSize: 28,
+                                    fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: visuals.color,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Category / Description
-                      Text(
+                                    letterSpacing: 0.5)),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
                         t.description.isNotEmpty ? t.description : t.category,
-                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: context.colors.textPrimary,
-                        ),
+                                          color: context.colors.textPrimary)),
                       ),
-                      const SizedBox(height: 6),
-                      // Type Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: visuals.color.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          t.type.toUpperCase(),
+                                Text(currencyFormat.format(t.amount),
                           style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: visuals.color,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                                        fontSize: 16, fontWeight: FontWeight.bold, color: visuals.color)),
+                              ],
                       ),
-                      if (t.contactName.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          t.contactName,
+                            if (t.contactName.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(t.contactName,
                           style: TextStyle(
-                            fontSize: 14,
+                                        fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: context.colors.textSecondary,
-                          ),
+                                        color: context.colors.textPrimary)),
                         ),
-                      ],
-                      const SizedBox(height: 14),
-                      // Date Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+                            const SizedBox(height: 12),
+                            Row(children: [
                           Icon(Icons.calendar_today_rounded, size: 14, color: context.colors.textSecondary),
                           const SizedBox(width: 6),
-                          Text(
-                            _fmtDate(t.date),
-                            style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
-                          ),
+                              Text(_fmtDate(t.date),
+                                  style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+                            ]),
                         ],
+                      ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 16),
 
                 // Detaylar
                 _card(context, [

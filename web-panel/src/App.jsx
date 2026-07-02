@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Projects from './pages/Projects'
 import ProjectDetail from './pages/ProjectDetail'
 import Accounts from './pages/Accounts'
+import AccountDetail from './pages/AccountDetail'
 import Transactions from './pages/Transactions'
 import TransactionDetail from './pages/TransactionDetail'
 import Settings from './pages/Settings'
@@ -27,6 +28,7 @@ function App() {
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:id" element={<ProjectDetail />} />
           <Route path="accounts" element={<Accounts />} />
+          <Route path="accounts/:id" element={<AccountDetail />} />
           <Route path="debts" element={<Debts />} />
           <Route path="receivables" element={<Receivables />} />
           <Route path="finance-power" element={<FinancePower />} />

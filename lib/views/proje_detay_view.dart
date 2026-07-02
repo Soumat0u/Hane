@@ -13,6 +13,7 @@ import 'package:hane/models/finance_entities.dart';
 import 'package:hane/views/yeni_proje_view.dart';
 import 'package:hane/views/yeni_islem_view.dart';
 import 'package:hane/views/widgets/butce_form.dart';
+import 'package:hane/views/hareket_detay_view.dart';
 import 'package:hane/services/export_service.dart';
 final dateFormat = DateFormat('dd.MM.yyyy');
 
@@ -324,10 +325,10 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
               ),
             );
           },
-          icon: Icon(Icons.add, size: 16, color: context.colors.surface),
-          label: Text('Yeni Harcama Ekle', style: TextStyle(color: context.colors.surface, fontWeight: FontWeight.bold)),
+          icon: const Icon(Icons.add, size: 16, color: Colors.white),
+          label: const Text('Yeni Harcama Ekle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF0F172A),
+            backgroundColor: context.colors.brand,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
@@ -352,7 +353,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
               label: Text(
                 cat,
                 style: TextStyle(
-                  color: isSelected ? context.colors.surface : context.colors.textPrimary,
+                  color: isSelected ? Colors.white : context.colors.textPrimary,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -363,7 +364,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                 }
               },
               backgroundColor: context.colors.surface,
-              selectedColor: const Color(0xFF0F172A),
+              selectedColor: context.colors.brand,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
                 side: BorderSide(
@@ -425,7 +426,17 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
               }
             }
 
-            return Container(
+            return InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HareketDetayView(transaction: t),
+                  ),
+                );
+              },
+              child: Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -438,25 +449,10 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                   // KATEGORI
                   Expanded(
                     flex: 3,
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: context.colors.surfaceVariant.withValues(alpha: 0.4),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(_getIconForCategory(t.category), size: 18, color: context.colors.textPrimary),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            t.category,
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      t.category,
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   // AÇIKLAMA / MİKTAR
@@ -513,6 +509,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                   Icon(Icons.chevron_right, size: 16, color: context.colors.textSecondary),
                 ],
               ),
+              ),
             );
           },
         ),
@@ -526,20 +523,6 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
       fontWeight: FontWeight.bold,
       color: context.colors.textSecondary,
     );
-  }
-
-  IconData _getIconForCategory(String category) {
-    switch (category.toLowerCase()) {
-      case 'beton': return Icons.local_shipping_outlined;
-      case 'demir': return Icons.grid_4x4_outlined;
-      case 'duvar': return Icons.view_in_ar_outlined;
-      case 'elektrik': return Icons.bolt_outlined;
-      case 'sıhhi tesisat': return Icons.opacity_outlined;
-      case 'işçilik': return Icons.engineering_outlined;
-      case 'kalıp': return Icons.table_rows_outlined;
-      case 'nakliye': return Icons.local_shipping_outlined;
-      default: return Icons.build_outlined;
-    }
   }
 
   Widget _buildSummaryCards(BuildContext context, double totalGider, double buAyHarcama, double kalanButce) {
