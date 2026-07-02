@@ -249,6 +249,8 @@ class FinancialTransaction(models.Model):
     date = models.CharField(max_length=50)
     category = models.CharField(max_length=100, default='', blank=True)
     description = models.CharField(max_length=500, default='', blank=True)
+    quantity = models.FloatField(default=0.0, blank=True, null=True)
+    unit = models.CharField(max_length=50, default='', blank=True)
 
     # Ledger bağlantıları
     from_account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='outgoing_transactions')

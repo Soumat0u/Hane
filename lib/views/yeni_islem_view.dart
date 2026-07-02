@@ -49,11 +49,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       .toList();
   List<String> get _contactNames =>
       Provider.of<FinanceProvider>(context, listen: false).contacts.map((c) => c.name).toList();
-  List<String> _categoryNames(bool income) => Provider.of<FinanceProvider>(context, listen: false)
-      .categories
-      .where((c) => income ? c.isIncome : c.isCost)
-      .map((c) => c.name)
-      .toList();
 
   bool _defaultsSet = false;
 
@@ -69,21 +64,17 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
 
   // --- Ödeme Form States ---
   bool _isIncome = false; // false = Gider, true = Gelir
-<<<<<<< HEAD
-  String _selectedProject = 'Akpınar';
-  String _selectedCategory = 'Beton';
-  String _selectedSource = 'Halkbank';
-  bool _isSourceDropdownOpen = false;
-  XFile? _pickedAttachment;
-=======
   String _selectedProject = '';
-  String _selectedCategory = '';
+  Category? _selectedMainCategory;
+  Category? _selectedSubCategory;
   String _selectedSource = '';
->>>>>>> c55ac82 (a)
+  XFile? _pickedAttachment;
 
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _buyerSellerController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _unitController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
   // --- Transfer Form States ---
@@ -156,7 +147,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       _tahsilatTarih = today;
 
       _selectedProject = widget.initialProject ?? first(projects);
-      _selectedCategory = first(_categoryNames(_isIncome));
+      _updateCategoriesForType(_isIncome);
       _selectedSource = first(accounts);
       _transferGonderen = first(accounts);
       _transferAlan = accounts.length > 1 ? accounts[1] : first(accounts);
@@ -176,6 +167,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     _dateController.dispose();
     _buyerSellerController.dispose();
     _amountController.dispose();
+    _quantityController.dispose();
+    _unitController.dispose();
     _descriptionController.dispose();
     _tahsilatAmountController.dispose();
     _tahsilatAciklamaController.dispose();
@@ -400,7 +393,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
 
                   if (_selectedType == 'Ödeme') {
                      type = _isIncome ? 'Gelir' : 'Gider';
-                     category = _selectedCategory;
+                     category = _selectedSubCategory?.name ?? _selectedMainCategory?.name ?? '';
                      source = _selectedSource;
                      date = _isoDate(_dateController.text);
                   } else if (_selectedType == 'Kredi Kullanımı') {
@@ -500,6 +493,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     category: category,
                     sourceName: source,
                     destName: dest,
+                    quantity: double.tryParse(_quantityController.text),
+                    unit: _unitController.text.trim().isNotEmpty ? _unitController.text.trim() : null,
                   );
 
                   if (_selectedType == 'Ödeme' && _pickedAttachment != null) {
@@ -654,10 +649,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   onTap: () {
                     setState(() {
                       _isIncome = true;
-                      final cats = _categoryNames(true);
-                      _selectedCategory = cats.contains(_selectedCategory)
-                          ? _selectedCategory
-                          : (cats.isNotEmpty ? cats.first : '');
+                      _updateCategoriesForType(true);
                     });
                   },
                   child: Container(
@@ -687,10 +679,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   onTap: () {
                     setState(() {
                       _isIncome = false;
-                      final cats = _categoryNames(false);
-                      _selectedCategory = cats.contains(_selectedCategory)
-                          ? _selectedCategory
-                          : (cats.isNotEmpty ? cats.first : '');
+                      _updateCategoriesForType(false);
                     });
                   },
                   child: Container(
@@ -733,18 +722,70 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
 
-        // KATEGORI Dropdown
+        // ANA KATEGORİ Selection
         _buildFormRow(
-          label: 'KATEGORİ',
-          child: _buildSimpleDropdown(
-            value: _selectedCategory,
-            items: _categoryNames(_isIncome),
-            emptyHint: 'Kategori bulunamadı',
-            onChanged: (val) {
-              setState(() {
-                _selectedCategory = val!;
-              });
-            },
+          label: 'ANA KATEGORİ',
+          child: InkWell(
+            onTap: _pickAna,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: context.colors.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedMainCategory?.name ?? 'Kategori Seçin',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: _selectedMainCategory == null ? context.colors.textSecondary : context.colors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(Icons.folder_open_rounded, color: context.colors.textSecondary, size: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // ALT KATEGORİ Selection
+        _buildFormRow(
+          label: 'ALT KATEGORİ',
+          child: InkWell(
+            onTap: _selectedMainCategory == null ? null : _pickAlt,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: context.colors.border),
+                color: _selectedMainCategory == null ? context.colors.surfaceVariant.withOpacity(0.5) : null,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedSubCategory?.name ?? (_selectedMainCategory == null ? 'Önce ana kategori seçin' : 'Seçiniz (opsiyonel)'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: _selectedSubCategory == null ? context.colors.textSecondary : context.colors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(Icons.subdirectory_arrow_right_rounded, color: context.colors.textSecondary, size: 20),
+                ],
+              ),
+            ),
           ),
         ),
 
@@ -837,6 +878,36 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
 
+        // MİKTAR VE BİRİM (Opsiyonel)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: _buildFormRow(
+                  label: 'MİKTAR (Opsiyonel)',
+                  child: _buildTextField(
+                    controller: _quantityController,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 1,
+                child: _buildFormRow(
+                  label: 'BİRİM',
+                  child: _buildTextField(
+                    controller: _unitController,
+                    hintText: 'kg, adet...',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
 
         // AÇIKLAMA Text Field
         _buildFormRow(
@@ -1829,6 +1900,200 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
         ),
         icon: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.textSecondary, size: 20),
       ),
+    );
+  }
+  void _updateCategoriesForType(bool isIncome) {
+    final fp = Provider.of<FinanceProvider>(context, listen: false);
+    final mainCats = fp.categories.where((c) => c.isMain && (c.isIncome == isIncome)).toList();
+    if (mainCats.isNotEmpty) {
+      _selectedMainCategory = mainCats.first;
+      final subCats = fp.subCategoriesOf(_selectedMainCategory!.id!);
+      _selectedSubCategory = subCats.isNotEmpty ? subCats.first : null;
+    } else {
+      _selectedMainCategory = null;
+      _selectedSubCategory = null;
+    }
+  }
+
+  Future<void> _pickAna() async {
+    final fp = context.read<FinanceProvider>();
+    final selected = await _showCategorySheet(
+      title: 'Ana Kategori Seçin',
+      grouped: fp.mainCategoriesByGroup(income: _isIncome),
+    );
+    if (selected != null) {
+      setState(() {
+        _selectedMainCategory = selected;
+        _selectedSubCategory = null;
+      });
+    }
+  }
+
+  Future<void> _pickAlt() async {
+    final fp = context.read<FinanceProvider>();
+    final selected = await _showSubSheet(fp, _selectedMainCategory!);
+    if (selected != null) {
+      setState(() {
+        _selectedSubCategory = selected;
+      });
+    }
+  }
+
+  Future<Category?> _showCategorySheet({
+    required String title,
+    required Map<String, List<Category>> grouped,
+  }) {
+    return showModalBottomSheet<Category>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.colors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SizedBox(
+        height: MediaQuery.of(ctx).size.height * 0.7,
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: context.colors.border, borderRadius: BorderRadius.circular(2))),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+            ),
+            Divider(height: 1, color: context.colors.surfaceVariant),
+            Expanded(
+              child: ListView(
+                children: [
+                  for (final entry in grouped.entries) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+                      child: Text(entry.key.toUpperCase(),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textSecondary, letterSpacing: 0.5)),
+                    ),
+                    for (final c in entry.value)
+                      ListTile(
+                        dense: true,
+                        title: Text(c.name, style: TextStyle(fontSize: 14, color: context.colors.textPrimary)),
+                        trailing: c.childCount > 0
+                            ? Text('${c.childCount} alt', style: TextStyle(fontSize: 11, color: context.colors.textSecondary))
+                            : null,
+                        onTap: () => Navigator.pop(ctx, c),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<Category?> _showSubSheet(FinanceProvider fp, Category ana) {
+    final controller = TextEditingController();
+    bool adding = false;
+    bool saving = false;
+    return showModalBottomSheet<Category>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.colors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx, setSheet) {
+          final subs = fp.subCategoriesOf(ana.id!);
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: SizedBox(
+              height: MediaQuery.of(ctx).size.height * 0.7,
+              child: Column(
+                children: [
+                  const SizedBox(height: 12),
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: context.colors.border, borderRadius: BorderRadius.circular(2))),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.folder_open_rounded, color: _isIncome ? context.colors.success : context.colors.danger, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text('${ana.name} • Alt Kategori',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary), overflow: TextOverflow.ellipsis)),
+                      ],
+                    ),
+                  ),
+                  Divider(height: 1, color: context.colors.surfaceVariant),
+                  Expanded(
+                    child: ListView(
+                      children: [
+                        if (subs.isEmpty && !adding)
+                          Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Text('Henüz alt kategori yok. Aşağıdan ekleyebilirsiniz.',
+                                style: TextStyle(color: context.colors.textSecondary, fontSize: 13)),
+                          ),
+                        for (final s in subs)
+                          ListTile(
+                            dense: true,
+                            title: Text(s.name, style: TextStyle(fontSize: 14, color: context.colors.textPrimary)),
+                            onTap: () => Navigator.pop(ctx, s),
+                          ),
+                        const SizedBox(height: 6),
+                        if (adding)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: controller,
+                                    autofocus: true,
+                                    decoration: InputDecoration(
+                                      hintText: 'Yeni alt kategori adı',
+                                      isDense: true,
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton(
+                                  onPressed: saving ? null : () async {
+                                    final name = controller.text.trim();
+                                    if (name.isEmpty) return;
+                                    setSheet(() => saving = true);
+                                    try {
+                                      final created = await fp.addSubCategory(name: name, parentId: ana.id!, type: ana.type);
+                                      if (ctx.mounted) Navigator.pop(ctx, created);
+                                    } catch (_) {
+                                      setSheet(() => saving = false);
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _isIncome ? context.colors.success : context.colors.danger,
+                                    foregroundColor: context.colors.surface,
+                                    elevation: 0
+                                  ),
+                                  child: saving
+                                      ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: context.colors.surface))
+                                      : const Text('Ekle'),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ListTile(
+                            dense: true,
+                            leading: Icon(Icons.add_circle_outline_rounded, color: _isIncome ? context.colors.success : context.colors.danger, size: 22),
+                            title: Text('Yeni alt kategori ekle',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: _isIncome ? context.colors.success : context.colors.danger)),
+                            onTap: () => setSheet(() => adding = true),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
     );
   }
 }

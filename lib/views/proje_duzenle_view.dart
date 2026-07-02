@@ -85,14 +85,22 @@ class _ProjeDuzenleViewState extends State<ProjeDuzenleView> {
         imagePath: widget.project.imagePath,
       );
 
-      // await DatabaseHelper.instance.updateProject(updatedProject);
-      
-      if (mounted) {
-        Provider.of<FinanceProvider>(context, listen: false).refreshData();
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Proje başarıyla güncellendi!')),
-        );
+      try {
+        final fp = Provider.of<FinanceProvider>(context, listen: false);
+        await fp.updateProject(updatedProject);
+        
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Proje başarıyla güncellendi!')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Proje güncellenirken hata oluştu: $e')),
+          );
+        }
       }
     }
   }

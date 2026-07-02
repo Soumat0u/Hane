@@ -159,6 +159,7 @@ class FinancialTransactionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'project_id', 'type', 'amount',
             'date', 'category', 'description',
+            'quantity', 'unit',
             'from_account', 'to_account', 'contact',
             'source_name', 'dest_name', 'contact_name', 'document_no', 'due_date',
             'attachment',

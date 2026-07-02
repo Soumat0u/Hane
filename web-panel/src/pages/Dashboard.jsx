@@ -6,16 +6,21 @@ import { projectImage } from '../utils'
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const { projects: allProjects, transactions: allTransactions, accounts, loans, receivables, loading, loaded } = useData()
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val)
   }
 
-  // MOCK VERİLER
-  const kasa = 750000.00
-  const borclar = 250000.00
-  const alacaklar = 400000.00
-  const finansmanGucu = 18250000.00
+  // GERÇEK VERİLER — veritabanından hesaplanır (mobil ile aynı mantık)
+  const kasa = (accounts || []).reduce((sum, a) => sum + (Number(a.balance) || 0), 0)
+  const borclar = (loans || []).reduce((sum, l) => sum + (Number(l.remaining) || Number(l.total_payable) || 0), 0)
+  const alacaklar = (receivables || []).reduce((sum, r) => {
+    const total = Number(r.total_amount) || 0
+    const collected = Number(r.collected_amount) || 0
+    return sum + (total - collected)
+  }, 0)
+  const finansmanGucu = kasa + (accounts || []).reduce((sum, a) => sum + (Number(a.credit_limit) || 0), 0)
   const netPozisyon = kasa + alacaklar - borclar
 
   const metricCards = [
@@ -25,25 +30,34 @@ export default function Dashboard() {
     { title: 'FİNANSMAN GÜCÜ', value: finansmanGucu, icon: <Shield size={24} />, color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.2)', path: '/dashboard/finance-power' },
   ]
 
-  // Net pozisyon grafiği (Sparkline) için veri (son 7 gün)
+  // Net pozisyon grafiği (Sparkline) — son 7 günün gerçek kasa bakiyesi yok, basit trend
   const sparklineData = [
-    { value: 500000 }, { value: 650000 }, { value: 600000 },
-    { value: 800000 }, { value: 750000 }, { value: 850000 }, { value: 900000 }
+    { value: netPozisyon * 0.85 }, { value: netPozisyon * 0.90 }, { value: netPozisyon * 0.88 },
+    { value: netPozisyon * 0.95 }, { value: netPozisyon * 0.92 }, { value: netPozisyon * 0.98 }, { value: netPozisyon }
   ]
 
-  // Nakit Akışı (Aylık) verisi (son 6 ay)
-  const cashFlowData = [
-    { name: 'Oca', Gelir: 150000, Gider: 100000 },
-    { name: 'Şub', Gelir: 180000, Gider: 120000 },
-    { name: 'Mar', Gelir: 120000, Gider: 130000 },
-    { name: 'Nis', Gelir: 200000, Gider: 150000 },
-    { name: 'May', Gelir: 250000, Gider: 180000 },
-    { name: 'Haz', Gelir: 300000, Gider: 200000 },
-  ]
+  // Nakit Akışı (Aylık) — son 6 ayın GERÇEK işlemlerinden hesaplanır
+  const cashFlowData = (() => {
+    const now = new Date()
+    const months = []
+    const monthNames = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const year = d.getFullYear()
+      const month = d.getMonth()
+      const txns = (allTransactions || []).filter(t => {
+        if (!t.date) return false
+        const td = new Date(t.date)
+        return td.getFullYear() === year && td.getMonth() === month
+      })
+      const gelir = txns.filter(t => t.type === 'Gelir' || t.type === 'Tahsilat' || t.type === 'Satış').reduce((s, t) => s + (Number(t.amount) || 0), 0)
+      const gider = txns.filter(t => t.type === 'Gider' || t.type === 'Ödeme').reduce((s, t) => s + (Number(t.amount) || 0), 0)
+      months.push({ name: monthNames[month], Gelir: gelir, Gider: gider })
+    }
+    return months
+  })()
 
   // Projelerim (Son 3 Proje)
-  const { projects: allProjects, transactions: allTransactions, loading, loaded } = useData()
-
   const projects = allProjects ? [...allProjects].sort((a, b) => b.id - a.id).slice(0, 3) : []
 
   // Son Hareketler (Son 5 Hareket)

@@ -99,4 +99,29 @@ def seed_categories_for_user(user):
             obj.group = group
             obj.type = ctype
             obj.save(update_fields=['group', 'type'])
+
+    # Alt kategorileri tohumla
+    subcategories_map = {
+        'Demir Doğrama': ['Profil Malzeme', 'Doğrama İşçilik', 'Oluk'],
+        'Resmiyet / Belediye': [
+            'Kat İttifakı', 'Harfiyat Harcı', 'Temizsu Bedeli', 'Tapu İşlemleri',
+            'Ç.Şehir Exper', 'Beton Analiz', 'İş Güvenliği', 'Vergi', 'Şantiye Şefi',
+            'Kanalizasyon', 'İmar Çapı', 'Yapı Denetim', 'Harfiyat Bedeli',
+            'Otopark Harcı', 'Bağ-Kur', 'Muhasebe', 'SGK'
+        ]
+    }
+
+    for parent_name, children in subcategories_map.items():
+        try:
+            parent_cat = Category.objects.get(user=user, name=parent_name, parent=None)
+            for child_name in children:
+                _, was_created = Category.objects.get_or_create(
+                    user=user, name=child_name, parent=parent_cat,
+                    defaults={'type': parent_cat.type, 'group': parent_cat.group}
+                )
+                if was_created:
+                    created += 1
+        except Category.DoesNotExist:
+            pass
+
     return created

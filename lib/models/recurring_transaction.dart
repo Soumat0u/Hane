@@ -68,5 +68,21 @@ class RecurringTransaction {
         'is_active': isActive,
       };
 
+  RecurringTransaction withId(int? newId) => RecurringTransaction(
+        id: newId,
+        type: type,
+        amount: amount,
+        category: category,
+        description: description,
+        projectId: projectId,
+        contactId: contactId,
+        fromAccountId: fromAccountId,
+        toAccountId: toAccountId,
+        interval: interval,
+        dayOfMonth: dayOfMonth,
+        nextDueDate: nextDueDate,
+        isActive: isActive,
+      );
+
   String get intervalLabel => interval == weekly ? 'Haftalık' : 'Aylık';
 }

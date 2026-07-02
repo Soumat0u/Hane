@@ -41,8 +41,8 @@ class Category {
     this.childCount = 0,
   });
 
-  bool get isIncome => type == 'income';
-  bool get isCost => type == 'cost';
+  bool get isIncome => type == 'income' || type == 'Gelir';
+  bool get isCost => type == 'cost' || type == 'Gider';
   bool get isMain => parentId == null;
 
   factory Category.fromMap(Map<String, dynamic> m) => Category(
@@ -56,6 +56,15 @@ class Category {
 
   Map<String, dynamic> toMap() =>
       {'id': id, 'name': name, 'type': type, 'group': group, 'parent': parentId};
+
+  Category withId(int? newId) => Category(
+        id: newId,
+        name: name,
+        type: type,
+        group: group,
+        parentId: parentId,
+        childCount: childCount,
+      );
 }
 
 /// Cari hesap (tedarikçi, müşteri, taşeron, devlet).
@@ -100,6 +109,17 @@ class Contact {
         'tax_number': taxNumber,
         'note': note,
       };
+
+  Contact withId(int? newId) => Contact(
+        id: newId,
+        name: name,
+        kind: kind,
+        phone: phone,
+        email: email,
+        taxNumber: taxNumber,
+        note: note,
+        balance: balance,
+      );
 }
 
 /// Vadeli banka borcu (Kredi / KGF).
@@ -165,6 +185,22 @@ class Loan {
         'start_date': startDate,
         'is_active': isActive,
       };
+
+  Loan withId(int? newId) => Loan(
+        id: newId,
+        name: name,
+        kind: kind,
+        creditorId: creditorId,
+        bankName: bankName,
+        principal: principal,
+        totalPayable: totalPayable,
+        paidAmount: paidAmount,
+        remaining: remaining,
+        interestRate: interestRate,
+        termMonths: termMonths,
+        startDate: startDate,
+        isActive: isActive,
+      );
 }
 
 /// Çek (alınan / verilen).
@@ -217,6 +253,18 @@ class Cheque {
         'contact': contactId,
         'project': projectId,
       };
+
+  Cheque withId(int? newId) => Cheque(
+        id: newId,
+        direction: direction,
+        status: status,
+        amount: amount,
+        dueDate: dueDate,
+        bankName: bankName,
+        serialNo: serialNo,
+        contactId: contactId,
+        projectId: projectId,
+      );
 }
 
 /// Satış sözleşmesi (daire / dükkan / arsa).
@@ -269,6 +317,19 @@ class Sale {
         'sale_date': saleDate,
         'is_completed': isCompleted,
       };
+
+  Sale withId(int? newId) => Sale(
+        id: newId,
+        projectId: projectId,
+        buyerId: buyerId,
+        unitType: unitType,
+        unitNo: unitNo,
+        salePrice: salePrice,
+        collected: collected,
+        remaining: remaining,
+        saleDate: saleDate,
+        isCompleted: isCompleted,
+      );
 }
 
 /// Alacak / taksit kaydı.
@@ -327,8 +388,8 @@ class Receivable {
         'description': description,
       };
 
-  Receivable copyWith({double? collectedAmount, String? status}) => Receivable(
-        id: id,
+  Receivable copyWith({int? id, double? collectedAmount, String? status}) => Receivable(
+        id: id ?? this.id,
         kind: kind,
         status: status ?? this.status,
         contactId: contactId,
@@ -336,6 +397,20 @@ class Receivable {
         saleId: saleId,
         totalAmount: totalAmount,
         collectedAmount: collectedAmount ?? this.collectedAmount,
+        dueDate: dueDate,
+        description: description,
+      );
+
+  Receivable withId(int? newId) => Receivable(
+        id: newId,
+        kind: kind,
+        status: status,
+        contactId: contactId,
+        projectId: projectId,
+        saleId: saleId,
+        totalAmount: totalAmount,
+        collectedAmount: collectedAmount,
+        remaining: remaining,
         dueDate: dueDate,
         description: description,
       );
@@ -378,4 +453,12 @@ class BudgetLine {
         'category': category,
         'budgeted_amount': budgetedAmount,
       };
+
+  BudgetLine withId(int? newId) => BudgetLine(
+        id: newId,
+        projectId: projectId,
+        category: category,
+        budgetedAmount: budgetedAmount,
+        actualAmount: actualAmount,
+      );
 }

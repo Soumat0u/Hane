@@ -23,6 +23,20 @@ class Account {
     this.isActive = true,
   });
 
+  /// Optimistic eklemede geçici id atamak için (arkaplan senkron gerçek id ile değiştirir).
+  Account withId(int? newId) => Account(
+        id: newId,
+        name: name,
+        type: type,
+        openingBalance: openingBalance,
+        balance: balance,
+        creditLimit: creditLimit,
+        availableLimit: availableLimit,
+        bankLogoPainter: bankLogoPainter,
+        accountDetails: accountDetails,
+        isActive: isActive,
+      );
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

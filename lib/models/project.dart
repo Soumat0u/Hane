@@ -43,6 +43,30 @@ class Project {
     this.description = '',
   });
 
+  /// Optimistic eklemede geçici id atamak için (arkaplan senkron gerçek id ile değiştirir).
+  Project withId(int? newId) => Project(
+        id: newId,
+        name: name,
+        projectCode: projectCode,
+        projectType: projectType,
+        status: status,
+        statusColorHex: statusColorHex,
+        statusBgColorHex: statusBgColorHex,
+        location: location,
+        pafta: pafta,
+        parsel: parsel,
+        areaSqMeters: areaSqMeters,
+        totalIndependentSections: totalIndependentSections,
+        unitCount: unitCount,
+        shopCount: shopCount,
+        estimatedTotalCost: estimatedTotalCost,
+        estimatedTotalRevenue: estimatedTotalRevenue,
+        imagePath: imagePath,
+        startDate: startDate,
+        endDate: endDate,
+        description: description,
+      );
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

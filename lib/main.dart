@@ -40,6 +40,10 @@ class MyApp extends StatelessWidget {
   final bool loggedIn;
   const MyApp({super.key, required this.loggedIn});
 
+  // Arkaplan senkron hatalarını her ekrandan bağımsız gösterebilmek için.
+  static final GlobalKey<ScaffoldMessengerState> messengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
@@ -48,6 +52,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Hano Finans',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: messengerKey,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: settings.themeMode,
@@ -58,7 +63,63 @@ class MyApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [Locale('tr'), Locale('en')],
+      builder: (context, child) => _SyncErrorListener(child: child ?? const SizedBox.shrink()),
       home: home,
     );
   }
+}
+
+/// Arkaplan senkron hatalarını dinler ve kullanıcıya SnackBar ile bildirir.
+/// (Optimistic mutasyonlar artık await edilmediği için hatalar buradan yüzeye çıkar.)
+class _SyncErrorListener extends StatefulWidget {
+  final Widget child;
+  const _SyncErrorListener({required this.child});
+
+  @override
+  State<_SyncErrorListener> createState() => _SyncErrorListenerState();
+}
+
+class _SyncErrorListenerState extends State<_SyncErrorListener> {
+  ValueNotifier<String?>? _errorNotifier;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final notifier = context.read<FinanceProvider>().syncError;
+    if (notifier != _errorNotifier) {
+      _errorNotifier?.removeListener(_onError);
+      _errorNotifier = notifier..addListener(_onError);
+    }
+  }
+
+  void _onError() {
+    final message = _errorNotifier?.value;
+    if (message == null) return;
+    _errorNotifier!.value = null; // aynı hatayı tekrar tetiklememek için sıfırla
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      MyApp.messengerKey.currentState
+        ?..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(message)),
+              ],
+            ),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+    });
+  }
+
+  @override
+  void dispose() {
+    _errorNotifier?.removeListener(_onError);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/project.dart';
@@ -59,24 +60,48 @@ class FinanceProvider extends ChangeNotifier {
   List<Category> subCategoriesOf(int parentId) =>
       _categories.where((c) => c.parentId == parentId).toList();
 
-  /// Kullanıcının eklediği yeni alt kategoriyi kaydeder ve listeyi yeniler.
+  /// Kullanıcının eklediği yeni alt kategoriyi kaydeder.
+  /// Optimistic: yeni kategori anında listeye eklenir, kayıt arkaplanda gönderilir.
   Future<Category> addSubCategory({
     required String name,
     required int parentId,
     required String type,
   }) async {
-    final created = await ApiService.instance.createCategory(
+    final temp = Category(
+      id: _nextTempId(),
       name: name,
       type: type,
       parentId: parentId,
     );
-    _categories = await ApiService.instance.readAllCategories();
+    final snapshot = List<Category>.from(_categories);
+    _categories = [..._categories, temp];
     notifyListeners();
-    return created;
+    unawaited(_runSync(
+      () => ApiService.instance.createCategory(
+        name: name,
+        type: type,
+        parentId: parentId,
+      ),
+      rollback: () => _categories = snapshot,
+      errorLabel: 'Kategori eklenemedi',
+    ));
+    return temp;
   }
 
   bool _isLoading = true;
   bool get isLoading => _isLoading;
+
+  // Arkaplan senkron hatalarını UI'ya iletmek için (main.dart dinler ve SnackBar gösterir).
+  final ValueNotifier<String?> syncError = ValueNotifier(null);
+
+  // Optimistic eklemelerde kullanılan geçici (negatif) id üreteci; sunucu
+  // id'leriyle çakışmaz, arkaplan senkron sonrası gerçek id ile değişir.
+  int _tempIdCounter = -1;
+  int _nextTempId() => _tempIdCounter--;
+
+  // _silentRefresh çağrılarını çakışmasız hale getirir (coalescing).
+  bool _refreshing = false;
+  bool _refreshQueued = false;
 
   // Okunmuş bildirimlerin içerik tabanlı anahtarları (SharedPreferences ile kalıcı).
   final Set<String> _readNotificationKeys = {};
@@ -87,30 +112,26 @@ class FinanceProvider extends ChangeNotifier {
     _loadReadNotifications();
   }
 
+  /// İlk açılış / pull-to-refresh: tam ekran yükleme göstergesiyle veriyi çeker.
   Future<void> refreshData() async {
     _isLoading = true;
     notifyListeners();
-
     try {
-<<<<<<< HEAD
-      _projects = await ApiService.instance.readAllProjects();
-      _accounts = await ApiService.instance.readAllAccounts();
-      _allTransactions = await ApiService.instance.readAllTransactions();
-      // Yeni şema verileri — biri başarısız olsa bile diğerleri yüklensin
-      _loans = await _safe(ApiService.instance.readAllLoans, _loans);
-      _cheques = await _safe(ApiService.instance.readAllCheques, _cheques);
-      _sales = await _safe(ApiService.instance.readAllSales, _sales);
-      _receivables = await _safe(ApiService.instance.readAllReceivables, _receivables);
-      _contacts = await _safe(ApiService.instance.readAllContacts, _contacts);
-      _categories = await _safe(ApiService.instance.readAllCategories, _categories);
-      _budgetLines = await _safe(ApiService.instance.readAllBudgetLines, _budgetLines);
-      _recurringTransactions =
-          await _safe(ApiService.instance.readAllRecurringTransactions, _recurringTransactions);
-=======
+      await _fetchAll();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Sunucudan tüm veriyi çeker. `_isLoading`'i değiştirmez; optimistic
+  /// değişikliklerden sonra arkaplanda çağrılarak yereli sunucuyla eşitler.
+  Future<void> _fetchAll() async {
+    try {
       final results = await Future.wait([
-        ApiService.instance.readAllProjects(),
-        ApiService.instance.readAllAccounts(),
-        ApiService.instance.readAllTransactions(),
+        _safe(ApiService.instance.readAllProjects, _projects),
+        _safe(ApiService.instance.readAllAccounts, _accounts),
+        _safe(ApiService.instance.readAllTransactions, _allTransactions),
         _safe(ApiService.instance.readAllLoans, _loans),
         _safe(ApiService.instance.readAllCheques, _cheques),
         _safe(ApiService.instance.readAllSales, _sales),
@@ -130,18 +151,50 @@ class FinanceProvider extends ChangeNotifier {
       _contacts = results[7] as List<Contact>;
       _categories = results[8] as List<Category>;
       _budgetLines = results[9] as List<BudgetLine>;
-
->>>>>>> c55ac82 (a)
       try {
         _companyProfile = await ApiService.instance.getCompanyProfile();
       } catch (e) {
         debugPrint("Company profile load failed: $e");
       }
+      notifyListeners();
     } catch (e) {
       debugPrint("Error loading data: $e");
+    }
+  }
+
+  /// Sunucuyla sessizce (spinner göstermeden) eşitler. Eşzamanlı çağrılar
+  /// birleştirilir: bir eşitleme sürerken gelenler tek bir tekrara indirgenir.
+  Future<void> _silentRefresh() async {
+    if (_refreshing) {
+      _refreshQueued = true;
+      return;
+    }
+    _refreshing = true;
+    try {
+      do {
+        _refreshQueued = false;
+        await _fetchAll();
+      } while (_refreshQueued);
     } finally {
-      _isLoading = false;
+      _refreshing = false;
+    }
+  }
+
+  /// Optimistic mutasyonun sunucu tarafını arkaplanda yürütür: başarılıysa
+  /// sessiz eşitleme yapar, başarısızsa yerel değişikliği geri alıp uyarı verir.
+  Future<void> _runSync(
+    Future<void> Function() remote, {
+    required VoidCallback rollback,
+    required String errorLabel,
+  }) async {
+    try {
+      await remote();
+      await _silentRefresh();
+    } catch (e) {
+      debugPrint('$errorLabel: $e');
+      rollback();
       notifyListeners();
+      syncError.value = errorLabel;
     }
   }
 
@@ -155,97 +208,203 @@ class FinanceProvider extends ChangeNotifier {
   }
 
   Future<void> updateAccount(Account account) async {
-    await ApiService.instance.updateAccount(account);
-    await refreshData();
+    final snapshot = List<Account>.from(_accounts);
+    _accounts = [for (final a in _accounts) a.id == account.id ? account : a];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.updateAccount(account),
+      rollback: () => _accounts = snapshot,
+      errorLabel: 'Hesap güncellenemedi',
+    ));
   }
 
   Future<void> createAccount(Account account) async {
-    await ApiService.instance.createAccount(account);
-    await refreshData();
+    final snapshot = List<Account>.from(_accounts);
+    _accounts = [..._accounts, account.withId(_nextTempId())];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createAccount(account),
+      rollback: () => _accounts = snapshot,
+      errorLabel: 'Hesap eklenemedi',
+    ));
   }
 
   Future<void> addTransaction(FinancialTransaction transaction) async {
-    await ApiService.instance.createTransaction(transaction);
-    await refreshData();
+    final snapshot = List<FinancialTransaction>.from(_allTransactions);
+    _allTransactions = [transaction.copyWith(id: _nextTempId()), ..._allTransactions];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createTransaction(transaction),
+      rollback: () => _allTransactions = snapshot,
+      errorLabel: 'İşlem kaydedilemedi',
+    ));
   }
 
   /// `attachmentPath` verilirse fiş/fatura fotoğrafı ile birlikte işlem oluşturur.
   Future<void> addTransactionWithAttachment(FinancialTransaction transaction, String? attachmentPath) async {
-    await ApiService.instance.createTransactionWithAttachment(transaction, attachmentPath);
-    await refreshData();
+    final snapshot = List<FinancialTransaction>.from(_allTransactions);
+    _allTransactions = [transaction.copyWith(id: _nextTempId()), ..._allTransactions];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createTransactionWithAttachment(transaction, attachmentPath),
+      rollback: () => _allTransactions = snapshot,
+      errorLabel: 'İşlem kaydedilemedi',
+    ));
   }
 
   Future<void> updateTransaction(FinancialTransaction transaction) async {
-    await ApiService.instance.updateTransaction(transaction);
-    await refreshData();
+    final snapshot = List<FinancialTransaction>.from(_allTransactions);
+    _allTransactions = [for (final t in _allTransactions) t.id == transaction.id ? transaction : t];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.updateTransaction(transaction),
+      rollback: () => _allTransactions = snapshot,
+      errorLabel: 'İşlem güncellenemedi',
+    ));
   }
 
   Future<void> deleteTransaction(int id) async {
-    await ApiService.instance.deleteTransaction(id);
-    await refreshData();
+    final snapshot = List<FinancialTransaction>.from(_allTransactions);
+    _allTransactions = _allTransactions.where((t) => t.id != id).toList();
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.deleteTransaction(id),
+      rollback: () => _allTransactions = snapshot,
+      errorLabel: 'İşlem silinemedi',
+    ));
   }
 
   Future<void> createProject(Project project) async {
-    await ApiService.instance.createProject(project);
-    await refreshData();
+    final snapshot = List<Project>.from(_projects);
+    _projects = [..._projects, project.withId(_nextTempId())];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createProject(project),
+      rollback: () => _projects = snapshot,
+      errorLabel: 'Proje oluşturulamadı',
+    ));
   }
 
   Future<void> updateProject(Project project) async {
-    await ApiService.instance.updateProject(project);
-    await refreshData();
+    final snapshot = List<Project>.from(_projects);
+    _projects = [for (final p in _projects) p.id == project.id ? project : p];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.updateProject(project),
+      rollback: () => _projects = snapshot,
+      errorLabel: 'Proje güncellenemedi',
+    ));
   }
 
   Future<void> deleteProject(int projectId) async {
-    await ApiService.instance.deleteProject(projectId);
-    await refreshData();
+    final snapshot = List<Project>.from(_projects);
+    _projects = _projects.where((p) => p.id != projectId).toList();
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.deleteProject(projectId),
+      rollback: () => _projects = snapshot,
+      errorLabel: 'Proje silinemedi',
+    ));
   }
 
   // --- CRUD sarmalayıcıları (yeni modüller) ---
   Future<void> addLoan(Loan loan) async {
-    await ApiService.instance.createLoan(loan);
-    await refreshData();
+    final snapshot = List<Loan>.from(_loans);
+    _loans = [..._loans, loan.withId(_nextTempId())];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createLoan(loan),
+      rollback: () => _loans = snapshot,
+      errorLabel: 'Kredi eklenemedi',
+    ));
   }
 
   Future<void> addCheque(Cheque cheque) async {
-    await ApiService.instance.createCheque(cheque);
-    await refreshData();
+    final snapshot = List<Cheque>.from(_cheques);
+    _cheques = [..._cheques, cheque.withId(_nextTempId())];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createCheque(cheque),
+      rollback: () => _cheques = snapshot,
+      errorLabel: 'Çek eklenemedi',
+    ));
   }
 
+  /// Cari, hemen ardından bir işleme bağlanabildiği için burada gerçek sunucu
+  /// id'si beklenir (tek POST); ardından yerel liste sessizce eşitlenir.
   Future<Contact> addContact(Contact contact) async {
     final c = await ApiService.instance.createContact(contact);
-    await refreshData();
+    _contacts = [..._contacts, c];
+    notifyListeners();
+    unawaited(_silentRefresh());
     return c;
   }
 
   Future<void> addSale(Sale sale) async {
-    await ApiService.instance.createSale(sale);
-    await refreshData();
+    final snapshot = List<Sale>.from(_sales);
+    _sales = [..._sales, sale.withId(_nextTempId())];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createSale(sale),
+      rollback: () => _sales = snapshot,
+      errorLabel: 'Satış eklenemedi',
+    ));
   }
 
   Future<void> addReceivable(Receivable r) async {
-    await ApiService.instance.createReceivable(r);
-    await refreshData();
+    final snapshot = List<Receivable>.from(_receivables);
+    _receivables = [..._receivables, r.withId(_nextTempId())];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createReceivable(r),
+      rollback: () => _receivables = snapshot,
+      errorLabel: 'Alacak eklenemedi',
+    ));
   }
 
   Future<void> updateCompanyProfile(CompanyProfile profile) async {
-    _companyProfile = await ApiService.instance.updateCompanyProfile(profile);
+    final snapshot = _companyProfile;
+    _companyProfile = profile;
     notifyListeners();
+    unawaited(_runSync(
+      () async => _companyProfile = await ApiService.instance.updateCompanyProfile(profile),
+      rollback: () => _companyProfile = snapshot,
+      errorLabel: 'Firma profili güncellenemedi',
+    ));
   }
 
   // --- Bütçe ---
   Future<void> addBudgetLine(BudgetLine line) async {
-    await ApiService.instance.createBudgetLine(line);
-    await refreshData();
+    final snapshot = List<BudgetLine>.from(_budgetLines);
+    _budgetLines = [..._budgetLines, line.withId(_nextTempId())];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createBudgetLine(line),
+      rollback: () => _budgetLines = snapshot,
+      errorLabel: 'Bütçe kalemi eklenemedi',
+    ));
   }
 
   Future<void> updateBudgetLine(BudgetLine line) async {
-    await ApiService.instance.updateBudgetLine(line);
-    await refreshData();
+    final snapshot = List<BudgetLine>.from(_budgetLines);
+    _budgetLines = [for (final b in _budgetLines) b.id == line.id ? line : b];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.updateBudgetLine(line),
+      rollback: () => _budgetLines = snapshot,
+      errorLabel: 'Bütçe kalemi güncellenemedi',
+    ));
   }
 
   Future<void> deleteBudgetLine(int id) async {
-    await ApiService.instance.deleteBudgetLine(id);
-    await refreshData();
+    final snapshot = List<BudgetLine>.from(_budgetLines);
+    _budgetLines = _budgetLines.where((b) => b.id != id).toList();
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.deleteBudgetLine(id),
+      rollback: () => _budgetLines = snapshot,
+      errorLabel: 'Bütçe kalemi silinemedi',
+    ));
   }
 
   List<BudgetLine> getProjectBudgetLines(int projectId) =>
@@ -253,18 +412,36 @@ class FinanceProvider extends ChangeNotifier {
 
   // --- Tekrarlayan İşlemler ---
   Future<void> addRecurringTransaction(RecurringTransaction r) async {
-    await ApiService.instance.createRecurringTransaction(r);
-    await refreshData();
+    final snapshot = List<RecurringTransaction>.from(_recurringTransactions);
+    _recurringTransactions = [..._recurringTransactions, r.withId(_nextTempId())];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createRecurringTransaction(r),
+      rollback: () => _recurringTransactions = snapshot,
+      errorLabel: 'Tekrarlayan işlem eklenemedi',
+    ));
   }
 
   Future<void> updateRecurringTransaction(RecurringTransaction r) async {
-    await ApiService.instance.updateRecurringTransaction(r);
-    await refreshData();
+    final snapshot = List<RecurringTransaction>.from(_recurringTransactions);
+    _recurringTransactions = [for (final x in _recurringTransactions) x.id == r.id ? r : x];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.updateRecurringTransaction(r),
+      rollback: () => _recurringTransactions = snapshot,
+      errorLabel: 'Tekrarlayan işlem güncellenemedi',
+    ));
   }
 
   Future<void> deleteRecurringTransaction(int id) async {
-    await ApiService.instance.deleteRecurringTransaction(id);
-    await refreshData();
+    final snapshot = List<RecurringTransaction>.from(_recurringTransactions);
+    _recurringTransactions = _recurringTransactions.where((x) => x.id != id).toList();
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.deleteRecurringTransaction(id),
+      rollback: () => _recurringTransactions = snapshot,
+      errorLabel: 'Tekrarlayan işlem silinemedi',
+    ));
   }
 
   /// Vadesi bugüne gelmiş veya geçmiş, aktif tekrarlayan işlem şablonları.
@@ -278,9 +455,16 @@ class FinanceProvider extends ChangeNotifier {
   }
 
   /// Şablonu onaylar: gerçek bir FinancialTransaction oluşturur ve next_due_date'i ilerletir.
+  /// Oluşacak işlem sunucuda üretildiği için önceden tahmin edilmez; endpoint
+  /// beklenir, sonra yerel veri sessizce (spinner'sız) eşitlenir.
   Future<void> confirmRecurringTransaction(RecurringTransaction template, {String? date}) async {
-    await ApiService.instance.confirmRecurringTransaction(template.id!, date: date);
-    await refreshData();
+    try {
+      await ApiService.instance.confirmRecurringTransaction(template.id!, date: date);
+      await _silentRefresh();
+    } catch (e) {
+      debugPrint('Tekrarlayan işlem onaylanamadı: $e');
+      syncError.value = 'Tekrarlayan işlem onaylanamadı';
+    }
   }
 
   double getProjectBudgetTotal(int projectId) =>
@@ -308,20 +492,34 @@ class FinanceProvider extends ChangeNotifier {
       collectedAmount: newCollected,
       status: fullyCollected ? 'collected' : 'partial',
     );
-    await ApiService.instance.updateReceivable(updated);
-
-    await ApiService.instance.createTransaction(
-      FinancialTransaction(
-        type: 'Tahsilat',
-        amount: amount,
-        date: date.isNotEmpty ? date : DateTime.now().toIso8601String().split('T').first,
-        category: 'Tahsilat',
-        description: receivable.description,
-        projectId: receivable.projectId,
-        toAccountId: toAccountId,
-      ),
+    final tx = FinancialTransaction(
+      type: 'Tahsilat',
+      amount: amount,
+      date: date.isNotEmpty ? date : DateTime.now().toIso8601String().split('T').first,
+      category: 'Tahsilat',
+      description: receivable.description,
+      projectId: receivable.projectId,
+      toAccountId: toAccountId,
     );
-    await refreshData();
+
+    // Optimistic: alacağı güncelle + tahsilat işlemini ekle.
+    final recvSnapshot = List<Receivable>.from(_receivables);
+    final txSnapshot = List<FinancialTransaction>.from(_allTransactions);
+    _receivables = [for (final r in _receivables) r.id == receivable.id ? updated : r];
+    _allTransactions = [tx.copyWith(id: _nextTempId()), ..._allTransactions];
+    notifyListeners();
+
+    unawaited(_runSync(
+      () async {
+        await ApiService.instance.updateReceivable(updated);
+        await ApiService.instance.createTransaction(tx);
+      },
+      rollback: () {
+        _receivables = recvSnapshot;
+        _allTransactions = txSnapshot;
+      },
+      errorLabel: 'Tahsilat kaydedilemedi',
+    ));
   }
 
   // --- Calculations for UI ---

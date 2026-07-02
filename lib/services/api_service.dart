@@ -27,9 +27,9 @@ class ApiService {
     // 3) Geliştirme varsayılanları (Web paneliyle aynı veritabanını paylaşması için Railway'e yönlendirildi).
     // Yerel Django sunucusunda test etmek isterseniz aşağıdaki localhost satırlarını aktifleştirebilirsiniz.
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'https://web-production-77031.up.railway.app/api'; // Yerel emülatör için: 'http://10.0.2.2:8000/api'
+      return 'http://10.0.2.2:8000/api'; // Yerel emülatör
     }
-    return 'https://web-production-77031.up.railway.app/api'; // Yerel web/iOS için: 'http://localhost:8000/api'
+    return 'http://localhost:8000/api'; // Yerel web/iOS
   }
 
   static const String _tokenKey = 'auth_token';

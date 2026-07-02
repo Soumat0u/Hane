@@ -15,6 +15,8 @@ class FinancialTransaction {
   final String contactName; // alıcı, satıcı, alacaklı
   final String dueDate;
   final String? attachmentUrl; // sunucudan gelen fiş/fatura görseli (salt okunur)
+  final double? quantity;
+  final String? unit;
 
   FinancialTransaction({
     this.id,
@@ -32,6 +34,8 @@ class FinancialTransaction {
     this.contactName = '',
     this.dueDate = '',
     this.attachmentUrl,
+    this.quantity,
+    this.unit,
   });
 
   FinancialTransaction copyWith({
@@ -50,6 +54,8 @@ class FinancialTransaction {
     String? contactName,
     String? dueDate,
     String? attachmentUrl,
+    double? quantity,
+    String? unit,
   }) {
     return FinancialTransaction(
       id: id ?? this.id,
@@ -67,6 +73,8 @@ class FinancialTransaction {
       contactName: contactName ?? this.contactName,
       dueDate: dueDate ?? this.dueDate,
       attachmentUrl: attachmentUrl ?? this.attachmentUrl,
+      quantity: quantity ?? this.quantity,
+      unit: unit ?? this.unit,
     );
   }
 
@@ -86,6 +94,8 @@ class FinancialTransaction {
       'dest_name': destName,
       'contact_name': contactName,
       'due_date': dueDate,
+      'quantity': quantity,
+      'unit': unit,
     };
   }
 
@@ -95,14 +105,8 @@ class FinancialTransaction {
       projectId: map['project_id'],
       type: map['type'] ?? '',
       amount: map['amount']?.toDouble() ?? 0.0,
-<<<<<<< HEAD
-      date: map['date'],
-      category: map['category'],
-=======
-      currency: map['currency'] ?? 'TRY',
       date: map['date'] ?? '',
       category: map['category'] ?? '',
->>>>>>> c55ac82 (a)
       description: map['description'] ?? '',
       fromAccountId: map['from_account'],
       toAccountId: map['to_account'],
@@ -112,6 +116,8 @@ class FinancialTransaction {
       contactName: map['contact_name'] ?? '',
       dueDate: map['due_date'] ?? '',
       attachmentUrl: map['attachment'],
+      quantity: map['quantity']?.toDouble(),
+      unit: map['unit'],
     );
   }
 }

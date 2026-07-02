@@ -164,101 +164,112 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
 
   Widget _buildHeroCard(BuildContext context, Project project) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: context.colors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: context.colors.border),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Project Image
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             child: Image.asset(
               'assets/images/modern_apartment_building.png',
-              width: 80,
-              height: 80,
+              width: 76,
+              height: 76,
               fit: BoxFit.cover,
             ),
           ),
-          const SizedBox(width: 16),
-          // Details
+          const SizedBox(width: 12),
+          // Details + Stats
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        project.name,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: context.colors.textPrimary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+                // Details
+                Expanded(
+                  flex: 11,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              project.name,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: context.colors.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: context.colors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              project.projectCode.isNotEmpty ? project.projectCode : '—',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: context.colors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: context.colors.surfaceVariant,
-                        borderRadius: BorderRadius.circular(4),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 13, color: context.colors.textSecondary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              project.location.isNotEmpty ? project.location : '-',
+                              style: TextStyle(fontSize: 11, color: context.colors.textSecondary),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        project.projectCode.isNotEmpty ? project.projectCode : '—',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: context.colors.textSecondary,
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.home_work_outlined, size: 13, color: context.colors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            project.projectType.isNotEmpty ? project.projectType : '-',
+                            style: TextStyle(fontSize: 11, color: context.colors.textSecondary),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(width: 8),
+                // Stats
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.location_on_outlined, size: 14, color: context.colors.textSecondary),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        project.location.isNotEmpty ? project.location : '-',
-                        style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.home_work_outlined, size: 14, color: context.colors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      project.projectType.isNotEmpty ? project.projectType : '-',
-                      style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-                    ),
+                    _buildProjectStatItem(context, 'Pafta', project.pafta.isNotEmpty ? project.pafta : '-'),
+                    const SizedBox(width: 14),
+                    _buildProjectStatItem(context, 'Parsel', project.parsel.isNotEmpty ? project.parsel : '-'),
+                    const SizedBox(width: 14),
+                    _buildProjectStatItem(context, 'Alan (m²)', currencyFormat.format(project.areaSqMeters).replaceAll('₺', '').trim()),
                   ],
                 ),
               ],
             ),
           ),
-          // Pafta, Parsel, Alan
-          Row(
-            children: [
-              _buildProjectStatItem(context, 'Pafta', project.pafta.isNotEmpty ? project.pafta : '-'),
-              const SizedBox(width: 16),
-              _buildProjectStatItem(context, 'Parsel', project.parsel.isNotEmpty ? project.parsel : '-'),
-              const SizedBox(width: 16),
-              _buildProjectStatItem(context, 'Alan (m²)', currencyFormat.format(project.areaSqMeters).replaceAll('₺', '').trim()),
-            ],
-          )
         ],
       ),
     );
@@ -266,11 +277,12 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
 
   Widget _buildProjectStatItem(BuildContext context, String label, String value) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 10,
             color: context.colors.textSecondary,
           ),
         ),
@@ -336,6 +348,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
           return Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: ChoiceChip(
+              showCheckmark: false,
               label: Text(
                 cat,
                 style: TextStyle(
@@ -376,81 +389,124 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
       children: [
         // Table Header
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
           child: Row(
             children: [
-              Expanded(flex: 2, child: Text('KATEGORİ', style: _headerStyle(context))),
-              Expanded(flex: 3, child: Text('AÇIKLAMA / MİKTAR', style: _headerStyle(context))),
-              Expanded(flex: 2, child: Text('TEDARİKÇİ', style: _headerStyle(context))),
+              Expanded(flex: 3, child: Text('KATEGORİ', style: _headerStyle(context))),
+              Expanded(flex: 4, child: Text('AÇIKLAMA / MİKTAR', style: _headerStyle(context))),
+              Expanded(flex: 3, child: Text('TEDARİKÇİ', style: _headerStyle(context))),
               Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('TUTAR', style: _headerStyle(context)))),
               Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('TARİH', style: _headerStyle(context)))),
               const SizedBox(width: 24), // For arrow icon
             ],
           ),
         ),
-        const Divider(height: 1),
+        const SizedBox(height: 4),
         // Rows
-        ListView.separated(
+        ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: transactions.length,
-          separatorBuilder: (context, index) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final t = transactions[index];
             DateTime? date = DateTime.tryParse(t.date);
             final dateStr = date != null ? dateFormat.format(date) : t.date;
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+            // Extract description and quantity
+            String desc = t.description;
+            String qty = '';
+            if (desc.contains(' • ')) {
+              final parts = desc.split(' • ');
+              if (parts.length >= 3) {
+                qty = parts[1];
+                desc = parts.sublist(2).join(' • ');
+              } else if (parts.length == 2) {
+                desc = parts[1];
+              }
+            }
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: context.colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.colors.border),
+              ),
               child: Row(
                 children: [
+                  // KATEGORI
                   Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: context.colors.surfaceVariant.withValues(alpha: 0.5),
+                            color: context.colors.surfaceVariant.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(_getIconForCategory(t.category), size: 18, color: context.colors.textPrimary),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: Text(t.category, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary)),
+                          child: Text(
+                            t.category,
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
                   ),
+                  // AÇIKLAMA / MİKTAR
                   Expanded(
-                    flex: 3,
+                    flex: 4,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t.description.isNotEmpty ? t.description : '-', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: context.colors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 2),
-                        // Attempt to extract quantity from description if possible, or just leave it empty. Let's just use description.
-                        Text('', style: TextStyle(fontSize: 11, color: context.colors.textSecondary)),
+                        Text(
+                          desc.isNotEmpty ? desc : '-',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: context.colors.textPrimary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (qty.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            qty.toUpperCase(),
+                            style: TextStyle(fontSize: 10, color: context.colors.textSecondary, fontWeight: FontWeight.bold),
+                          ),
+                        ],
                       ],
                     ),
                   ),
+                  // TEDARİKÇİ
                   Expanded(
-                    flex: 2,
-                    child: Text(t.contactName ?? '-', style: TextStyle(fontSize: 12, color: context.colors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(currencyFormat.format(t.amount), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary)),
+                    flex: 3,
+                    child: Text(
+                      t.contactName.isNotEmpty ? t.contactName : '-',
+                      style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  // TUTAR / TARİH
                   Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(dateStr, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+                    flex: 4, // combined flex of TUTAR and TARİH
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          currencyFormat.format(t.amount),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          dateStr,
+                          style: TextStyle(fontSize: 10, color: context.colors.textSecondary),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -474,13 +530,13 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
 
   IconData _getIconForCategory(String category) {
     switch (category.toLowerCase()) {
-      case 'beton': return Icons.fire_truck_outlined;
+      case 'beton': return Icons.local_shipping_outlined;
       case 'demir': return Icons.grid_4x4_outlined;
-      case 'duvar': return Icons.view_quilt_outlined;
-      case 'elektrik': return Icons.electrical_services_outlined;
-      case 'sıhhi tesisat': return Icons.water_drop_outlined;
+      case 'duvar': return Icons.view_in_ar_outlined;
+      case 'elektrik': return Icons.bolt_outlined;
+      case 'sıhhi tesisat': return Icons.opacity_outlined;
       case 'işçilik': return Icons.engineering_outlined;
-      case 'kalıp': return Icons.construction_outlined;
+      case 'kalıp': return Icons.table_rows_outlined;
       case 'nakliye': return Icons.local_shipping_outlined;
       default: return Icons.build_outlined;
     }
@@ -488,7 +544,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
 
   Widget _buildSummaryCards(BuildContext context, double totalGider, double buAyHarcama, double kalanButce) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
         color: context.colors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -498,10 +554,8 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildSummaryCardColumn(context, 'Toplam Harcama', currencyFormat.format(totalGider), context.colors.textPrimary),
-          Container(height: 40, width: 1, color: context.colors.border),
           _buildSummaryCardColumn(context, 'Bu Ay Harcama', currencyFormat.format(buAyHarcama), context.colors.textPrimary),
-          Container(height: 40, width: 1, color: context.colors.border),
-          _buildSummaryCardColumn(context, 'Kalan Bütçe', currencyFormat.format(kalanButce), context.colors.success),
+          _buildSummaryCardColumn(context, 'Kalan Bütçe', currencyFormat.format(kalanButce), const Color(0xFF10B981)),
         ],
       ),
     );
@@ -510,9 +564,22 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
   Widget _buildSummaryCardColumn(BuildContext context, String title, String amount, Color amountColor) {
     return Column(
       children: [
-        Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textSecondary)),
-        const SizedBox(height: 8),
-        Text(amount, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: amountColor)),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 11,
+            color: context.colors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          amount,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: amountColor,
+          ),
+        ),
       ],
     );
   }
