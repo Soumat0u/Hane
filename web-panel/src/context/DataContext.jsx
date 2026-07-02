@@ -21,6 +21,7 @@ export function DataProvider({ children }) {
   const [loans, setLoans] = useState([])
   const [contacts, setContacts] = useState([])
   const [categories, setCategories] = useState([])
+  const [recurringTransactions, setRecurringTransactions] = useState([])
   const [companyProfile, setCompanyProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loaded, setLoaded] = useState(false)
@@ -54,6 +55,7 @@ export function DataProvider({ children }) {
         api.get('/contacts/'),
         api.get('/categories/'),
         api.get('/budget-lines/'),
+        api.get('/recurring-transactions/'),
       ])
 
       const projs = results[0].status === 'fulfilled' ? results[0].value : []
@@ -66,6 +68,7 @@ export function DataProvider({ children }) {
       const cnts = results[7].status === 'fulfilled' ? results[7].value : []
       const cats = results[8].status === 'fulfilled' ? results[8].value : []
       const bls = results[9].status === 'fulfilled' ? results[9].value : []
+      const rects = results[10].status === 'fulfilled' ? results[10].value : []
 
       setProjects(Array.isArray(projs) ? projs : [])
       setTransactions(Array.isArray(txns) ? txns : [])
@@ -76,6 +79,7 @@ export function DataProvider({ children }) {
       setContacts(Array.isArray(cnts) ? cnts : [])
       setCategories(Array.isArray(cats) ? cats : [])
       setBudgetLines(Array.isArray(bls) ? bls : [])
+      setRecurringTransactions(Array.isArray(rects) ? rects : [])
       setCompanyProfile(profile)
       setLoaded(true)
     } catch {
@@ -167,6 +171,27 @@ export function DataProvider({ children }) {
     [load],
   )
 
+  const updateLoan = useCallback(async (id, body) => {
+    const updated = await api.put(`/loans/${id}/`, body)
+    await load()
+    return updated
+  }, [load])
+
+  const deleteLoan = useCallback(async (id) => {
+    await api.delete(`/loans/${id}/`)
+    await load()
+  }, [load])
+
+  /** Yeni bir proje oluşturur (POST) ve veriyi tazeler. */
+  const addProject = useCallback(
+    async (body) => {
+      const created = await api.post('/projects/', body)
+      await load()
+      return created
+    },
+    [load],
+  )
+
   /** Bir projeyi günceller (PUT) ve veriyi tazeler. */
   const updateProject = useCallback(
     async (id, body) => {
@@ -185,6 +210,138 @@ export function DataProvider({ children }) {
     },
     [load],
   )
+
+  // --- Hesaplar (Kasa) ---
+  const addAccount = useCallback(async (body) => {
+    const created = await api.post('/accounts/', body)
+    await load()
+    return created
+  }, [load])
+
+  const updateAccount = useCallback(async (id, body) => {
+    const updated = await api.put(`/accounts/${id}/`, body)
+    await load()
+    return updated
+  }, [load])
+
+  const deleteAccount = useCallback(async (id) => {
+    await api.delete(`/accounts/${id}/`)
+    await load()
+  }, [load])
+
+  // --- Cariler (Contacts) ---
+  const addContact = useCallback(async (body) => {
+    const created = await api.post('/contacts/', body)
+    await load()
+    return created
+  }, [load])
+
+  const updateContact = useCallback(async (id, body) => {
+    const updated = await api.put(`/contacts/${id}/`, body)
+    await load()
+    return updated
+  }, [load])
+
+  const deleteContact = useCallback(async (id) => {
+    await api.delete(`/contacts/${id}/`)
+    await load()
+  }, [load])
+
+  // --- Çekler (Cheques) ---
+  const addCheque = useCallback(async (body) => {
+    const created = await api.post('/cheques/', body)
+    await load()
+    return created
+  }, [load])
+
+  const updateCheque = useCallback(async (id, body) => {
+    const updated = await api.put(`/cheques/${id}/`, body)
+    await load()
+    return updated
+  }, [load])
+
+  const deleteCheque = useCallback(async (id) => {
+    await api.delete(`/cheques/${id}/`)
+    await load()
+  }, [load])
+
+  // --- Satışlar (Sales) ---
+  const addSale = useCallback(async (body) => {
+    const created = await api.post('/sales/', body)
+    await load()
+    return created
+  }, [load])
+
+  // --- Alacaklar (Receivables) ---
+  const addReceivable = useCallback(async (body) => {
+    const created = await api.post('/receivables/', body)
+    await load()
+    return created
+  }, [load])
+
+  const updateReceivable = useCallback(async (id, body) => {
+    const updated = await api.put(`/receivables/${id}/`, body)
+    await load()
+    return updated
+  }, [load])
+
+  const deleteReceivable = useCallback(async (id) => {
+    await api.delete(`/receivables/${id}/`)
+    await load()
+  }, [load])
+
+  /**
+   * Bir alacaktan tahsilat yapar: Receivable.collected_amount güncellenir ve
+   * seçilen hesaba 'Tahsilat' tipi bir işlem düşülür (mobildeki
+   * `FinanceProvider.collectReceivable` ile aynı mantık). `to_account` FK
+   * alanı kullanılır (dest_name değil) — böylece bakiye, backend'in
+   * sinyal tabanlı yeniden hesaplama yolundan güncellenir.
+   */
+  const collectReceivable = useCallback(
+    async ({ receivable, amount, toAccountId, date = '' }) => {
+      const newCollected = (parseFloat(receivable.collected_amount) || 0) + amount
+      const fullyCollected = newCollected >= (parseFloat(receivable.total_amount) || 0)
+      await api.put(`/receivables/${receivable.id}/`, {
+        ...receivable,
+        collected_amount: newCollected,
+        status: fullyCollected ? 'collected' : 'partial',
+      })
+      await api.post('/transactions/', {
+        type: 'Tahsilat',
+        category: 'Tahsilat',
+        amount,
+        date: date || new Date().toISOString().split('T')[0],
+        project_id: receivable.project ?? null,
+        description: receivable.description || '',
+        to_account: toAccountId ?? null,
+      })
+      await load()
+    },
+    [load],
+  )
+
+  // --- Tekrarlayan İşlemler (Recurring Transactions) ---
+  const addRecurringTransaction = useCallback(async (body) => {
+    const created = await api.post('/recurring-transactions/', body)
+    await load()
+    return created
+  }, [load])
+
+  const updateRecurringTransaction = useCallback(async (id, body) => {
+    const updated = await api.put(`/recurring-transactions/${id}/`, body)
+    await load()
+    return updated
+  }, [load])
+
+  const deleteRecurringTransaction = useCallback(async (id) => {
+    await api.delete(`/recurring-transactions/${id}/`)
+    await load()
+  }, [load])
+
+  const confirmRecurringTransaction = useCallback(async (id) => {
+    await api.post(`/recurring-transactions/${id}/confirm/`, {})
+    await load()
+  }, [load])
 
   const addBudgetLine = useCallback(async (body) => {
     const created = await api.post('/budget-lines/', body)
@@ -329,8 +486,10 @@ export function DataProvider({ children }) {
       contacts,
       categories,
       budgetLines,
+      recurringTransactions,
       companyProfile,
       updateCompanyProfile,
+      addProject,
       updateProject,
       deleteProject,
       addCategory,
@@ -342,6 +501,26 @@ export function DataProvider({ children }) {
       addDebt,
       addTransaction,
       addLoan,
+      updateLoan,
+      deleteLoan,
+      addAccount,
+      updateAccount,
+      deleteAccount,
+      addContact,
+      updateContact,
+      deleteContact,
+      addCheque,
+      updateCheque,
+      deleteCheque,
+      addSale,
+      addReceivable,
+      updateReceivable,
+      deleteReceivable,
+      collectReceivable,
+      addRecurringTransaction,
+      updateRecurringTransaction,
+      deleteRecurringTransaction,
+      confirmRecurringTransaction,
       updateTransaction,
       deleteTransaction,
       notifications,
@@ -365,8 +544,10 @@ export function DataProvider({ children }) {
       contacts,
       categories,
       budgetLines,
+      recurringTransactions,
       companyProfile,
       updateCompanyProfile,
+      addProject,
       updateProject,
       deleteProject,
       addCategory,
@@ -378,6 +559,26 @@ export function DataProvider({ children }) {
       addDebt,
       addTransaction,
       addLoan,
+      updateLoan,
+      deleteLoan,
+      addAccount,
+      updateAccount,
+      deleteAccount,
+      addContact,
+      updateContact,
+      deleteContact,
+      addCheque,
+      updateCheque,
+      deleteCheque,
+      addSale,
+      addReceivable,
+      updateReceivable,
+      deleteReceivable,
+      collectReceivable,
+      addRecurringTransaction,
+      updateRecurringTransaction,
+      deleteRecurringTransaction,
+      confirmRecurringTransaction,
       updateTransaction,
       deleteTransaction,
       notifications,

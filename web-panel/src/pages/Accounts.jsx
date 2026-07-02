@@ -1,16 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Wallet, Banknote, ArrowRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
+import AccountFormModal from '../components/AccountFormModal'
 
-function AccountGroup({ title, accounts, iconClass, onItemClick }) {
+function AccountGroup({ title, accounts, iconClass, onItemClick, onNew }) {
   return (
     <div>
       <div className="section-header">
         <span className="section-title">{title}</span>
-        <button className="btn-inline-text" disabled>
-          <Plus size={16} /> Yeni İşlem
+        <button className="btn-inline-text" onClick={onNew}>
+          <Plus size={16} /> Hesap Ekle
         </button>
       </div>
       {accounts.length === 0 ? (
@@ -43,7 +44,8 @@ function AccountGroup({ title, accounts, iconClass, onItemClick }) {
 
 export default function Accounts() {
   const navigate = useNavigate()
-  const { accounts, loading, loaded, error } = useData()
+  const { accounts, addAccount, loading, loaded, error } = useData()
+  const [newType, setNewType] = useState(null)
 
   const bankAccounts = useMemo(() => accounts.filter((a) => a.type === 'Banka'), [accounts])
   const cashAccounts = useMemo(() => accounts.filter((a) => a.type === 'Nakit'), [accounts])
@@ -89,8 +91,8 @@ export default function Accounts() {
 
         {/* SOL SÜTUN: Bankalar & Nakit */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <AccountGroup title="BANKALAR" accounts={bankAccounts} iconClass="text-info" onItemClick={goToAccount} />
-          <AccountGroup title="NAKİT" accounts={cashAccounts} iconClass="text-success" onItemClick={goToAccount} />
+          <AccountGroup title="BANKALAR" accounts={bankAccounts} iconClass="text-info" onItemClick={goToAccount} onNew={() => setNewType('Banka')} />
+          <AccountGroup title="NAKİT" accounts={cashAccounts} iconClass="text-success" onItemClick={goToAccount} onNew={() => setNewType('Nakit')} />
         </div>
 
         {/* SAĞ SÜTUN: Özet */}
@@ -115,6 +117,14 @@ export default function Accounts() {
         </div>
 
       </div>
+
+      {newType && (
+        <AccountFormModal
+          initialType={newType}
+          onClose={() => setNewType(null)}
+          onSave={addAccount}
+        />
+      )}
     </div>
   )
 }

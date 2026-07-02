@@ -1,28 +1,15 @@
 import { useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import {
   ArrowLeft, Pencil, Plus, MapPin, Building2, ChevronRight, X, Trash2,
   Truck, Grid3x3, BrickWall, Zap, Droplet, HardHat, Construction, Wrench,
-  Home, Store, Landmark, MoreHorizontal,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, formatNumber, num, projectImage } from '../utils'
-
-const PROJECT_TYPES = [
-  { value: 'Konut', icon: Home },
-  { value: 'İşyeri', icon: Store },
-  { value: 'Ofis', icon: Landmark },
-  { value: 'Diğer', icon: MoreHorizontal },
-]
-
-const STATUS_OPTIONS = [
-  { status: 'Planlama Aşaması', color: 'F59E0B', bg: 'FFF7ED' },
-  { status: 'İhale Aşaması', color: '3B82F6', bg: 'EFF6FF' },
-  { status: 'Devam Ediyor', color: '10B981', bg: 'ECFDF5' },
-  { status: 'Tamamlandı', color: '64748B', bg: 'F8FAFC' },
-]
+import SaleFormModal from '../components/SaleFormModal'
+import ProjectFormModal from '../components/ProjectFormModal'
+import NewTransactionFormModal from '../components/NewTransactionFormModal'
 
 const CATEGORY_COLORS = {
   'Beton': '#0F172A',
@@ -61,11 +48,17 @@ function formatDate(raw) {
 export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { projects, transactions, budgetLines, loading, loaded, error, updateProject, deleteProject, addBudgetLine, updateBudgetLine, deleteBudgetLine } = useData()
+  const {
+    projects, transactions, budgetLines, contacts, loading, loaded, error,
+    updateProject, deleteProject, addBudgetLine, updateBudgetLine, deleteBudgetLine,
+    addSale, addReceivable,
+  } = useData()
   const [selectedCategory, setSelectedCategory] = useState('Tümü')
   const [budgetModal, setBudgetModal] = useState(null) // null | { line: existing|null }
   const [budgetForm, setBudgetForm] = useState({ category: '', budgeted_amount: '' })
   const [savingBudget, setSavingBudget] = useState(false)
+  const [saleModalOpen, setSaleModalOpen] = useState(false)
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false)
 
   const project = useMemo(
     () => projects.find((p) => String(p.id) === String(id)) || null,
@@ -73,45 +66,17 @@ export default function ProjectDetail() {
   )
 
   const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [editForm, setEditForm] = useState({})
 
   const handleEditClick = () => {
-    if (project) {
-      setEditForm({ ...project })
-      setIsEditing(true)
-    }
-  }
-
-  const handleSave = async () => {
-    try {
-      setIsSaving(true)
-      const selectedStatus = STATUS_OPTIONS.find((s) => s.status === editForm.status)
-      await updateProject(project.id, {
-        ...editForm,
-        status_color_hex: selectedStatus?.color ?? editForm.status_color_hex,
-        status_bg_color_hex: selectedStatus?.bg ?? editForm.status_bg_color_hex,
-      })
-      setIsEditing(false)
-      alert('Proje başarıyla güncellendi!')
-    } catch (err) {
-      alert('Hata: Proje güncellenemedi.')
-    } finally {
-      setIsSaving(false)
-    }
+    if (project) setIsEditing(true)
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('Bu projeyi silmek istediğinize emin misiniz? Tüm proje verileri silinecektir.')) return
     try {
-      setIsDeleting(true)
       await deleteProject(project.id)
       navigate('/dashboard/projects')
     } catch (err) {
       alert('Hata: Proje silinemedi.')
-    } finally {
-      setIsDeleting(false)
     }
   }
 
@@ -288,9 +253,14 @@ export default function ProjectDetail() {
       {/* Harcamalar başlığı */}
       <div className="detail-section-head">
         <h2 className="detail-section-title">HARCAMALAR</h2>
-        <button className="btn-dark" disabled>
-          <Plus size={16} /> Yeni Harcama Ekle
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="btn-dark" onClick={() => setExpenseModalOpen(true)}>
+            <Plus size={16} /> Yeni Harcama Ekle
+          </button>
+          <button className="btn-dark" onClick={() => setSaleModalOpen(true)}>
+            <Plus size={16} /> Yeni Satış
+          </button>
+        </div>
       </div>
 
       {/* Filtre çipleri */}
@@ -475,208 +445,13 @@ export default function ProjectDetail() {
           </div>
         )}
       </div>
-      {isEditing && createPortal(
-        <div className="modal-overlay" onClick={() => !isSaving && setIsEditing(false)}>
-          <div className="modal" style={{ maxWidth: 760 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Projeyi Düzenle</h2>
-              <button className="modal-close" onClick={() => setIsEditing(false)} disabled={isSaving}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="modal-body" style={{ display: 'grid', gap: '0.25rem' }}>
-              <div className="form-group">
-                <label className="form-label">Proje Adı</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editForm.name || ''}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Proje Kodu</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="örn. AKP-001"
-                  value={editForm.project_code || ''}
-                  onChange={(e) => setEditForm({ ...editForm, project_code: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Proje Tipi</label>
-                <div className="type-chip-grid">
-                  {PROJECT_TYPES.map(({ value, icon: Icon }) => (
-                    <button
-                      type="button"
-                      key={value}
-                      className={`type-chip ${editForm.project_type === value ? 'active' : ''}`}
-                      onClick={() => setEditForm({ ...editForm, project_type: value })}
-                    >
-                      <Icon size={20} />
-                      {value}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Lokasyon</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editForm.location || ''}
-                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Pafta</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editForm.pafta || ''}
-                    onChange={(e) => setEditForm({ ...editForm, pafta: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Parsel</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editForm.parsel || ''}
-                    onChange={(e) => setEditForm({ ...editForm, parsel: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Alan (m²)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={editForm.area_sq_meters || ''}
-                    onChange={(e) => setEditForm({ ...editForm, area_sq_meters: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Toplam Bağımsız Bölüm</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder="örn. 48"
-                    value={editForm.total_independent_sections || ''}
-                    onChange={(e) => setEditForm({ ...editForm, total_independent_sections: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Konut Sayısı</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder="örn. 40"
-                    value={editForm.unit_count || ''}
-                    onChange={(e) => setEditForm({ ...editForm, unit_count: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">İşyeri Sayısı</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    placeholder="örn. 8"
-                    value={editForm.shop_count || ''}
-                    onChange={(e) => setEditForm({ ...editForm, shop_count: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Başlangıç Tarihi</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={editForm.start_date || ''}
-                    onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Tahmini Bitiş Tarihi</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={editForm.end_date || ''}
-                    onChange={(e) => setEditForm({ ...editForm, end_date: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Öngörülen Toplam Maliyet (₺)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={editForm.estimated_total_cost || ''}
-                    onChange={(e) => setEditForm({ ...editForm, estimated_total_cost: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Öngörülen Toplam Gelir (₺)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={editForm.estimated_total_revenue || ''}
-                    onChange={(e) => setEditForm({ ...editForm, estimated_total_revenue: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Durum</label>
-                <select
-                  className="form-input"
-                  value={editForm.status || ''}
-                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s.status} value={s.status}>{s.status}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Açıklama (Opsiyonel)</label>
-                <textarea
-                  className="form-input textarea-field"
-                  rows={3}
-                  maxLength={500}
-                  placeholder="Proje hakkında not ekleyebilirsiniz..."
-                  value={editForm.description || ''}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-danger-outline" onClick={handleDelete} disabled={isSaving || isDeleting}>
-                {isDeleting ? <span className="loader"></span> : 'Projeyi Sil'}
-              </button>
-              <button className="btn-secondary" onClick={() => setIsEditing(false)} disabled={isSaving}>
-                İptal
-              </button>
-              <button className="btn-primary" style={{ width: 'auto', marginTop: 0 }} onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <span className="loader"></span> : 'Kaydet'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
+      {isEditing && (
+        <ProjectFormModal
+          project={project}
+          onClose={() => setIsEditing(false)}
+          onSave={(body) => updateProject(project.id, body)}
+          onDelete={handleDelete}
+        />
       )}
       {budgetModal && (
         <div className="modal-overlay" onClick={() => !savingBudget && setBudgetModal(null)}>
@@ -721,6 +496,25 @@ export default function ProjectDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {saleModalOpen && project && (
+        <SaleFormModal
+          projectId={project.id}
+          projectName={project.name}
+          contacts={contacts}
+          onClose={() => setSaleModalOpen(false)}
+          onSaveSale={addSale}
+          onSaveReceivable={addReceivable}
+        />
+      )}
+
+      {expenseModalOpen && project && (
+        <NewTransactionFormModal
+          type="Ödeme"
+          initialProjectId={project.id}
+          onClose={() => setExpenseModalOpen(false)}
+        />
       )}
     </div>
   )

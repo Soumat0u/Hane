@@ -117,6 +117,10 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
   Widget _buildMobile(BuildContext context) {
     final List<Widget> screens = _screens;
+    final fp = context.watch<FinanceProvider>();
+    final bool isProjelerSelection = _currentTabIndex == 1 && fp.selectedProjectIds.isNotEmpty;
+    final bool isHareketlerSelection = _currentTabIndex == 3 && fp.selectedTransactionIds.isNotEmpty;
+    final bool isSelectionActive = isProjelerSelection || isHareketlerSelection;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -141,15 +145,28 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                       children: [
                         Row(
                           children: [
-                            IconButton(
-                              icon: Icon(Icons.menu_rounded, color: context.colors.brand, size: 28),
-                              onPressed: () {
-                                _scaffoldKey.currentState?.openDrawer();
-                              },
-                            ),
+                            isSelectionActive
+                                ? IconButton(
+                                    icon: Icon(Icons.close_rounded, color: context.colors.textPrimary, size: 28),
+                                    onPressed: () {
+                                      if (isProjelerSelection) {
+                                        fp.clearProjectSelection();
+                                      } else {
+                                        fp.clearTransactionSelection();
+                                      }
+                                    },
+                                  )
+                                : IconButton(
+                                    icon: Icon(Icons.menu_rounded, color: context.colors.brand, size: 28),
+                                    onPressed: () {
+                                      _scaffoldKey.currentState?.openDrawer();
+                                    },
+                                  ),
                             const SizedBox(width: 8),
                             Text(
-                              _getHeaderTitle(_currentTabIndex),
+                              isSelectionActive
+                                  ? '${isProjelerSelection ? fp.selectedProjectIds.length : fp.selectedTransactionIds.length} Seçili'
+                                  : _getHeaderTitle(_currentTabIndex),
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -158,9 +175,20 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                             ),
                           ],
                         ),
-                        _currentTabIndex == 1
-                            ? _yeniProjeButton(context)
-                            : _notificationBell(context),
+                        isSelectionActive
+                            ? IconButton(
+                                icon: Icon(Icons.delete_outline_rounded, color: context.colors.danger, size: 28),
+                                onPressed: () {
+                                  if (isProjelerSelection) {
+                                    _deleteSelectedProjects(context, fp);
+                                  } else {
+                                    _deleteSelectedTransactions(context, fp);
+                                  }
+                                },
+                              )
+                            : (_currentTabIndex == 1
+                                ? _yeniProjeButton(context)
+                                : _notificationBell(context)),
                       ],
                     ),
                   ),
@@ -216,6 +244,10 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   Widget _buildDesktop(BuildContext context) {
     final List<Widget> screens = _screens;
     final bool showTopBar = _currentTabIndex != 2;
+    final fp = context.watch<FinanceProvider>();
+    final bool isProjelerSelection = _currentTabIndex == 1 && fp.selectedProjectIds.isNotEmpty;
+    final bool isHareketlerSelection = _currentTabIndex == 3 && fp.selectedTransactionIds.isNotEmpty;
+    final bool isSelectionActive = isProjelerSelection || isHareketlerSelection;
 
     return Scaffold(
       backgroundColor: context.colors.scaffold,
@@ -236,17 +268,47 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            _getHeaderTitle(_currentTabIndex),
-                            style: TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: context.colors.textPrimary,
-                            ),
+                          Row(
+                            children: [
+                              if (isSelectionActive) ...[
+                                IconButton(
+                                  icon: Icon(Icons.close_rounded, color: context.colors.textPrimary, size: 28),
+                                  onPressed: () {
+                                    if (isProjelerSelection) {
+                                      fp.clearProjectSelection();
+                                    } else {
+                                      fp.clearTransactionSelection();
+                                    }
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Text(
+                                isSelectionActive
+                                    ? '${isProjelerSelection ? fp.selectedProjectIds.length : fp.selectedTransactionIds.length} Seçili'
+                                    : _getHeaderTitle(_currentTabIndex),
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: context.colors.textPrimary,
+                                ),
+                              ),
+                            ],
                           ),
-                          _currentTabIndex == 1
-                              ? _yeniProjeButton(context)
-                              : _notificationBell(context),
+                          isSelectionActive
+                              ? IconButton(
+                                  icon: Icon(Icons.delete_outline_rounded, color: context.colors.danger, size: 28),
+                                  onPressed: () {
+                                    if (isProjelerSelection) {
+                                      _deleteSelectedProjects(context, fp);
+                                    } else {
+                                      _deleteSelectedTransactions(context, fp);
+                                    }
+                                  },
+                                )
+                              : (_currentTabIndex == 1
+                                  ? _yeniProjeButton(context)
+                                  : _notificationBell(context)),
                         ],
                       ),
                     ),
@@ -356,5 +418,59 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           ),
       ],
     );
+  }
+
+  Future<void> _deleteSelectedProjects(BuildContext context, FinanceProvider fp) async {
+    final count = fp.selectedProjectIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Projeleri Sil'),
+        content: Text('$count projeyi silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Sil', style: TextStyle(color: context.colors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final ids = List<int>.from(fp.selectedProjectIds);
+    fp.clearProjectSelection();
+    for (final id in ids) {
+      fp.deleteProject(id);
+    }
+  }
+
+  Future<void> _deleteSelectedTransactions(BuildContext context, FinanceProvider fp) async {
+    final count = fp.selectedTransactionIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('İşlemleri Sil'),
+        content: Text('$count işlemi silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Sil', style: TextStyle(color: context.colors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final ids = List<int>.from(fp.selectedTransactionIds);
+    fp.clearTransactionSelection();
+    for (final id in ids) {
+      fp.deleteTransaction(id);
+    }
   }
 }

@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, History } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, History, Pencil, Trash2 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
+import AccountFormModal from '../components/AccountFormModal'
 
 const fmtDate = (raw) => {
   if (!raw) return '-'
@@ -26,7 +27,9 @@ function resolveIsIncome(t, accountName) {
 export default function AccountDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { accounts, transactions, projects, loading, loaded } = useData()
+  const { accounts, transactions, projects, updateAccount, deleteAccount, loading, loaded } = useData()
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const account = useMemo(
     () => accounts.find((a) => String(a.id) === String(id)) || null,
@@ -70,6 +73,18 @@ export default function AccountDetail() {
 
   const isCard = account.type === 'Kredi Kartı'
 
+  const handleDelete = async () => {
+    if (!window.confirm('Bu hesabı silmek istediğinize emin misiniz?')) return
+    setDeleting(true)
+    try {
+      await deleteAccount(account.id)
+      navigate('/dashboard/accounts')
+    } catch {
+      alert('Hesap silinemedi.')
+      setDeleting(false)
+    }
+  }
+
   return (
     <div>
       <div className="detail-topbar">
@@ -77,6 +92,10 @@ export default function AccountDetail() {
           <ArrowLeft size={20} />
         </button>
         <h1 className="detail-title">{account.name}</h1>
+        <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+          <button className="icon-btn" onClick={() => setEditOpen(true)} title="Düzenle"><Pencil size={18} /></button>
+          <button className="icon-btn" onClick={handleDelete} disabled={deleting} style={{ color: 'var(--color-danger)' }} title="Sil"><Trash2 size={18} /></button>
+        </div>
       </div>
 
       {/* Bakiye / Limit kartı */}
@@ -155,6 +174,14 @@ export default function AccountDetail() {
             )
           })}
         </div>
+      )}
+
+      {editOpen && (
+        <AccountFormModal
+          account={account}
+          onClose={() => setEditOpen(false)}
+          onSave={(body) => updateAccount(account.id, body)}
+        />
       )}
     </div>
   )

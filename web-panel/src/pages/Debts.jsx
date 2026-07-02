@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import {
-  Receipt, Wallet, HardHat, Plus, ChevronLeft, ChevronRight, X,
+  Receipt, Wallet, HardHat, Plus, ChevronLeft, ChevronRight, X, Trash2,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
+import LoanFormModal from '../components/LoanFormModal'
+import ChequeFormModal from '../components/ChequeFormModal'
 
 const isSameDay = (a, b) =>
   !!a && !!b &&
@@ -167,27 +169,45 @@ function NewDebtModal({ projects, onClose, onSave }) {
   )
 }
 
-function DebtSection({ title, items, icon: Icon, onNew }) {
+function DebtSection({ title, items, icon: Icon, onNew, onItemClick, onDelete }) {
   return (
     <div>
       <div className="section-header">
         <span className="section-title">{title}</span>
-        <button className="btn-inline-text" onClick={onNew}>
-          <Plus size={16} /> Yeni İşlem
-        </button>
+        {onNew && (
+          <button className="btn-inline-text" onClick={onNew}>
+            <Plus size={16} /> Yeni İşlem
+          </button>
+        )}
       </div>
       <div className="list-group">
         {items.length === 0 ? (
           <div className="debt-empty">Kayıt bulunamadı.</div>
         ) : (
           items.map((it, i) => (
-            <div className="list-item" key={i}>
+            <div
+              className="list-item"
+              key={it.ref?.id ?? i}
+              onClick={() => onItemClick && it.ref && onItemClick(it.ref)}
+              style={{ cursor: onItemClick && it.ref ? 'pointer' : 'default' }}
+            >
               <div className="list-icon-box"><Icon size={20} className="text-primary" /></div>
               <div className="list-item-content">
                 <div className="list-item-title">{it.name}</div>
               </div>
               <div className="list-item-value">{formatCurrency(it.amount)}</div>
-              <ChevronRight size={14} className="text-muted" style={{ marginLeft: '0.75rem' }} />
+              {onDelete && it.ref ? (
+                <button
+                  className="icon-btn"
+                  style={{ color: 'var(--color-danger)', marginLeft: '0.5rem' }}
+                  onClick={(e) => { e.stopPropagation(); onDelete(it.ref) }}
+                  title="Sil"
+                >
+                  <Trash2 size={16} />
+                </button>
+              ) : (
+                <ChevronRight size={14} className="text-muted" style={{ marginLeft: '0.75rem' }} />
+              )}
             </div>
           ))
         )}
@@ -197,16 +217,56 @@ function DebtSection({ title, items, icon: Icon, onNew }) {
 }
 
 export default function Debts() {
-  const { loans, accounts, cheques, contacts, transactions, projects, addDebt, loading, loaded } = useData()
+  const {
+    loans, accounts, cheques, contacts, transactions, projects, addDebt,
+    addLoan, updateLoan, deleteLoan, addCheque, updateCheque, deleteCheque,
+    loading, loaded,
+  } = useData()
   const [selectedDay, setSelectedDay] = useState(() => {
     const d = new Date()
     d.setHours(0, 0, 0, 0)
     return d
   })
   const [modalOpen, setModalOpen] = useState(false)
+  const [loanTarget, setLoanTarget] = useState(undefined) // undefined=closed, null=create, object=edit
+  const [chequeTarget, setChequeTarget] = useState(undefined)
+
+  const handleDeleteLoan = async (loan) => {
+    if (!window.confirm(`"${loan.name}" kredisini silmek istediğinize emin misiniz?`)) return
+    try {
+      await deleteLoan(loan.id)
+    } catch {
+      alert('Kredi silinemedi.')
+    }
+  }
+
+  const handleDeleteCheque = async (cheque) => {
+    if (!window.confirm('Bu çeki silmek istediğinize emin misiniz?')) return
+    try {
+      await deleteCheque(cheque.id)
+    } catch {
+      alert('Çek silinemedi.')
+    }
+  }
+
+  const handleSaveLoan = async (body) => {
+    if (loanTarget && loanTarget.id) {
+      await updateLoan(loanTarget.id, body)
+    } else {
+      await addLoan(body)
+    }
+  }
+
+  const handleSaveCheque = async (body) => {
+    if (chequeTarget && chequeTarget.id) {
+      await updateCheque(chequeTarget.id, body)
+    } else {
+      await addCheque(body)
+    }
+  }
 
   const bankaBorclari = useMemo(() => {
-    const arr = loans.map((l) => ({ name: l.name, amount: num(l.remaining) }))
+    const arr = loans.map((l) => ({ name: l.name, amount: num(l.remaining), ref: l }))
     accounts
       .filter((a) => (a.type === 'BCH' || a.type === 'Kredi Kartı') && num(a.balance) < 0)
       .forEach((a) => arr.push({ name: `${a.name} (kullanılan)`, amount: Math.abs(num(a.balance)) }))
@@ -223,7 +283,7 @@ export default function Debts() {
   const cekler = useMemo(
     () => cheques
       .filter((c) => c.direction === 'issued' && c.status !== 'cashed')
-      .map((c) => ({ name: c.bank_name ? `${c.bank_name} çeki` : 'Çek', amount: num(c.amount) })),
+      .map((c) => ({ name: c.bank_name ? `${c.bank_name} çeki` : 'Çek', amount: num(c.amount), ref: c })),
     [cheques],
   )
 
@@ -315,9 +375,23 @@ export default function Debts() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '2rem', marginTop: '1.75rem', alignItems: 'start' }}>
         {/* SOL SÜTUN: Borç Grupları */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <DebtSection title="BANKA BORÇLARI" items={bankaBorclari} icon={Wallet} onNew={() => setModalOpen(true)} />
+          <DebtSection
+            title="BANKA BORÇLARI"
+            items={bankaBorclari}
+            icon={Wallet}
+            onNew={() => setLoanTarget(null)}
+            onItemClick={(loan) => setLoanTarget(loan)}
+            onDelete={handleDeleteLoan}
+          />
           <DebtSection title="TİCARİ BORÇLAR" items={ticariBorclar} icon={HardHat} onNew={() => setModalOpen(true)} />
-          <DebtSection title="ÇEKLER" items={cekler} icon={Receipt} onNew={() => setModalOpen(true)} />
+          <DebtSection
+            title="ÇEKLER"
+            items={cekler}
+            icon={Receipt}
+            onNew={() => setChequeTarget(null)}
+            onItemClick={(cheque) => setChequeTarget(cheque)}
+            onDelete={handleDeleteCheque}
+          />
         </div>
 
         {/* SAĞ SÜTUN: Takvim & Yaklaşan Ödemeler */}
@@ -354,6 +428,23 @@ export default function Debts() {
           projects={projects}
           onClose={() => setModalOpen(false)}
           onSave={addDebt}
+        />
+      )}
+
+      {loanTarget !== undefined && (
+        <LoanFormModal
+          loan={loanTarget}
+          onClose={() => setLoanTarget(undefined)}
+          onSave={handleSaveLoan}
+        />
+      )}
+
+      {chequeTarget !== undefined && (
+        <ChequeFormModal
+          cheque={chequeTarget}
+          contacts={contacts}
+          onClose={() => setChequeTarget(undefined)}
+          onSave={handleSaveCheque}
         />
       )}
     </div>

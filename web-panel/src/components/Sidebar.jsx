@@ -14,6 +14,8 @@ import {
   ArrowUpFromLine,
   Landmark,
   FileCheck2,
+  Users,
+  Repeat,
 } from 'lucide-react'
 import appIcon from '../assets/icon.png'
 import NewTransactionFormModal from './NewTransactionFormModal'
@@ -43,10 +45,12 @@ export default function Sidebar() {
       label: 'Finans',
       items: [
         { name: 'Kasa', path: '/dashboard/accounts', icon: Wallet },
+        { name: 'Cari Hesaplar', path: '/dashboard/contacts', icon: Users },
         { name: 'Borçlar', path: '/dashboard/debts', icon: Receipt },
         { name: 'Alacaklar', path: '/dashboard/receivables', icon: ArrowDownToLine },
         { name: 'Finansman Gücü', path: '/dashboard/finance-power', icon: Shield },
         { name: 'Hareketler', path: '/dashboard/transactions', icon: ArrowRightLeft },
+        { name: 'Tekrarlayan İşlemler', path: '/dashboard/recurring', icon: Repeat },
       ],
     },
     {

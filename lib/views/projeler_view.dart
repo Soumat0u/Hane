@@ -20,77 +20,6 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
   @override
   bool get wantKeepAlive => true;
 
-  final Set<int> _selectedIds = {};
-  bool get _selectionMode => _selectedIds.isNotEmpty;
-
-  void _toggleSelection(int id) {
-    setState(() {
-      if (_selectedIds.contains(id)) {
-        _selectedIds.remove(id);
-      } else {
-        _selectedIds.add(id);
-      }
-    });
-  }
-
-  void _cancelSelection() {
-    setState(() => _selectedIds.clear());
-  }
-
-  Future<void> _deleteSelected(FinanceProvider fp) async {
-    final count = _selectedIds.length;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Projeleri Sil'),
-        content: Text('$count projeyi silmek istediğinize emin misiniz?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Sil', style: TextStyle(color: context.colors.danger)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    final ids = List<int>.from(_selectedIds);
-    setState(() => _selectedIds.clear());
-    // Her biri kendi arayüzden-anında-sil + arkaplanda-senkron mantığıyla, birbirinden bağımsız işler.
-    for (final id in ids) {
-      fp.deleteProject(id);
-    }
-  }
-
-  Widget _buildSelectionBar(BuildContext context, FinanceProvider fp) {
-    return Container(
-      color: context.colors.brand,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: SafeArea(
-        bottom: false,
-        top: false,
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.close_rounded, color: Colors.white),
-              onPressed: _cancelSelection,
-            ),
-            Expanded(
-              child: Text(
-                '${_selectedIds.length} seçili',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
-              onPressed: () => _deleteSelected(fp),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -106,7 +35,6 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_selectionMode) _buildSelectionBar(context, financeProvider),
           const SizedBox(height: 8),
           // Subtitle Row: "Devam Eden Projeler" & "Tümü"
           if (projects.isNotEmpty)
@@ -214,9 +142,15 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
 
     final bool isZeroRealization = realizationPercent == 0;
     final Color percentColor = isZeroRealization ? context.colors.textSecondary : context.colors.success;
+    final bool isSelected = project.id != null && fp.selectedProjectIds.contains(project.id);
+    final bool selectionMode = fp.selectedProjectIds.isNotEmpty;
 
     return GestureDetector(
       onTap: () {
+        if (selectionMode) {
+          if (project.id != null) fp.toggleProjectSelection(project.id!);
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -224,12 +158,13 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
           ),
         );
       },
+      onLongPress: project.id == null ? null : () => fp.toggleProjectSelection(project.id!),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16.0),
         decoration: BoxDecoration(
           color: context.colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.colors.border),
+          border: Border.all(color: isSelected ? context.colors.danger : context.colors.border, width: isSelected ? 2 : 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withAlpha(5),
@@ -245,18 +180,33 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Project Image Thumbnail
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  image: const DecorationImage(
-                    image: AssetImage('assets/images/modern_apartment_building.png'),
-                    fit: BoxFit.cover,
+              // Project Image Thumbnail (seçim modunda seçim işaretiyle değiştirilir)
+              if (selectionMode)
+                Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: context.colors.scaffold,
+                  ),
+                  child: Icon(
+                    isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                    color: isSelected ? context.colors.danger : context.colors.textSecondary,
+                    size: 32,
+                  ),
+                )
+              else
+                Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    image: const DecorationImage(
+                      image: AssetImage('assets/images/modern_apartment_building.png'),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-              ),
               const SizedBox(width: 14),
               // Name, status tag, costs
               Expanded(
@@ -371,14 +321,16 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
           Align(
             alignment: Alignment.centerRight,
             child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProjeDetayView(projectName: project.name),
-                  ),
-                );
-              },
+              onTap: selectionMode
+                  ? (project.id == null ? null : () => fp.toggleProjectSelection(project.id!))
+                  : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProjeDetayView(projectName: project.name),
+                        ),
+                      );
+                    },
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
                 child: Row(

@@ -24,6 +24,38 @@ class FinanceProvider extends ChangeNotifier {
   List<RecurringTransaction> _recurringTransactions = [];
   CompanyProfile? _companyProfile;
 
+  // Selection states
+  final Set<int> selectedProjectIds = {};
+  final Set<int> selectedTransactionIds = {};
+
+  void toggleProjectSelection(int id) {
+    if (selectedProjectIds.contains(id)) {
+      selectedProjectIds.remove(id);
+    } else {
+      selectedProjectIds.add(id);
+    }
+    notifyListeners();
+  }
+
+  void clearProjectSelection() {
+    selectedProjectIds.clear();
+    notifyListeners();
+  }
+
+  void toggleTransactionSelection(int id) {
+    if (selectedTransactionIds.contains(id)) {
+      selectedTransactionIds.remove(id);
+    } else {
+      selectedTransactionIds.add(id);
+    }
+    notifyListeners();
+  }
+
+  void clearTransactionSelection() {
+    selectedTransactionIds.clear();
+    notifyListeners();
+  }
+
   List<Project> get projects => _projects;
   List<Account> get accounts => _accounts;
   List<FinancialTransaction> get allTransactions => _allTransactions;

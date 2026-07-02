@@ -1,4 +1,4 @@
-import { User, Bell, Lock, Smartphone, LogOut, ArrowRight, FolderTree } from 'lucide-react'
+import { Smartphone, LogOut, ArrowRight, FolderTree } from 'lucide-react'
 import { useNavigate } from 'react-router-dom' // Yönlendirme için eklendi
 
 export default function Settings() {
@@ -28,38 +28,9 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="dashboard-content-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem' }}>
+      <div className="dashboard-content-grid" style={{ gridTemplateColumns: '1fr', gap: '2rem' }}>
 
-        {/* PROFİL BİLGİLERİ */}
-        <div>
-          <div className="section-header">
-            <span className="section-title">HESAP</span>
-          </div>
-          <div className="list-group">
-            <div className="list-item">
-              <div className="list-icon-box">
-                <User size={20} className="text-primary" />
-              </div>
-              <div className="list-item-content">
-                <div className="list-item-title">Profil Bilgileri</div>
-                <div className="list-item-subtitle">Ad, soyad ve e-posta güncellemeleri</div>
-              </div>
-              <ArrowRight size={14} className="text-muted" />
-            </div>
-            <div className="list-item">
-              <div className="list-icon-box">
-                <Lock size={20} className="text-warning" />
-              </div>
-              <div className="list-item-content">
-                <div className="list-item-title">Şifre & Güvenlik</div>
-                <div className="list-item-subtitle">Şifre değiştirme ve 2FA</div>
-              </div>
-              <ArrowRight size={14} className="text-muted" />
-            </div>
-          </div>
-        </div>
-
-        {/* UYGULAMA TERCİHLERİ */}
+        {/* UYGULAMA VE VERİ */}
         <div>
           <div className="section-header">
             <span className="section-title">UYGULAMA VE VERİ</span>
@@ -77,16 +48,6 @@ export default function Settings() {
             </div>
             <div className="list-item">
               <div className="list-icon-box">
-                <Bell size={20} className="text-primary" />
-              </div>
-              <div className="list-item-content">
-                <div className="list-item-title">Bildirimler</div>
-                <div className="list-item-subtitle">E-posta ve push bildirim ayarları</div>
-              </div>
-              <ArrowRight size={14} className="text-muted" />
-            </div>
-            <div className="list-item">
-              <div className="list-icon-box">
                 <Smartphone size={20} className="text-success" />
               </div>
               <div className="list-item-content">
@@ -98,7 +59,7 @@ export default function Settings() {
         </div>
 
         {/* ÇIKIŞ YAP */}
-        <div style={{ gridColumn: 'span 2', justifySelf: 'center', width: '100%', maxWidth: '280px', marginTop: '1rem' }}>
+        <div style={{ justifySelf: 'center', width: '100%', maxWidth: '280px', marginTop: '1rem' }}>
           <button
             onClick={handleLogout} // Fonksiyonu butona bağladık
             className="list-item"

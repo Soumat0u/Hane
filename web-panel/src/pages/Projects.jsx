@@ -1,12 +1,14 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, ArrowRight, ChevronRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num, parseStatusColor, withAlpha15, projectImage } from '../utils'
+import ProjectFormModal from '../components/ProjectFormModal'
 
 export default function Projects() {
   const navigate = useNavigate()
-  const { projects, transactions, loading, loaded, error } = useData()
+  const { projects, transactions, addProject, loading, loaded, error } = useData()
+  const [createOpen, setCreateOpen] = useState(false)
 
   // İşlemleri proje bazında grupla (mobil provider mantığı).
   const txByProject = useMemo(() => {
@@ -59,7 +61,7 @@ export default function Projects() {
             <button className="btn-inline-text" disabled>
               Tümü <ArrowRight size={14} />
             </button>
-            <button className="btn-inline-text" disabled>
+            <button className="btn-inline-text" onClick={() => setCreateOpen(true)}>
               <Plus size={16} /> Yeni Proje
             </button>
           </div>
@@ -68,7 +70,7 @@ export default function Projects() {
 
       {projects.length === 0 ? (
         <div className="empty-state" style={{ padding: '5rem 0' }}>
-          <div className="empty-circle">
+          <div className="empty-circle" onClick={() => setCreateOpen(true)} style={{ cursor: 'pointer' }}>
             <Plus size={40} />
           </div>
           <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
@@ -147,6 +149,13 @@ export default function Projects() {
             )
           })}
         </div>
+      )}
+
+      {createOpen && (
+        <ProjectFormModal
+          onClose={() => setCreateOpen(false)}
+          onSave={addProject}
+        />
       )}
     </div>
   )

@@ -14,6 +14,9 @@ import Debts from './pages/Debts'
 import Receivables from './pages/Receivables'
 import FinancePower from './pages/FinancePower'
 import Profile from './pages/Profile'
+import Contacts from './pages/Contacts'
+import ContactDetail from './pages/ContactDetail'
+import RecurringTransactions from './pages/RecurringTransactions'
 
 function App() {
   return (
@@ -29,11 +32,14 @@ function App() {
           <Route path="projects/:id" element={<ProjectDetail />} />
           <Route path="accounts" element={<Accounts />} />
           <Route path="accounts/:id" element={<AccountDetail />} />
+          <Route path="contacts" element={<Contacts />} />
+          <Route path="contacts/:id" element={<ContactDetail />} />
           <Route path="debts" element={<Debts />} />
           <Route path="receivables" element={<Receivables />} />
           <Route path="finance-power" element={<FinancePower />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="transactions/:id" element={<TransactionDetail />} />
+          <Route path="recurring" element={<RecurringTransactions />} />
           <Route path="settings" element={<Settings />} />
           <Route path="settings/categories" element={<Categories />} />
         </Route>

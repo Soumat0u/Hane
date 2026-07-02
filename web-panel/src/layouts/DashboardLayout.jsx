@@ -1,21 +1,42 @@
 import { useState, useEffect, useRef } from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
-import { Sun, Moon, Bell, AlertTriangle, ArrowDownToLine, CreditCard, Info } from 'lucide-react'
+import { Sun, Moon, Bell, AlertTriangle, ArrowDownToLine, CreditCard, Info, Repeat, Check } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import { DataProvider, useData } from '../context/DataContext'
 
 function TopbarActions({ theme, toggleTheme }) {
-  const { 
-    notifications, 
-    readKeys, 
-    unreadNotificationsCount, 
-    getNotificationKey, 
-    markNotificationRead, 
-    markAllNotificationsRead 
+  const {
+    notifications,
+    readKeys,
+    unreadNotificationsCount,
+    getNotificationKey,
+    markNotificationRead,
+    markAllNotificationsRead,
+    recurringTransactions,
+    confirmRecurringTransaction,
   } = useData()
 
   const [showNotifications, setShowNotifications] = useState(false)
+  const [confirmingId, setConfirmingId] = useState(null)
   const dropdownRef = useRef(null)
+
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const dueTemplates = recurringTransactions.filter((r) => {
+    if (!r.is_active || !r.next_due_date) return false
+    const due = new Date(r.next_due_date)
+    return !Number.isNaN(due.getTime()) && due <= today
+  })
+
+  const handleConfirm = async (id) => {
+    setConfirmingId(id)
+    try {
+      await confirmRecurringTransaction(id)
+    } catch {
+      alert('Tekrarlayan işlem onaylanamadı.')
+    } finally {
+      setConfirmingId(null)
+    }
+  }
 
   const toggleNotifications = () => setShowNotifications(s => !s)
 
@@ -63,6 +84,34 @@ function TopbarActions({ theme, toggleTheme }) {
                 </button>
               )}
             </div>
+            {dueTemplates.length > 0 && (
+              <div className="notification-list" style={{ borderBottom: '1px solid var(--color-border)' }}>
+                {dueTemplates.map((r) => (
+                  <div key={r.id} className="notification-item">
+                    <div className="notification-item-icon-box warning">
+                      <Repeat size={18} />
+                    </div>
+                    <div className="notification-item-content">
+                      <div className="notification-item-header">
+                        <span className="notification-item-type">Tekrarlayan İşlem</span>
+                        <span className="notification-item-date overdue">{r.next_due_date}</span>
+                      </div>
+                      <span className="notification-item-desc">
+                        {(r.description || r.category || 'İşlem')} — {formatCurrency(r.amount)}
+                      </span>
+                    </div>
+                    <button
+                      className="btn-inline-text"
+                      style={{ flexShrink: 0 }}
+                      disabled={confirmingId === r.id}
+                      onClick={(e) => { e.stopPropagation(); handleConfirm(r.id) }}
+                    >
+                      <Check size={14} /> Onayla
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="notification-list">
               {notifications.length === 0 ? (
                 <div className="notification-empty">

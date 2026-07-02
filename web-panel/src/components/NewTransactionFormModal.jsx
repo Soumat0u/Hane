@@ -35,17 +35,21 @@ function AccountOptions({ accounts, types }) {
  * Mobildeki `YeniIslemScreen`'in web karşılığı: sol panelden seçilen türe göre
  * (Ödeme, Transfer, Borçlanma, Kredi Kullanımı, Satış) doğru formu gösterir.
  */
-export default function NewTransactionFormModal({ type: rawType, onClose }) {
+export default function NewTransactionFormModal({ type: rawType, onClose, initialProjectId = null }) {
   const type = rawType === 'Borç' ? 'Borçlanma' : rawType
   const { projects, accounts, categories, addTransaction, addLoan, addDebt } = useData()
   const bounds = useMemo(getMonthBounds, [])
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const initialProjectName = useMemo(
+    () => (initialProjectId != null ? projects.find((p) => String(p.id) === String(initialProjectId))?.name || '' : ''),
+    [initialProjectId, projects],
+  )
 
   // --- Ödeme (Gelir/Gider — Tahsilat da bu formun gelir tarafıdır) ---
   const [isIncome, setIsIncome] = useState(false)
   const [odemeDate, setOdemeDate] = useState(today())
-  const [odemeProject, setOdemeProject] = useState('')
+  const [odemeProject, setOdemeProject] = useState(initialProjectName)
   const [mainCategory, setMainCategory] = useState('')
   const [subCategory, setSubCategory] = useState('')
   const [odemeAccount, setOdemeAccount] = useState('')
