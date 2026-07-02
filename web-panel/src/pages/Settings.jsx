@@ -1,6 +1,24 @@
 import { User, Bell, Lock, Smartphone, LogOut, ArrowRight, FolderTree } from 'lucide-react'
+import { useNavigate } from 'react-router-dom' // Yönlendirme için eklendi
 
 export default function Settings() {
+  const navigate = useNavigate()
+
+  // Çıkış yapma fonksiyonu
+  const handleLogout = () => {
+    // 1. Tarayıcıda tutulan oturum verilerini temizle 
+    // (Projene göre 'token', 'user' veya 'access_token' gibi isimleri kendi yapına göre düzenleyebilirsin)
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    sessionStorage.clear()
+
+    // Eğer src/context/DataContext.jsx içinde bir state sıfırlama fonksiyonun varsa
+    // onu da burada çağırabilirsin. Örn: clearUserData()
+
+    // 2. Kullanıcıyı Login sayfasına yönlendir
+    navigate('/login')
+  }
+
   return (
     <div>
       <div className="page-header-banner bg-settings">
@@ -10,10 +28,9 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Grid yapısı iki sütun (1fr 1fr) olarak güncellendi */}
       <div className="dashboard-content-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: '2rem' }}>
 
-        {/* PROFİL BİLGİLERİ (1. Sütun) */}
+        {/* PROFİL BİLGİLERİ */}
         <div>
           <div className="section-header">
             <span className="section-title">HESAP</span>
@@ -42,13 +59,13 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* UYGULAMA TERCİHLERİ (2. Sütun) */}
+        {/* UYGULAMA TERCİHLERİ */}
         <div>
           <div className="section-header">
             <span className="section-title">UYGULAMA VE VERİ</span>
           </div>
           <div className="list-group">
-            <div className="list-item" onClick={() => window.location.href = '/dashboard/settings/categories'} style={{ cursor: 'pointer' }}>
+            <div className="list-item" onClick={() => navigate('/dashboard/settings/categories')} style={{ cursor: 'pointer' }}>
               <div className="list-icon-box">
                 <FolderTree size={20} className="text-info" />
               </div>
@@ -80,9 +97,13 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* ÇIKIŞ YAP (İki sütunun ortasında en altta yer alacak şekilde hizalandı) */}
+        {/* ÇIKIŞ YAP */}
         <div style={{ gridColumn: 'span 2', justifySelf: 'center', width: '100%', maxWidth: '280px', marginTop: '1rem' }}>
-          <button className="list-item" style={{ width: '100%', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', justifyContent: 'center', color: 'var(--color-danger)' }}>
+          <button
+            onClick={handleLogout} // Fonksiyonu butona bağladık
+            className="list-item"
+            style={{ width: '100%', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', justifyContent: 'center', color: 'var(--color-danger)' }}
+          >
             <LogOut size={18} style={{ marginRight: '0.5rem' }} />
             <span style={{ fontWeight: '600' }}>Güvenli Çıkış Yap</span>
           </button>

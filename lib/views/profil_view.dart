@@ -45,7 +45,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
       final d = DateTime.tryParse(t.date);
       if (d == null || d.year != now.year || d.month != now.month) return false;
       return income
-          ? (t.type == 'Tahsilat' || t.type == 'Gelir')
+          ? (t.type == 'Tahsilat' || t.type == 'Gelir' || t.type == 'Satış')
           : t.type == 'Gider';
     }).fold(0.0, (s, t) => s + t.amount);
   }

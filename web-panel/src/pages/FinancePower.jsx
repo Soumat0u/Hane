@@ -13,14 +13,16 @@ export default function FinancePower() {
   }
 
   const creditCardAccounts = useMemo(() => accounts.filter((a) => a.type === 'Kredi Kartı'), [accounts])
+  const bchAccounts = useMemo(() => accounts.filter((a) => a.type === 'BCH'), [accounts])
+  const esnekAccounts = useMemo(() => accounts.filter((a) => a.type === 'Esnek'), [accounts])
 
-  const fTotal = 18250000.0
-  const bchTotal = 8000000.0
+  const bchTotal = useMemo(() => bchAccounts.reduce((s, a) => s + num(a.available_limit), 0), [bchAccounts])
   const cardLimitTotal = useMemo(
     () => creditCardAccounts.reduce((s, a) => s + num(a.available_limit), 0),
     [creditCardAccounts],
   )
-  const esnekTotal = 1750000.0
+  const esnekTotal = useMemo(() => esnekAccounts.reduce((s, a) => s + num(a.available_limit), 0), [esnekAccounts])
+  const fTotal = bchTotal + cardLimitTotal + esnekTotal
 
   const goToAccount = (account) => navigate(`/dashboard/accounts/${account.id}`)
 
@@ -49,30 +51,29 @@ export default function FinancePower() {
                 <Plus size={16} /> Yeni Limit
               </button>
             </div>
-            <div className="list-group">
-              <div className="list-item">
-                <div className="list-icon-box"><Building size={20} className="text-info" /></div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Halkbank</div>
-                  <div className="list-item-subtitle">Kullanılabilir</div>
+            {bchAccounts.length === 0 ? (
+              <div className="summary-box">
+                <div className="empty-state" style={{ padding: '1.5rem 0' }}>
+                  <span>Kayıtlı BCH limiti bulunamadı.</span>
                 </div>
-                <div className="list-item-value-box">
-                  <div className="list-item-value">{formatCurrency(5000000)}</div>
-                </div>
-                <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
               </div>
-              <div className="list-item">
-                <div className="list-icon-box"><Building size={20} className="text-danger" /></div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Ziraat</div>
-                  <div className="list-item-subtitle">Kullanılabilir</div>
-                </div>
-                <div className="list-item-value-box">
-                  <div className="list-item-value">{formatCurrency(3000000)}</div>
-                </div>
-                <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
+            ) : (
+              <div className="list-group">
+                {bchAccounts.map((a) => (
+                  <div className="list-item" key={a.id} onClick={() => goToAccount(a)} style={{ cursor: 'pointer' }}>
+                    <div className="list-icon-box"><Building size={20} className="text-info" /></div>
+                    <div className="list-item-content">
+                      <div className="list-item-title">{a.name}</div>
+                      <div className="list-item-subtitle">Kullanılabilir</div>
+                    </div>
+                    <div className="list-item-value-box">
+                      <div className="list-item-value">{formatCurrency(num(a.available_limit))}</div>
+                    </div>
+                    <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
           {/* KART LİMİTLERİ */}
@@ -116,30 +117,29 @@ export default function FinancePower() {
                 <Plus size={16} /> Yeni Limit
               </button>
             </div>
-            <div className="list-group">
-              <div className="list-item">
-                <div className="list-icon-box"><PiggyBank size={20} className="text-info" /></div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Halkbank</div>
-                  <div className="list-item-subtitle">Kullanılabilir</div>
+            {esnekAccounts.length === 0 ? (
+              <div className="summary-box">
+                <div className="empty-state" style={{ padding: '1.5rem 0' }}>
+                  <span>Kayıtlı esnek hesap bulunamadı.</span>
                 </div>
-                <div className="list-item-value-box">
-                  <div className="list-item-value">{formatCurrency(1000000)}</div>
-                </div>
-                <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
               </div>
-              <div className="list-item">
-                <div className="list-icon-box"><PiggyBank size={20} className="text-danger" /></div>
-                <div className="list-item-content">
-                  <div className="list-item-title">Ziraat</div>
-                  <div className="list-item-subtitle">Kullanılabilir</div>
-                </div>
-                <div className="list-item-value-box">
-                  <div className="list-item-value">{formatCurrency(750000)}</div>
-                </div>
-                <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
+            ) : (
+              <div className="list-group">
+                {esnekAccounts.map((a) => (
+                  <div className="list-item" key={a.id} onClick={() => goToAccount(a)} style={{ cursor: 'pointer' }}>
+                    <div className="list-icon-box"><PiggyBank size={20} className="text-info" /></div>
+                    <div className="list-item-content">
+                      <div className="list-item-title">{a.name}</div>
+                      <div className="list-item-subtitle">Kullanılabilir</div>
+                    </div>
+                    <div className="list-item-value-box">
+                      <div className="list-item-value">{formatCurrency(num(a.available_limit))}</div>
+                    </div>
+                    <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
         </div>

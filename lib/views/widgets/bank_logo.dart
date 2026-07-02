@@ -45,14 +45,24 @@ class BankLogoWidget extends StatelessWidget {
     if (path.isEmpty) {
       return Icon(Icons.account_balance, size: height, color: context.colors.textSecondary);
     }
-    return Image.asset(
-      path,
+    // Logo görselleri beyaz zemin için tasarlandığından, karanlık temada
+    // yazı/arkaplan renginin birbirine karışmaması için sabit beyaz bir
+    // zemin üzerinde gösteriyoruz.
+    return Container(
       width: width,
       height: height,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) {
-        return Icon(Icons.account_balance, size: height, color: context.colors.textSecondary);
-      },
+      padding: const EdgeInsets.all(2.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Image.asset(
+        path,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(Icons.account_balance, size: height, color: context.colors.textSecondary);
+        },
+      ),
     );
   }
 }

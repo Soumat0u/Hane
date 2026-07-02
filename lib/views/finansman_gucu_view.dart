@@ -4,7 +4,9 @@ import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/models/account.dart';
 import 'package:hane/views/yeni_islem_view.dart';
+import 'package:hane/views/kasa_detay_view.dart';
 import 'package:hane/views/widgets/bank_logo.dart';
 
 class FinansmanGucuView extends StatelessWidget {
@@ -24,17 +26,15 @@ class FinansmanGucuView extends StatelessWidget {
       body: SafeArea(
         child: Consumer<FinanceProvider>(
           builder: (context, fp, child) {
-            // Finansman Gücü hesaplaması (Dashboard ile aynı)
-            final kasa = fp.getTotalBalance();
-            final borclar = fp.allTransactions.where((t) => t.type == 'Borçlanma').fold(0.0, (sum, t) => sum + t.amount);
-            final alacaklar = fp.getTotalSatis() - fp.getTotalTahsilat();
-            final finansmanGucuTotal = kasa + (alacaklar > 0 ? alacaklar : 0) - borclar;
+            // Gerçek hesap verileri: kullanıcının eklediği BCH, kredi kartı ve esnek hesaplar.
+            final bchAccounts = fp.accounts.where((a) => a.type == 'BCH').toList();
+            final cardAccounts = fp.accounts.where((a) => a.type == 'Kredi Kartı').toList();
+            final esnekAccounts = fp.accounts.where((a) => a.type == 'Esnek').toList();
 
-            // Dummy totals to match the UI precisely
-            final bchTotal = 8000000.0;
-            final cardLimitTotal = 500000.0;
-            final esnekTotal = 1750000.0;
-            final fTotal = 18250000.0; // Overriding with UI design total for display accuracy
+            final bchTotal = bchAccounts.fold(0.0, (sum, a) => sum + a.availableLimit);
+            final cardLimitTotal = cardAccounts.fold(0.0, (sum, a) => sum + a.availableLimit);
+            final esnekTotal = esnekAccounts.fold(0.0, (sum, a) => sum + a.availableLimit);
+            final fTotal = bchTotal + cardLimitTotal + esnekTotal;
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -96,27 +96,33 @@ class FinansmanGucuView extends StatelessWidget {
                   _buildSectionHeader(context, 'KULLANILABİLİR BCH', onNewTap: () {
                     _showNewTransaction(context);
                   }),
-                  _buildGroupList(context, [
-                    _ListItemData(name: 'Halkbank', value: 5000000, subText: 'Kullanılabilir'),
-                    _ListItemData(name: 'Ziraat', value: 3000000, subText: 'Kullanılabilir'),
-                  ]),
+                  _buildGroupList(
+                    context,
+                    bchAccounts
+                        .map((a) => _ListItemData(name: a.name, value: a.availableLimit, subText: 'Kullanılabilir', account: a))
+                        .toList(),
+                    emptyText: 'Kayıtlı BCH limiti bulunamadı.',
+                  ),
                   const SizedBox(height: 24),
 
                   // KART LİMİTLERİ
                   _buildSectionHeader(context, 'KART LİMİTLERİ', onNewTap: () {
                     _showNewTransaction(context);
                   }),
-                  _buildCardLimits(context),
+                  _buildCardLimits(context, cardAccounts),
                   const SizedBox(height: 24),
 
                   // ESNEK HESAPLAR
                   _buildSectionHeader(context, 'ESNEK HESAPLAR', onNewTap: () {
                     _showNewTransaction(context);
                   }),
-                  _buildGroupList(context, [
-                    _ListItemData(name: 'Halkbank', value: 1000000, subText: 'Kullanılabilir'),
-                    _ListItemData(name: 'Ziraat', value: 750000, subText: 'Kullanılabilir'),
-                  ]),
+                  _buildGroupList(
+                    context,
+                    esnekAccounts
+                        .map((a) => _ListItemData(name: a.name, value: a.availableLimit, subText: 'Kullanılabilir', account: a))
+                        .toList(),
+                    emptyText: 'Kayıtlı esnek hesap bulunamadı.',
+                  ),
                   const SizedBox(height: 24),
 
                   // ÖZET
@@ -229,7 +235,20 @@ class FinansmanGucuView extends StatelessWidget {
     );
   }
 
-  Widget _buildGroupList(BuildContext context, List<_ListItemData> items) {
+  Widget _buildGroupList(BuildContext context, List<_ListItemData> items, {String emptyText = 'Kayıt bulunamadı.'}) {
+    if (items.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          color: context.colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.colors.border),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 24.0),
+        child: Center(
+          child: Text(emptyText, style: TextStyle(color: context.colors.textSecondary, fontSize: 13)),
+        ),
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         color: context.colors.surface,
@@ -266,7 +285,11 @@ class FinansmanGucuView extends StatelessWidget {
     bool isFirst = false,
   }) {
     return InkWell(
-      onTap: () {},
+      onTap: item.account == null
+          ? null
+          : () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => KasaDetayView(account: item.account!)));
+            },
       borderRadius: BorderRadius.only(
         topLeft: isFirst ? const Radius.circular(16) : Radius.zero,
         topRight: isFirst ? const Radius.circular(16) : Radius.zero,
@@ -331,7 +354,20 @@ class FinansmanGucuView extends StatelessWidget {
     );
   }
 
-  Widget _buildCardLimits(BuildContext context) {
+  Widget _buildCardLimits(BuildContext context, List<Account> cardAccounts) {
+    if (cardAccounts.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          color: context.colors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.colors.border),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 24.0),
+        child: Center(
+          child: Text('Kayıtlı kredi kartı bulunamadı.', style: TextStyle(color: context.colors.textSecondary, fontSize: 13)),
+        ),
+      );
+    }
     return Container(
       decoration: BoxDecoration(
         color: context.colors.surface,
@@ -340,34 +376,47 @@ class FinansmanGucuView extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildCardItem(context, 'VISA', 500000, 250000),
-          const Divider(height: 1),
-          _buildCardItem(context, 'Mastercard', 300000, 150000),
-          const Divider(height: 1),
-          _buildCardItem(context, 'Troy', 100000, 100000, isLast: true),
+          for (int i = 0; i < cardAccounts.length; i++) ...[
+            _buildCardItem(context, cardAccounts[i]),
+            if (i < cardAccounts.length - 1) const Divider(height: 1),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildCardItem(BuildContext context, String logoType, double totalLimit, double usedLimit, {bool isLast = false}) {
-    final double remainingLimit = totalLimit - usedLimit;
-    final double usedPercentage = totalLimit > 0 ? (usedLimit / totalLimit) : 0;
+  Widget _buildCardItem(BuildContext context, Account account) {
+    final double totalLimit = account.creditLimit;
+    final double remainingLimit = account.availableLimit;
+    final double usedLimit = totalLimit - remainingLimit;
+    final double usedPercentage = totalLimit > 0 ? (usedLimit / totalLimit).clamp(0.0, 1.0) : 0.0;
 
-    return Padding(
+    return InkWell(
+      onTap: () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => KasaDetayView(account: account)));
+      },
+      child: Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Logo text for visual replacement of image logos
-          Text(
-            logoType,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              fontStyle: FontStyle.italic,
-              color: context.colors.brand,
-            ),
+          Row(
+            children: [
+              BankLogoWidget(bankName: account.bankLogoPainter.isNotEmpty ? account.bankLogoPainter : account.name, width: 46, height: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  account.name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: context.colors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Row(
@@ -389,22 +438,25 @@ class FinansmanGucuView extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  flex: (usedPercentage * 100).toInt(),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).extension<AppColors>()!.success,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
+                  flex: (usedPercentage * 100).toInt().clamp(0, 100),
+                  child: usedPercentage <= 0
+                      ? const SizedBox()
+                      : Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).extension<AppColors>()!.success,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
                 ),
                 Expanded(
-                  flex: ((1 - usedPercentage) * 100).toInt(),
+                  flex: (100 - (usedPercentage * 100).toInt()).clamp(0, 100),
                   child: const SizedBox(),
                 ),
               ],
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -463,6 +515,7 @@ class _ListItemData {
   final String name;
   final double value;
   final String subText;
+  final Account? account;
 
-  _ListItemData({required this.name, required this.value, required this.subText});
+  _ListItemData({required this.name, required this.value, required this.subText, this.account});
 }

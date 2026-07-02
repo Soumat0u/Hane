@@ -113,7 +113,9 @@ export default function NewTransactionFormModal({ type: rawType, onClose }) {
           category: subCategory || mainCategory || '',
           amount: num(odemeAmount),
           date: odemeDate,
-          source_name: odemeAccount,
+          // Gelir: para hesaba GİRER -> dest_name; Gider: para hesaptan ÇIKAR -> source_name
+          source_name: isIncome ? '' : odemeAccount,
+          dest_name: isIncome ? odemeAccount : '',
           contact_name: counterparty,
           description: odemeDesc,
           quantity: quantity ? num(quantity) : null,

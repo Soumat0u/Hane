@@ -31,6 +31,7 @@ class YeniIslemScreen extends StatefulWidget {
 class _YeniIslemScreenState extends State<YeniIslemScreen> {
   // General Selection State
   String _selectedType = 'Ödeme';
+  bool _saving = false;
 
   @override
   void initState() {
@@ -299,7 +300,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: ElevatedButton(
-                onPressed: () async {
+                onPressed: _saving ? null : () async {
+                  if (_saving) return;
+                  setState(() => _saving = true);
+                  try {
                   final amountText = _getAmountText().replaceAll(RegExp(r'[^0-9]'), '');
                   final amount = double.tryParse(amountText) ?? 0.0;
 
@@ -375,7 +379,12 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                      // Tahsilat, Ödeme ekranının gelir tarafına sabitlenmiş halidir (_isIncome her zaman true).
                      type = _isIncome ? 'Gelir' : 'Gider';
                      category = _selectedSubCategory?.name ?? _selectedMainCategory?.name ?? '';
-                     source = _selectedSource;
+                     // Gelir: para hesaba GİRER -> dest_name; Gider: para hesaptan ÇIKAR -> source_name
+                     if (_isIncome) {
+                       dest = _selectedSource;
+                     } else {
+                       source = _selectedSource;
+                     }
                      date = _isoDate(_dateController.text);
                      contactName = _buyerSellerController.text.trim();
                      description = _descriptionController.text.trim();
@@ -520,6 +529,9 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   if (widget.onBack != null) {
                     widget.onBack!();
                   }
+                  } finally {
+                    if (mounted) setState(() => _saving = false);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: context.colors.brand,
@@ -530,14 +542,23 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   ),
                   elevation: 0,
                 ),
-                child: Text(
-                  _getButtonText(),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+                child: _saving
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        _getButtonText(),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
               ),
             ),
           ],
