@@ -25,7 +25,8 @@ function AccountOptions({ accounts, types }) {
  * Mobildeki `YeniIslemScreen`'in web karşılığı: sol panelden seçilen türe göre
  * (Ödeme, Transfer, Borçlanma, Kredi Kullanımı, Satış) doğru formu gösterir.
  */
-export default function NewTransactionFormModal({ type, onClose }) {
+export default function NewTransactionFormModal({ type: rawType, onClose }) {
+  const type = rawType === 'Borç' ? 'Borçlanma' : rawType
   const { projects, accounts, categories, addTransaction, addLoan, addDebt } = useData()
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')

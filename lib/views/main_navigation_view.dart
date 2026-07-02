@@ -92,7 +92,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       builder: (context) => NewTransactionPanel(
         onTypeSelected: (type) {
           setState(() {
-            _selectedTransactionType = type;
+            _selectedTransactionType = type == 'Borç' ? 'Borçlanma' : type;
           });
           _selectTab(2);
         },

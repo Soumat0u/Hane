@@ -56,10 +56,10 @@ class NewTransactionPanel extends StatelessWidget {
             childAspectRatio: 0.95,
             children: [
               _buildGridItem(context, 'Ödeme', Icons.outbox_rounded, context.colors.accent),
-              _buildGridItem(context, 'Transfer', Icons.swap_horiz_rounded, const Color(0xFFF59E0B)),
-              _buildGridItem(context, 'Borçlanma', Icons.account_balance_rounded, context.colors.danger),
-              _buildGridItem(context, 'Kredi Kullanımı', Icons.wallet_rounded, const Color(0xFF8B5CF6)),
               _buildGridItem(context, 'Satış', Icons.assignment_turned_in_rounded, context.colors.success),
+              _buildGridItem(context, 'Borç', Icons.account_balance_rounded, context.colors.danger),
+              _buildGridItem(context, 'Kredi Kullanımı', Icons.wallet_rounded, const Color(0xFF8B5CF6)),
+              _buildGridItem(context, 'Transfer', Icons.swap_horiz_rounded, const Color(0xFFF59E0B)),
             ],
           ),
           const SizedBox(height: 20),

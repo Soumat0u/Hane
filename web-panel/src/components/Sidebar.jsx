@@ -20,10 +20,10 @@ import NewTransactionFormModal from './NewTransactionFormModal'
 
 const NEW_TRANSACTION_TYPES = [
   { name: 'Ödeme', icon: ArrowUpFromLine },
-  { name: 'Transfer', icon: ArrowRightLeft },
-  { name: 'Borçlanma', icon: Landmark },
-  { name: 'Kredi Kullanımı', icon: Wallet },
   { name: 'Satış', icon: FileCheck2 },
+  { name: 'Borç', icon: Landmark },
+  { name: 'Kredi Kullanımı', icon: Wallet },
+  { name: 'Transfer', icon: ArrowRightLeft },
 ]
 
 export default function Sidebar() {
