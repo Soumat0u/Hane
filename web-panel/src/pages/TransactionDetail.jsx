@@ -240,10 +240,10 @@ export default function TransactionDetail() {
   return (
     <div>
       {/* Top Banner with back button and menu */}
-      <div className="page-header-banner" style={{ background: color, color: '#ffffff', position: 'relative' }}>
+      <div className="page-header-banner" style={{ background: color, color: '#ffffff', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '1.5rem', padding: '1.5rem 2rem 2rem 2rem' }}>
         
-        {/* Navigation / Actions Layer */}
-        <div style={{ position: 'absolute', top: '1.25rem', left: '1.5rem', right: '1.5rem', display: 'flex', justifyContent: 'space-between', zIndex: 10 }}>
+        {/* Row 1: Actions (Back button & Options button) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <button 
             className="icon-btn" 
             onClick={() => navigate(-1)} 
@@ -276,15 +276,19 @@ export default function TransactionDetail() {
           </div>
         </div>
 
-        <div style={{ marginTop: '2rem' }}>
-          <div className="total-card-label" style={{ color: 'rgba(255,255,255,0.8)' }}>{(t.type || '').toUpperCase()} BİLGİSİ</div>
-          <div className="total-card-value" style={{ color: '#ffffff' }}>{heading || '-'}</div>
-          {t.contact_name && <div style={{ color: 'rgba(255,255,255,0.9)', marginTop: '0.5rem', fontSize: '1rem' }}>{t.contact_name}</div>}
-        </div>
-        <div className="total-card-icon" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-end', gap: '0.5rem' }}>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>{formatCurrency(t.amount)}</div>
-          <div style={{ fontSize: '0.9rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            <Calendar size={14} /> {fmtDate(t.date)}
+        {/* Row 2: Details (Heading & Amount) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.5rem', width: '100%' }}>
+          <div>
+            <div className="total-card-label" style={{ color: 'rgba(255,255,255,0.8)' }}>{(t.type || '').toUpperCase()} BİLGİSİ</div>
+            <div className="total-card-value" style={{ color: '#ffffff' }}>{heading || '-'}</div>
+            {t.contact_name && <div style={{ color: 'rgba(255,255,255,0.9)', marginTop: '0.5rem', fontSize: '1rem' }}>{t.contact_name}</div>}
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>{formatCurrency(t.amount)}</div>
+            <div style={{ fontSize: '0.9rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <Calendar size={14} /> {fmtDate(t.date)}
+            </div>
           </div>
         </div>
       </div>
