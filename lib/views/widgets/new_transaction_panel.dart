@@ -54,6 +54,7 @@ class NewTransactionPanel extends StatelessWidget {
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
             childAspectRatio: 0.95,
+            children: [
               _buildGridItem(context, 'Ödeme', Icons.outbox_rounded, context.colors.accent),
               _buildGridItem(context, 'Transfer', Icons.swap_horiz_rounded, const Color(0xFFF59E0B)),
               _buildGridItem(context, 'Borç', Icons.account_balance_rounded, context.colors.danger),
