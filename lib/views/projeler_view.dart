@@ -20,6 +20,77 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
   @override
   bool get wantKeepAlive => true;
 
+  final Set<int> _selectedIds = {};
+  bool get _selectionMode => _selectedIds.isNotEmpty;
+
+  void _toggleSelection(int id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  void _cancelSelection() {
+    setState(() => _selectedIds.clear());
+  }
+
+  Future<void> _deleteSelected(FinanceProvider fp) async {
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Projeleri Sil'),
+        content: Text('$count projeyi silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Sil', style: TextStyle(color: context.colors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final ids = List<int>.from(_selectedIds);
+    setState(() => _selectedIds.clear());
+    // Her biri kendi arayüzden-anında-sil + arkaplanda-senkron mantığıyla, birbirinden bağımsız işler.
+    for (final id in ids) {
+      fp.deleteProject(id);
+    }
+  }
+
+  Widget _buildSelectionBar(BuildContext context, FinanceProvider fp) {
+    return Container(
+      color: context.colors.brand,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: SafeArea(
+        bottom: false,
+        top: false,
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white),
+              onPressed: _cancelSelection,
+            ),
+            Expanded(
+              child: Text(
+                '${_selectedIds.length} seçili',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+              onPressed: () => _deleteSelected(fp),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -28,13 +99,14 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
         if (financeProvider.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         final projects = financeProvider.projects;
 
         return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_selectionMode) _buildSelectionBar(context, financeProvider),
           const SizedBox(height: 8),
           // Subtitle Row: "Devam Eden Projeler" & "Tümü"
           if (projects.isNotEmpty)

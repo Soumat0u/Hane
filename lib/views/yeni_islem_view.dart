@@ -220,7 +220,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     switch (_selectedType) {
       case 'Tahsilat': return 'TAHSİLATI KAYDET';
       case 'Transfer': return 'TRANSFERİ KAYDET';
-      case 'Borçlanma': return 'BORÇLANMAYI KAYDET';
+      case 'Borçlanma': return 'BORCU KAYDET';
       case 'Kredi Kullanımı': return 'KREDİYİ KAYDET';
       case 'Satış': return 'SATIŞI KAYDET';
       case 'Ödeme':

@@ -44,7 +44,49 @@ class _HareketlerViewState extends State<HareketlerView> with AutomaticKeepAlive
   DateTimeRange? _selectedDateRange;
   String _search = '';
 
+  final Set<int> _selectedIds = {};
+  bool get _selectionMode => _selectedIds.isNotEmpty;
+
   final DateFormat _dateFmt = DateFormat('d MMM yyyy', 'tr_TR');
+
+  void _toggleSelection(int id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  void _cancelSelection() {
+    setState(() => _selectedIds.clear());
+  }
+
+  Future<void> _deleteSelected(FinanceProvider fp) async {
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('İşlemleri Sil'),
+        content: Text('$count işlemi silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('Sil', style: TextStyle(color: context.colors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final ids = List<int>.from(_selectedIds);
+    setState(() => _selectedIds.clear());
+    // Her biri kendi arayüzden-anında-sil + arkaplanda-senkron mantığıyla, birbirinden bağımsız işler.
+    for (final id in ids) {
+      fp.deleteTransaction(id);
+    }
+  }
 
   // --- Filtreleme ---
   List<FinancialTransaction> _applyFilters(
@@ -125,6 +167,7 @@ class _HareketlerViewState extends State<HareketlerView> with AutomaticKeepAlive
 
           return Column(
             children: [
+              if (_selectionMode) _buildSelectionBar(context, fp),
               const SizedBox(height: 12),
               // Arama
               Padding(
@@ -291,6 +334,35 @@ class _HareketlerViewState extends State<HareketlerView> with AutomaticKeepAlive
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildSelectionBar(BuildContext context, FinanceProvider fp) {
+    return Container(
+      color: context.colors.brand,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      child: SafeArea(
+        bottom: false,
+        top: false,
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white),
+              onPressed: _cancelSelection,
+            ),
+            Expanded(
+              child: Text(
+                '${_selectedIds.length} seçili',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+              onPressed: () => _deleteSelected(fp),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -462,25 +534,42 @@ class _HareketlerViewState extends State<HareketlerView> with AutomaticKeepAlive
     final projectName = t.projectId != null ? projectNames[t.projectId] : null;
     final account = t.sourceName.isNotEmpty ? t.sourceName : t.destName;
     final date = DateTime.tryParse(t.date);
+    final bool isSelected = t.id != null && _selectedIds.contains(t.id);
 
     return InkWell(
       onTap: () {
+        if (_selectionMode) {
+          if (t.id != null) _toggleSelection(t.id!);
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => HareketDetayView(transaction: t)),
         );
       },
-      child: Padding(
+      onLongPress: t.id == null ? null : () => _toggleSelection(t.id!),
+      child: Container(
+        color: isSelected ? context.colors.brand.withValues(alpha: 0.08) : null,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(color: visuals.color, shape: BoxShape.circle),
-              child: Icon(visuals.icon, color: Colors.white, size: 24),
-            ),
+            if (_selectionMode)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Icon(
+                  isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                  color: isSelected ? context.colors.brand : context.colors.textSecondary,
+                  size: 24,
+                ),
+              )
+            else
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: visuals.color, shape: BoxShape.circle),
+                child: Icon(visuals.icon, color: Colors.white, size: 24),
+              ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

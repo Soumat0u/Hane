@@ -89,7 +89,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.2),
       builder: (context) => NewTransactionPanel(
         onTypeSelected: (type) {
           setState(() {

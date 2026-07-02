@@ -54,12 +54,11 @@ class NewTransactionPanel extends StatelessWidget {
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
             childAspectRatio: 0.95,
-            children: [
               _buildGridItem(context, 'Ödeme', Icons.outbox_rounded, context.colors.accent),
-              _buildGridItem(context, 'Satış', Icons.assignment_turned_in_rounded, context.colors.success),
+              _buildGridItem(context, 'Transfer', Icons.swap_horiz_rounded, const Color(0xFFF59E0B)),
               _buildGridItem(context, 'Borç', Icons.account_balance_rounded, context.colors.danger),
               _buildGridItem(context, 'Kredi Kullanımı', Icons.wallet_rounded, const Color(0xFF8B5CF6)),
-              _buildGridItem(context, 'Transfer', Icons.swap_horiz_rounded, const Color(0xFFF59E0B)),
+              _buildGridItem(context, 'Satış', Icons.assignment_turned_in_rounded, context.colors.success),
             ],
           ),
           const SizedBox(height: 20),
@@ -76,9 +75,9 @@ class NewTransactionPanel extends StatelessWidget {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: iconColor.withValues(alpha: 0.08),
+        color: iconColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: iconColor.withValues(alpha: 0.20)),
+        border: Border.all(color: iconColor.withValues(alpha: 0.30)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(5),
