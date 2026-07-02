@@ -38,7 +38,6 @@ export default function Sidebar() {
       items: [
         { name: 'Genel Bakış', path: '/dashboard', icon: LayoutDashboard },
         { name: 'Projeler', path: '/dashboard/projects', icon: FolderKanban },
-        { name: 'Profil', path: '/dashboard/profile', icon: User },
       ],
     },
     {
@@ -51,12 +50,6 @@ export default function Sidebar() {
         { name: 'Finansman Gücü', path: '/dashboard/finance-power', icon: Shield },
         { name: 'Hareketler', path: '/dashboard/transactions', icon: ArrowRightLeft },
         { name: 'Tekrarlayan İşlemler', path: '/dashboard/recurring', icon: Repeat },
-      ],
-    },
-    {
-      label: 'Sistem',
-      items: [
-        { name: 'Ayarlar', path: '/dashboard/settings', icon: Settings },
       ],
     },
   ]
@@ -81,23 +74,6 @@ export default function Sidebar() {
       <nav className="sidebar-nav">
         {navGroups.map((group) => (
           <div key={group.label}>
-            {/* Insert Yeni İşlem section after Finans */}
-            {group.label === 'Sistem' && (
-              <div>
-                <div className="nav-section-label">Yeni İşlem</div>
-                {NEW_TRANSACTION_TYPES.map((item) => (
-                  <button
-                    key={item.name}
-                    type="button"
-                    className="nav-item"
-                    onClick={() => setActiveTxType(item.name)}
-                  >
-                    <item.icon size={20} className="nav-icon" />
-                    <span>{item.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
             <div className="nav-section-label">{group.label}</div>
             {group.items.map((item) => (
               <NavLink
@@ -113,6 +89,21 @@ export default function Sidebar() {
             ))}
           </div>
         ))}
+        
+        <div>
+          <div className="nav-section-label">Yeni İşlem</div>
+          {NEW_TRANSACTION_TYPES.map((item) => (
+            <button
+              key={item.name}
+              type="button"
+              className="nav-item"
+              onClick={() => setActiveTxType(item.name)}
+            >
+              <item.icon size={20} className="nav-icon" />
+              <span>{item.name}</span>
+            </button>
+          ))}
+        </div>
       </nav>
 
 

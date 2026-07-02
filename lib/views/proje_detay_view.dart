@@ -758,47 +758,47 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
           if (data.isEmpty)
             const Text("Harcama verisi bulunamadı.", style: TextStyle(color: Colors.grey))
           else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(
-                  width: 140,
-                  height: 140,
-                  child: CustomPaint(
-                    painter: DonutChartPainter(data),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('Toplam', style: TextStyle(fontSize: 10, color: context.colors.textSecondary)),
-                          Text(currencyFormat.format(totalGider), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
-                        ],
+                Center(
+                  child: SizedBox(
+                    width: 140,
+                    height: 140,
+                    child: CustomPaint(
+                      painter: DonutChartPainter(data),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Toplam', style: TextStyle(fontSize: 10, color: context.colors.textSecondary)),
+                            Text(currencyFormat.format(totalGider), style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: Column(
-                    children: data.map((item) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Row(
-                          children: [
-                            Container(width: 8, height: 8, decoration: BoxDecoration(color: item.color, shape: BoxShape.circle)),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(item.name, style: TextStyle(fontSize: 12, color: context.colors.textSecondary))),
-                            Text(item.amount, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
-                            const SizedBox(width: 12),
-                            SizedBox(
-                              width: 40,
-                              child: Text('%${item.percentage.toStringAsFixed(1)}', textAlign: TextAlign.right, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textSecondary)),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                const SizedBox(height: 24),
+                Column(
+                  children: data.map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Row(
+                        children: [
+                          Container(width: 8, height: 8, decoration: BoxDecoration(color: item.color, shape: BoxShape.circle)),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(item.name, style: TextStyle(fontSize: 12, color: context.colors.textSecondary))),
+                          Text(item.amount, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 40,
+                            child: Text('%${item.percentage.toStringAsFixed(1)}', textAlign: TextAlign.right, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textSecondary)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
                 ),
               ],
             ),

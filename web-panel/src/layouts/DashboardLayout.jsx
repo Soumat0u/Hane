@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Navigate, Outlet } from 'react-router-dom'
-import { Sun, Moon, Bell, AlertTriangle, ArrowDownToLine, CreditCard, Info, Repeat, Check } from 'lucide-react'
+import { Navigate, Outlet, useNavigate } from 'react-router-dom'
+import { Sun, Moon, Bell, AlertTriangle, ArrowDownToLine, CreditCard, Info, Repeat, Check, Settings, User } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import { DataProvider, useData } from '../context/DataContext'
 
@@ -16,6 +16,7 @@ function TopbarActions({ theme, toggleTheme }) {
     confirmRecurringTransaction,
   } = useData()
 
+  const navigate = useNavigate()
   const [showNotifications, setShowNotifications] = useState(false)
   const [confirmingId, setConfirmingId] = useState(null)
   const dropdownRef = useRef(null)
@@ -64,6 +65,10 @@ function TopbarActions({ theme, toggleTheme }) {
 
   return (
     <div className="topbar-actions">
+      <button className="theme-toggle-btn" onClick={() => navigate('/dashboard/settings')} title="Ayarlar">
+        <Settings size={20} />
+      </button>
+
       <button className="theme-toggle-btn" onClick={toggleTheme} title="Tema Değiştir">
         {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
       </button>
@@ -162,9 +167,16 @@ function TopbarActions({ theme, toggleTheme }) {
         )}
       </div>
 
-      <div className="user-profile">
-        <div className="avatar">AD</div>
-      </div>
+      <button
+        className="user-profile"
+        onClick={() => navigate('/dashboard/profile')}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        title="Profil"
+      >
+        <div className="avatar">
+          <User size={20} />
+        </div>
+      </button>
     </div>
   )
 }

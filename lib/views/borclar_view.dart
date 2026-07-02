@@ -4,9 +4,10 @@ import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
-import 'package:hane/models/finance_panel.dart';
 import 'package:hane/models/finance_entities.dart';
 import 'package:hane/views/yeni_islem_view.dart';
+import 'package:hane/views/cari_hesap_detay_view.dart';
+import 'package:hane/views/kasa_detay_view.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class BorclarView extends StatefulWidget {
@@ -40,13 +41,14 @@ class _BorclarViewState extends State<BorclarView> {
       body: SafeArea(
         child: Consumer<FinanceProvider>(
           builder: (context, fp, child) {
-            final borclarSection = fp.borclarSection;
             final borclarTotal = fp.getTotalBorc();
-            
-            // Extract groups safely
-            final bankaBorclari = borclarSection.groups.firstWhere((g) => g.title == 'Banka Borçları', orElse: () => PanelGroup('Banka Borçları', [])).items;
-            final ticariBorclar = borclarSection.groups.firstWhere((g) => g.title == 'Ticari Borçlar', orElse: () => PanelGroup('Ticari Borçlar', [])).items;
-            final cekler = borclarSection.groups.firstWhere((g) => g.title == 'Çekler', orElse: () => PanelGroup('Çekler', [])).items;
+
+            // Detaylara tıklanabilsin diye gruplar, soyut PanelItem yerine doğrudan
+            // gerçek kayıtlardan (Loan/Account/Contact) kuruluyor — mantık
+            // fp.getTotalBorc()/_buildBorclar() ile birebir aynı.
+            final krediKullanilanHesaplar = fp.accounts
+                .where((a) => (a.type == 'BCH' || a.type == 'Kredi Kartı') && a.balance < 0)
+                .toList();
             
             final payments = fp.getUpcomingPayments();
 
@@ -131,31 +133,54 @@ class _BorclarViewState extends State<BorclarView> {
                   ),
                   const SizedBox(height: 24),
 
-                  // BANKA BORÇLARI
+                  // BANKA BORÇLARI (krediler tıklanabilir değil — henüz bir kredi detay ekranı yok)
                   _buildSectionHeader(context, 'BANKA BORÇLARI', onNewTap: () {
                     _showNewTransaction(context);
                   }),
-                  _buildGroupList(context, bankaBorclari.map((item) => 
-                    _ListItemData(name: item.name, value: item.amount, icon: Icons.account_balance_wallet_rounded, isBank: true)
-                  ).toList()),
+                  _buildGroupList(context, [
+                    for (final l in fp.loans)
+                      _ListItemData(name: l.name, value: l.remaining, icon: Icons.account_balance_wallet_rounded, isBank: true),
+                    for (final a in krediKullanilanHesaplar)
+                      _ListItemData(
+                        name: '${a.name} (kullanılan)',
+                        value: a.balance.abs(),
+                        icon: Icons.account_balance_wallet_rounded,
+                        isBank: true,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => KasaDetayView(account: a))),
+                      ),
+                  ]),
                   const SizedBox(height: 24),
 
-                  // TİCARİ BORÇLAR
+                  // TİCARİ BORÇLAR — tıklanınca ilgili carinin detayına gider.
                   _buildSectionHeader(context, 'TİCARİ BORÇLAR', onNewTap: () {
                     _showNewTransaction(context);
                   }),
-                  _buildGroupList(context, ticariBorclar.map((item) => 
-                    _ListItemData(name: item.name, value: item.amount, icon: Icons.engineering_rounded, isBank: false)
-                  ).toList()),
+                  _buildGroupList(context, [
+                    for (final c in fp.contacts.where((c) =>
+                        (c.kind == 'supplier' || c.kind == 'subcontractor') && c.balance > 0))
+                      _ListItemData(
+                        name: c.name,
+                        value: c.balance,
+                        icon: Icons.engineering_rounded,
+                        isBank: false,
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CariHesapDetayView(contact: c))),
+                      ),
+                  ]),
                   const SizedBox(height: 24),
 
-                  // ÇEKLER
+                  // ÇEKLER (henüz bir çek detay/düzenleme ekranı yok)
                   _buildSectionHeader(context, 'ÇEKLER', onNewTap: () {
                     _showNewTransaction(context);
                   }),
-                  _buildGroupList(context, cekler.map((item) => 
-                    _ListItemData(name: item.name, value: item.amount, icon: Icons.receipt_long_rounded, isBank: false)
-                  ).toList()),
+                  _buildGroupList(context, [
+                    for (final c in fp.cheques.where((c) => c.isIssued && c.status != 'cashed'))
+                      _ListItemData(
+                        name: c.bankName.isNotEmpty ? '${c.bankName} çeki' : 'Çek',
+                        value: c.amount,
+                        icon: Icons.receipt_long_rounded,
+                        isBank: false,
+                      ),
+                  ]),
                   const SizedBox(height: 24),
 
                   // VADESİ DOLAN VE YAKLAŞAN ÖDEMELER
@@ -335,7 +360,7 @@ class _BorclarViewState extends State<BorclarView> {
     bool isFirst = false,
   }) {
     return InkWell(
-      onTap: () {},
+      onTap: item.onTap,
       borderRadius: BorderRadius.only(
         topLeft: isFirst ? const Radius.circular(16) : Radius.zero,
         topRight: isFirst ? const Radius.circular(16) : Radius.zero,
@@ -375,12 +400,14 @@ class _BorclarViewState extends State<BorclarView> {
                 color: context.colors.textPrimary,
               ),
             ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: context.colors.textSecondary,
-            ),
+            if (item.onTap != null) ...[
+              const SizedBox(width: 8),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 14,
+                color: context.colors.textSecondary,
+              ),
+            ],
           ],
         ),
       ),
@@ -431,6 +458,7 @@ class _ListItemData {
   final double value;
   final IconData icon;
   final bool isBank;
+  final VoidCallback? onTap;
 
-  _ListItemData({required this.name, required this.value, required this.icon, required this.isBank});
+  _ListItemData({required this.name, required this.value, required this.icon, required this.isBank, this.onTap});
 }

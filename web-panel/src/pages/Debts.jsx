@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Receipt, Wallet, HardHat, Plus, ChevronLeft, ChevronRight, X, Trash2,
 } from 'lucide-react'
@@ -217,6 +218,7 @@ function DebtSection({ title, items, icon: Icon, onNew, onItemClick, onDelete })
 }
 
 export default function Debts() {
+  const navigate = useNavigate()
   const {
     loans, accounts, cheques, contacts, transactions, projects, addDebt,
     addLoan, updateLoan, deleteLoan, addCheque, updateCheque, deleteCheque,
@@ -276,7 +278,7 @@ export default function Debts() {
   const ticariBorclar = useMemo(
     () => contacts
       .filter((c) => (c.kind === 'supplier' || c.kind === 'subcontractor') && num(c.balance) > 0)
-      .map((c) => ({ name: c.name, amount: num(c.balance) })),
+      .map((c) => ({ name: c.name, amount: num(c.balance), ref: c })),
     [contacts],
   )
 
@@ -383,7 +385,13 @@ export default function Debts() {
             onItemClick={(loan) => setLoanTarget(loan)}
             onDelete={handleDeleteLoan}
           />
-          <DebtSection title="TİCARİ BORÇLAR" items={ticariBorclar} icon={HardHat} onNew={() => setModalOpen(true)} />
+          <DebtSection
+            title="TİCARİ BORÇLAR"
+            items={ticariBorclar}
+            icon={HardHat}
+            onNew={() => setModalOpen(true)}
+            onItemClick={(contact) => navigate(`/dashboard/contacts/${contact.id}`)}
+          />
           <DebtSection
             title="ÇEKLER"
             items={cekler}

@@ -2,19 +2,30 @@ import { Wallet, Receipt, ArrowDownToLine, Shield, TrendingUp, TrendingDown, Arr
 import { LineChart, Line, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
-import { projectImage } from '../utils'
+import { projectImage, num } from '../utils'
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { projects: allProjects, transactions: allTransactions, accounts, loans, receivables, loading, loaded } = useData()
+  const { projects: allProjects, transactions: allTransactions, accounts, loans, cheques, contacts, receivables, loading, loaded } = useData()
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val)
   }
 
-  // GERÇEK VERİLER — veritabanından hesaplanır (mobil ile aynı mantık)
+  // GERÇEK VERİLER — veritabanından hesaplanır (mobil `getTotalBorc()` ile aynı mantık:
+  // kredi kalanı + kullanılan BCH/kredi kartı + verilen çekler + ticari borçlar)
   const kasa = (accounts || []).reduce((sum, a) => sum + (Number(a.balance) || 0), 0)
-  const borclar = (loans || []).reduce((sum, l) => sum + (Number(l.remaining) || Number(l.total_payable) || 0), 0)
+  const krediKalan = (loans || []).reduce((sum, l) => sum + num(l.remaining), 0)
+  const bchKartKullanilan = (accounts || [])
+    .filter((a) => (a.type === 'BCH' || a.type === 'Kredi Kartı') && num(a.balance) < 0)
+    .reduce((sum, a) => sum + Math.abs(num(a.balance)), 0)
+  const verilenCekler = (cheques || [])
+    .filter((c) => c.direction === 'issued' && c.status !== 'cashed')
+    .reduce((sum, c) => sum + num(c.amount), 0)
+  const ticariBorclar = (contacts || [])
+    .filter((c) => (c.kind === 'supplier' || c.kind === 'subcontractor') && num(c.balance) > 0)
+    .reduce((sum, c) => sum + num(c.balance), 0)
+  const borclar = krediKalan + bchKartKullanilan + verilenCekler + ticariBorclar
   const alacaklar = (receivables || []).reduce((sum, r) => {
     const total = Number(r.total_amount) || 0
     const collected = Number(r.collected_amount) || 0

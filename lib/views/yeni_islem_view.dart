@@ -15,12 +15,14 @@ import 'package:hane/views/widgets/bank_logo.dart';
 class YeniIslemScreen extends StatefulWidget {
   final String initialType;
   final String? initialProject;
+  final FinancialTransaction? initialTransaction;
   final VoidCallback? onBack;
 
   const YeniIslemScreen({
     super.key,
     this.initialType = 'Ödeme',
     this.initialProject,
+    this.initialTransaction,
     this.onBack,
   });
 
@@ -36,8 +38,25 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedType = widget.initialType;
-    _isIncome = _selectedType == 'Tahsilat' || _selectedType == 'Gelir';
+    _selectedType = widget.initialTransaction?.type ?? widget.initialType;
+    _isIncome = _selectedType == 'Tahsilat' || _selectedType == 'Gelir' || _selectedType == 'Satış';
+    
+    if (widget.initialTransaction != null) {
+      final t = widget.initialTransaction!;
+      if (t.projectId != null) {
+        final fp = Provider.of<FinanceProvider>(context, listen: false);
+        _selectedProject = fp.projects.where((p) => p.id == t.projectId).firstOrNull?.name ?? '';
+      }
+      _dateController.text = _formatDate(DateTime.tryParse(t.date) ?? DateTime.now());
+      _amountController.text = t.amount.toStringAsFixed(2).replaceAll('.00', '');
+      _descriptionController.text = t.description;
+      _buyerSellerController.text = t.contactName;
+      _quantityController.text = t.quantity?.toStringAsFixed(2).replaceAll('.00', '') ?? '';
+      _selectedUnit = t.unit?.isNotEmpty == true ? t.unit : null;
+      if (_selectedUnit != null && !_units.contains(_selectedUnit)) {
+        _selectedUnit = 'Diğer';
+      }
+    }
   }
 
   // Dropdown seçenekleri GERÇEK kullanıcı verisinden gelir (sabit demo listesi yok).
@@ -76,8 +95,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   final TextEditingController _buyerSellerController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
-  final TextEditingController _unitController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+
+  final List<String> _units = ['Adet', 'Ton', 'Kg', 'Metre', 'm²', 'm³', 'Litre', 'Ay', 'Gün', 'Yıl', 'Paket', 'Kutu', 'Diğer'];
+  String? _selectedUnit;
 
   // --- Transfer Form States ---
   String _transferTarih = '';
@@ -135,9 +156,30 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       _krediTarih = today;
       _satisTarih = today;
 
-      _selectedProject = widget.initialProject ?? first(projects);
+      if (widget.initialTransaction == null) {
+        _selectedProject = widget.initialProject ?? first(projects);
+      }
       _updateCategoriesForType(_isIncome);
-      _selectedSource = first(accounts);
+      
+      if (widget.initialTransaction != null) {
+        final t = widget.initialTransaction!;
+        _selectedSource = t.sourceName.isNotEmpty ? t.sourceName : (t.destName.isNotEmpty ? t.destName : first(accounts));
+        // Kategoriyi eşleştir
+        final fp = Provider.of<FinanceProvider>(context, listen: false);
+        final matchingCat = fp.categories.where((c) => c.name == t.category).firstOrNull;
+        if (matchingCat != null) {
+          if (matchingCat.isMain) {
+            _selectedMainCategory = matchingCat;
+            _selectedSubCategory = null;
+          } else {
+            _selectedSubCategory = matchingCat;
+            _selectedMainCategory = fp.categories.where((c) => c.id == matchingCat.parentId).firstOrNull;
+          }
+        }
+      } else {
+        _selectedSource = first(accounts);
+      }
+      
       _transferGonderen = first(accounts);
       _transferAlan = accounts.length > 1 ? accounts[1] : first(accounts);
       _borclanmaProje = first(projects);
@@ -154,7 +196,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     _buyerSellerController.dispose();
     _amountController.dispose();
     _quantityController.dispose();
-    _unitController.dispose();
     _descriptionController.dispose();
 
     _transferTutarController.dispose();
@@ -499,10 +540,13 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     contactName: contactName,
                     description: description,
                     quantity: double.tryParse(_quantityController.text),
-                    unit: _unitController.text.trim(),
+                    unit: _selectedUnit,
                   );
 
-                  if ((_selectedType == 'Ödeme' || _selectedType == 'Tahsilat') && _pickedAttachment != null) {
+                  if (widget.initialTransaction != null) {
+                    final updated = t.copyWith(id: widget.initialTransaction!.id);
+                    await fp.updateTransaction(updated);
+                  } else if ((_selectedType == 'Ödeme' || _selectedType == 'Tahsilat') && _pickedAttachment != null) {
                     await fp.addTransactionWithAttachment(t, _pickedAttachment!.path);
                   } else {
                     await fp.addTransaction(t);
@@ -529,6 +573,16 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   if (widget.onBack != null) {
                     widget.onBack!();
                   }
+                  } catch (e) {
+                    // Borçlanma gibi türlerde cari oluşturma (fp.addContact) gerçek ağ
+                    // çağrısını bekler ve hata fırlatabilir; bu catch olmadan hata
+                    // sessizce yutuluyor, kullanıcı hiçbir geri bildirim almadan
+                    // işlem kaydedilmemiş oluyordu.
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Kaydedilemedi: $e'), backgroundColor: Colors.red),
+                      );
+                    }
                   } finally {
                     if (mounted) setState(() => _saving = false);
                   }
@@ -936,9 +990,16 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
         // BİRİM (Opsiyonel)
         _buildFormRow(
           label: 'BİRİM',
-          child: _buildTextField(
-            controller: _unitController,
-            hintText: 'kg, adet, m2...',
+          child: DropdownButtonFormField<String>(
+            value: _selectedUnit,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: context.colors.surfaceVariant.withValues(alpha: 0.5),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            items: _units.map((u) => DropdownMenuItem(value: u, child: Text(u))).toList(),
+            onChanged: (val) => setState(() => _selectedUnit = val),
           ),
         ),
 

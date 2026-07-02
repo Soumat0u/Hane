@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useData } from '../context/DataContext'
@@ -31,13 +31,18 @@ function AccountOptions({ accounts, types }) {
   ))
 }
 
+const UNITS = ['Adet', 'Ton', 'Kg', 'Metre', 'm²', 'm³', 'Litre', 'Ay', 'Gün', 'Yıl', 'Paket', 'Kutu', 'Diğer']
+
 /**
  * Mobildeki `YeniIslemScreen`'in web karşılığı: sol panelden seçilen türe göre
  * (Ödeme, Transfer, Borçlanma, Kredi Kullanımı, Satış) doğru formu gösterir.
  */
-export default function NewTransactionFormModal({ type: rawType, onClose, initialProjectId = null }) {
-  const type = rawType === 'Borç' ? 'Borçlanma' : rawType
-  const { projects, accounts, categories, addTransaction, addLoan, addDebt } = useData()
+export default function NewTransactionFormModal({ type: rawType, onClose, initialProjectId = null, initialTransaction = null }) {
+  const type = initialTransaction?.type === 'Gelir' || initialTransaction?.type === 'Gider' || initialTransaction?.type === 'Tahsilat'
+    ? 'Ödeme'
+    : (rawType === 'Borç' ? 'Borçlanma' : (initialTransaction?.type || rawType))
+    
+  const { projects, accounts, categories, addTransaction, updateTransaction, addLoan, addDebt, addCategory } = useData()
   const bounds = useMemo(getMonthBounds, [])
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -63,10 +68,39 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
     () => categories.filter((c) => !c.parent && (isIncome ? c.type === 'income' : c.type === 'cost')),
     [categories, isIncome],
   )
-  const subCategories = useMemo(() => {
-    const parent = mainCategories.find((c) => c.name === mainCategory)
-    return parent ? categories.filter((c) => c.parent === parent.id) : []
-  }, [categories, mainCategories, mainCategory])
+  const mainCategoryObj = useMemo(
+    () => mainCategories.find((c) => c.name === mainCategory) || null,
+    [mainCategories, mainCategory],
+  )
+  const subCategories = useMemo(
+    () => (mainCategoryObj ? categories.filter((c) => c.parent === mainCategoryObj.id) : []),
+    [categories, mainCategoryObj],
+  )
+
+  // Ana kategori seçiliyken listede olmayan yeni bir alt kategori eklenebilir.
+  const [addingSubCategory, setAddingSubCategory] = useState(false)
+  const [newSubCategoryName, setNewSubCategoryName] = useState('')
+  const [subCategorySaving, setSubCategorySaving] = useState(false)
+
+  const handleAddSubCategory = async () => {
+    const name = newSubCategoryName.trim()
+    if (!name || !mainCategoryObj) return
+    setSubCategorySaving(true)
+    try {
+      const created = await addCategory({
+        name,
+        type: isIncome ? 'income' : 'cost',
+        parent: mainCategoryObj.id,
+      })
+      setSubCategory(created.name)
+      setNewSubCategoryName('')
+      setAddingSubCategory(false)
+    } catch {
+      setErr('Alt kategori eklenemedi.')
+    } finally {
+      setSubCategorySaving(false)
+    }
+  }
 
   // --- Transfer ---
   const [transferDate, setTransferDate] = useState(today())
@@ -104,6 +138,86 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
     return p ? p.id : null
   }
 
+  const initializedRef = useRef(false)
+
+  // Effect for edit mode
+  useEffect(() => {
+    if (initialTransaction && !initializedRef.current && categories.length > 0 && projects.length > 0) {
+      initializedRef.current = true
+      const t = initialTransaction
+      const dateStr = (t.date || '').slice(0, 10)
+      const amtStr = String(num(t.amount))
+      
+      if (type === 'Ödeme') {
+        setIsIncome(t.type === 'Gelir' || t.type === 'Tahsilat')
+        setOdemeDate(dateStr)
+        const p = projects.find(x => x.id === t.project_id)
+        if (p) setOdemeProject(p.name)
+        setOdemeAmount(amtStr)
+        setOdemeDesc(t.description || '')
+        setCounterparty(t.contact_name || '')
+        setQuantity(t.quantity != null ? String(t.quantity) : '')
+        setUnit(t.unit || '')
+        setOdemeAccount(t.source_name || t.dest_name || '')
+        
+        // Kategori adları cost/income türleri arasında çakışabildiği için (örn. iki ayrı
+        // "Diğer") aramayı işlemin gerçek türüne (Gelir/Tahsilat -> income, Gider -> cost)
+        // ait kategorilerle sınırlıyoruz — yoksa yanlış (türü uyuşmayan) bir ana kategori
+        // eşleşir ve Alt Kategori listesi boş kalıp devre dışı görünür.
+        const wantIncome = t.type === 'Gelir' || t.type === 'Tahsilat'
+        const domainCats = categories.filter(c => wantIncome ? c.type === 'income' : c.type === 'cost')
+        let mainCat = ''
+        let subCat = ''
+        const parentCat = domainCats.find(c => c.name === t.category && !c.parent)
+        if (parentCat) {
+          mainCat = parentCat.name
+        } else {
+          const childCat = domainCats.find(c => c.name === t.category && c.parent)
+          if (childCat) {
+            const pCat = domainCats.find(c => c.id === childCat.parent)
+            if (pCat) {
+              mainCat = pCat.name
+              subCat = childCat.name
+            }
+          } else {
+            mainCat = t.category || ''
+          }
+        }
+        setMainCategory(mainCat)
+        setSubCategory(subCat)
+      } else if (type === 'Transfer') {
+        setTransferDate(dateStr)
+        setFromAccount(t.source_name || '')
+        setToAccount(t.dest_name || '')
+        setTransferAmount(amtStr)
+        setTransferDesc(t.description || '')
+      } else if (type === 'Borçlanma') {
+        setDebtContact(t.contact_name || '')
+        setDebtAmount(amtStr)
+        if (t.due_date) setDebtDueDate((t.due_date || '').slice(0, 10))
+        const p = projects.find(x => x.id === t.project_id)
+        if (p) setDebtProject(p.name)
+        setDebtDesc(t.description || '')
+      } else if (type === 'Kredi Kullanımı') {
+        setKrediDate(dateStr)
+        setKrediBank(t.source_name || '')
+        const p = projects.find(x => x.id === t.project_id)
+        if (p) setKrediProject(p.name)
+        setKrediAmount(amtStr)
+        setKrediDesc(t.description || '')
+      } else if (type === 'Satış') {
+        setSatisDate(dateStr)
+        const p = projects.find(x => x.id === t.project_id)
+        if (p) setSatisProject(p.name)
+        setSatisCustomer(t.contact_name || '')
+        setSatisPrice(amtStr)
+        // Description might contain "A Blok No: 12 • Peşinat: ₺1000 • Actual desc"
+        // We will just put the whole thing in satisDesc for edit simplicity
+        setSatisDesc(t.description || '')
+      }
+    }
+  }, [initialTransaction, categories, projects, type])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setErr('')
@@ -111,23 +225,24 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
     try {
       if (type === 'Ödeme') {
         if (num(odemeAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
-        await addTransaction({
+        const data = {
           project_id: projectIdByName(odemeProject),
           type: isIncome ? 'Gelir' : 'Gider',
           category: subCategory || mainCategory || '',
           amount: num(odemeAmount),
           date: odemeDate,
-          // Gelir: para hesaba GİRER -> dest_name; Gider: para hesaptan ÇIKAR -> source_name
           source_name: isIncome ? '' : odemeAccount,
           dest_name: isIncome ? odemeAccount : '',
           contact_name: counterparty,
           description: odemeDesc,
           quantity: quantity ? num(quantity) : null,
           unit,
-        })
+        }
+        if (initialTransaction) await updateTransaction(initialTransaction.id, data)
+        else await addTransaction(data)
       } else if (type === 'Transfer') {
         if (num(transferAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
-        await addTransaction({
+        const data = {
           type: 'Transfer',
           category: 'Transfer',
           amount: num(transferAmount),
@@ -135,19 +250,31 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           source_name: fromAccount,
           dest_name: toAccount,
           description: transferDesc,
-        })
+        }
+        if (initialTransaction) await updateTransaction(initialTransaction.id, data)
+        else await addTransaction(data)
       } else if (type === 'Borçlanma') {
         if (num(debtAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
-        await addDebt({
-          amount: num(debtAmount),
-          contactName: debtContact,
-          dueDate: debtDueDate,
-          projectId: projectIdByName(debtProject),
-          description: debtDesc,
-        })
+        if (initialTransaction) {
+          await updateTransaction(initialTransaction.id, {
+            project_id: projectIdByName(debtProject),
+            amount: num(debtAmount),
+            contact_name: debtContact,
+            due_date: debtDueDate,
+            description: debtDesc,
+          })
+        } else {
+          await addDebt({
+            amount: num(debtAmount),
+            contactName: debtContact,
+            dueDate: debtDueDate,
+            projectId: projectIdByName(debtProject),
+            description: debtDesc,
+          })
+        }
       } else if (type === 'Kredi Kullanımı') {
         if (num(krediAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
-        await addTransaction({
+        const data = {
           project_id: projectIdByName(krediProject),
           type: 'Kredi Kullanımı',
           category: 'Kredi Kullanımı',
@@ -155,20 +282,25 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           date: krediDate,
           source_name: krediBank,
           description: krediDesc,
-        })
-        await addLoan({
-          name: `${krediBank} Kredisi`,
-          kind: 'loan',
-          bank_name: krediBank,
-          principal: num(krediAmount),
-          total_payable: num(krediAmount),
-          term_months: krediTermMonths ? Number(krediTermMonths) : 0,
-          start_date: krediDate,
-        })
+        }
+        if (initialTransaction) {
+          await updateTransaction(initialTransaction.id, data)
+        } else {
+          await addTransaction(data)
+          await addLoan({
+            name: `${krediBank} Kredisi`,
+            kind: 'loan',
+            bank_name: krediBank,
+            principal: num(krediAmount),
+            total_payable: num(krediAmount),
+            term_months: krediTermMonths ? Number(krediTermMonths) : 0,
+            start_date: krediDate,
+          })
+        }
       } else if (type === 'Satış') {
         if (num(satisPrice) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
         const extras = [satisUnit, satisDownPayment ? `Peşinat: ₺${satisDownPayment}` : ''].filter(Boolean).join(' • ')
-        await addTransaction({
+        const data = {
           project_id: projectIdByName(satisProject),
           type: 'Satış',
           category: 'Satış',
@@ -176,7 +308,9 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           date: satisDate,
           contact_name: satisCustomer,
           description: extras ? `${extras}${satisDesc ? ' • ' + satisDesc : ''}` : satisDesc,
-        })
+        }
+        if (initialTransaction) await updateTransaction(initialTransaction.id, data)
+        else await addTransaction(data)
       }
       onClose()
     } catch (ex) {
@@ -228,17 +362,66 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Ana Kategori</label>
-              <select className="form-input" value={mainCategory} onChange={(e) => { setMainCategory(e.target.value); setSubCategory('') }}>
+              <select className="form-input" value={mainCategory} onChange={(e) => { setMainCategory(e.target.value); setSubCategory(''); setAddingSubCategory(false); setNewSubCategoryName('') }}>
                 <option value="">Seçiniz</option>
                 {mainCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
             </div>
             <div className="form-group">
               <label className="form-label">Alt Kategori</label>
-              <select className="form-input" value={subCategory} onChange={(e) => setSubCategory(e.target.value)} disabled={subCategories.length === 0}>
-                <option value="">Seçiniz (opsiyonel)</option>
-                {subCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-              </select>
+              {addingSubCategory ? (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    autoFocus
+                    placeholder="Yeni alt kategori adı"
+                    value={newSubCategoryName}
+                    onChange={(e) => setNewSubCategoryName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubCategory() } }}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ width: 'auto', marginTop: 0, padding: '0 0.9rem' }}
+                    disabled={subCategorySaving}
+                    onClick={() => { setAddingSubCategory(false); setNewSubCategoryName('') }}
+                  >
+                    İptal
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    style={{ width: 'auto', marginTop: 0, padding: '0 0.9rem' }}
+                    disabled={subCategorySaving || !newSubCategoryName.trim()}
+                    onClick={handleAddSubCategory}
+                  >
+                    {subCategorySaving ? <span className="loader" /> : 'Ekle'}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <select
+                    className="form-input"
+                    value={subCategory}
+                    onChange={(e) => setSubCategory(e.target.value)}
+                    disabled={subCategories.length === 0}
+                  >
+                    <option value="">Seçiniz (opsiyonel)</option>
+                    {subCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ width: 'auto', marginTop: 0, padding: '0 0.9rem', whiteSpace: 'nowrap' }}
+                    disabled={!mainCategoryObj}
+                    title={!mainCategoryObj ? 'Önce ana kategori seçin' : 'Yeni alt kategori ekle'}
+                    onClick={() => setAddingSubCategory(true)}
+                  >
+                    + Yeni
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -266,7 +449,10 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
             </div>
             <div className="form-group">
               <label className="form-label">Birim</label>
-              <input type="text" className="form-input" placeholder="kg, adet, m2..." value={unit} onChange={(e) => setUnit(e.target.value)} />
+              <select className="form-input" value={UNITS.includes(unit) ? unit : (unit ? 'Diğer' : '')} onChange={(e) => setUnit(e.target.value)}>
+                <option value="">Seçiniz</option>
+                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
             </div>
           </div>
 

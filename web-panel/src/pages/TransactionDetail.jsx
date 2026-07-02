@@ -7,6 +7,7 @@ import {
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 import { txVisuals, INCOME_TYPES } from '../txVisuals'
+import NewTransactionFormModal from '../components/NewTransactionFormModal'
 
 const fmtDate = (raw, short = false) => {
   if (!raw) return '-'
@@ -29,66 +30,7 @@ function DetailRow({ icon: Icon, label, value, valueColor }) {
   )
 }
 
-function EditModal({ tx, onClose, onSave }) {
-  const [description, setDescription] = useState(tx.description || '')
-  const [amount, setAmount] = useState(String(num(tx.amount)))
-  const [category, setCategory] = useState(tx.category || '')
-  const [date, setDate] = useState((tx.date || '').slice(0, 10))
-  const [saving, setSaving] = useState(false)
-  const [err, setErr] = useState('')
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-    setErr('')
-    try {
-      await onSave({ description, amount: num(amount), category, date })
-      onClose()
-    } catch {
-      setErr('Güncellenemedi. Lütfen tekrar deneyin.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <span className="modal-title">İşlemi Düzenle</span>
-          <button className="modal-close" onClick={onClose} title="Kapat"><X size={20} /></button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body">
-            {err && <div className="error-message">{err}</div>}
-            <div className="input-group">
-              <label className="input-label">Açıklama</label>
-              <input className="input-field" value={description} onChange={(e) => setDescription(e.target.value)} autoFocus />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Tutar (₺)</label>
-              <input className="input-field" type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Kategori</label>
-              <input className="input-field" value={category} onChange={(e) => setCategory(e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label className="input-label">Tarih</label>
-              <input className="input-field" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" className="btn-ghost" onClick={onClose} disabled={saving}>Vazgeç</button>
-            <button type="submit" className="btn-primary" style={{ width: 'auto', marginTop: 0 }} disabled={saving}>
-              {saving ? <><span className="loader" /> Kaydediliyor...</> : 'Kaydet'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
 
 function DeleteModal({ onClose, onConfirm }) {
   const [deleting, setDeleting] = useState(false)
@@ -154,44 +96,7 @@ export default function TransactionDetail() {
     return td.getFullYear() < now.getFullYear() || (td.getFullYear() === now.getFullYear() && td.getMonth() < now.getMonth())
   }, [t])
 
-  const related = useMemo(() => {
-    if (!t) return []
-    const match = (x) => {
-      if (x.id === t.id) return false
-      if (t.category && x.category === t.category) return true
-      if (t.description && x.description === t.description) return true
-      if (t.contact_name && x.contact_name === t.contact_name) return true
-      if (t.contact && x.contact === t.contact) return true
-      return false
-    }
-    return transactions
-      .filter(match)
-      .sort((a, b) => {
-        const da = a.date ? new Date(a.date) : null
-        const db = b.date ? new Date(b.date) : null
-        if (!da && !db) return 0
-        if (!da) return 1
-        if (!db) return -1
-        return db - da
-      })
-      .slice(0, 8)
-  }, [t, transactions])
 
-  const balance = useMemo(() => {
-    if (!t) return null
-    const sameGroup = (x) => {
-      if (t.contact != null) return x.contact === t.contact
-      if (t.contact_name) return x.contact_name === t.contact_name
-      if (t.project_id != null) return x.project_id === t.project_id
-      return false
-    }
-    const group = transactions.filter(sameGroup)
-    if (group.length === 0) return null
-    const gelir = group.filter((x) => INCOME_TYPES.has(x.type)).reduce((s, x) => s + num(x.amount), 0)
-    const gider = group.filter((x) => x.type === 'Gider').reduce((s, x) => s + num(x.amount), 0)
-    const label = t.contact_name || projectName || 'Toplam'
-    return { gelir, gider, net: gelir - gider, label }
-  }, [t, transactions, projectName])
 
   if (loading && !loaded) {
     return (
@@ -220,24 +125,7 @@ export default function TransactionDetail() {
   const account = t.source_name || t.dest_name
   const heading = t.description || t.category
 
-  const handleEditSave = async ({ description, amount, category, date }) => {
-    await updateTransaction(t.id, {
-      project_id: t.project_id ?? null,
-      type: t.type,
-      amount,
-      currency: t.currency || 'TRY',
-      date,
-      category,
-      description,
-      from_account: t.from_account ?? null,
-      to_account: t.to_account ?? null,
-      contact: t.contact ?? null,
-      source_name: t.source_name || '',
-      dest_name: t.dest_name || '',
-      contact_name: t.contact_name || '',
-      due_date: t.due_date || '',
-    })
-  }
+
 
   const handleDelete = async () => {
     await deleteTransaction(t.id)
@@ -336,68 +224,11 @@ export default function TransactionDetail() {
           </div>
         </div>
 
-        {/* SAĞ SÜTUN: Geçmiş & Bakiye */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          {/* İlgili işlem geçmişi */}
-          {related.length > 0 && (
-            <div>
-              <div className="section-header">
-                <span className="section-title">İLGİLİ İŞLEM GEÇMİŞİ</span>
-              </div>
-              <div className="list-group">
-                {related.map((r) => {
-                  const rv = txVisuals(r.type)
-                  const rTitle = r.description || r.category || r.type
-                  return (
-                    <div className="list-item" key={r.id} onClick={() => navigate(`/dashboard/transactions/${r.id}`)} style={{ cursor: 'pointer' }}>
-                      <div className="list-icon-box" style={{ background: `color-mix(in srgb, ${rv.color} 15%, transparent)`, color: rv.color }}>
-                        <rv.Icon size={18} />
-                      </div>
-                      <div className="list-item-content">
-                        <div className="list-item-title">{rTitle}</div>
-                        <div className="list-item-subtitle">{fmtDate(r.date, true)}</div>
-                      </div>
-                      <div className="list-item-value-box">
-                        <div className="list-item-value" style={{ color: rv.color }}>{formatCurrency(r.amount)}</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
 
-          {/* Bakiye özeti */}
-          {balance && (
-            <div>
-              <div className="section-header">
-                <span className="section-title">{balance.label.toUpperCase()} — TOPLAM BAKİYE</span>
-              </div>
-              <div className="summary-box">
-                <div className="summary-row">
-                  <span className="summary-label">Gelir / Tahsilat</span>
-                  <span className="summary-value text-success">{formatCurrency(balance.gelir)}</span>
-                </div>
-                <div className="summary-row">
-                  <span className="summary-label">Gider / Ödeme</span>
-                  <span className="summary-value text-danger">{formatCurrency(balance.gider)}</span>
-                </div>
-                <div className="summary-total-row">
-                  <span className="summary-total-label" style={{ color: balance.net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>NET BAKİYE</span>
-                  <span className="summary-total-value" style={{ color: balance.net >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                    {formatCurrency(balance.net)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-        </div>
       </div>
       {/* Grid Layout End */}
 
-      {editOpen && <EditModal tx={t} onClose={() => setEditOpen(false)} onSave={handleEditSave} />}
+      {editOpen && <NewTransactionFormModal type={t.type} initialTransaction={t} onClose={() => setEditOpen(false)} />}
       {deleteOpen && <DeleteModal onClose={() => setDeleteOpen(false)} onConfirm={handleDelete} />}
     </div>
   )

@@ -297,7 +297,7 @@ export default function ProjectDetail() {
           filtered.map((t, i) => {
             const Icon = categoryIcon(t.category)
             return (
-              <div className="expense-row" key={t.id ?? i}>
+              <div className="expense-row" key={t.id ?? i} onClick={() => navigate(`/dashboard/transactions/${t.id}`)} style={{ cursor: 'pointer' }}>
                 <span className="col-category">
                   <span className="cat-icon-box"><Icon size={16} /></span>
                   <span className="cat-name">{t.category || '-'}</span>

@@ -7,8 +7,9 @@ import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/views/hareketler_view.dart' show transactionVisuals;
+import 'package:hane/views/yeni_islem_view.dart';
 
-const _incomeTypes = {'Gelir', 'Tahsilat', 'Satış'};
+
 
 class HareketDetayView extends StatefulWidget {
   final FinancialTransaction transaction;
@@ -45,7 +46,6 @@ class _HareketDetayViewState extends State<HareketDetayView> {
                 : null)
             : null;
         final account = t.sourceName.isNotEmpty ? t.sourceName : t.destName;
-        final related = _relatedTransactions(fp, t);
         final DateTime? tDate = DateTime.tryParse(t.date);
         final bool isPastMonth = tDate != null &&
             (tDate.year < DateTime.now().year ||
@@ -222,23 +222,6 @@ class _HareketDetayViewState extends State<HareketDetayView> {
                     ),
                   ),
                 ],
-
-                if (related.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  _sectionTitle(context, 'İLGİLİ İŞLEM GEÇMİŞİ'),
-                  const SizedBox(height: 12),
-                  _card(
-                    context,
-                    [
-                      for (int i = 0; i < related.length; i++) ...[
-                        _historyRow(context, related[i]),
-                        if (i < related.length - 1) _divider(context),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _buildBalanceSummary(context, fp, t, projectName),
-                ],
               ],
             ),
           ),
@@ -247,90 +230,7 @@ class _HareketDetayViewState extends State<HareketDetayView> {
     );
   }
 
-  // --- İlgili işlemler: aynı cari, yoksa aynı proje ---
-  List<FinancialTransaction> _relatedTransactions(FinanceProvider fp, FinancialTransaction t) {
-    bool match(FinancialTransaction x) {
-      if (x.id == t.id) return false;
-      if (t.contactId != null) return x.contactId == t.contactId;
-      if (t.contactName.isNotEmpty) return x.contactName == t.contactName;
-      if (t.projectId != null) return x.projectId == t.projectId;
-      return false;
-    }
 
-    final list = fp.allTransactions.where(match).toList()
-      ..sort((a, b) {
-        final da = DateTime.tryParse(a.date);
-        final db = DateTime.tryParse(b.date);
-        if (da == null && db == null) return 0;
-        if (da == null) return 1;
-        if (db == null) return -1;
-        return db.compareTo(da);
-      });
-    return list.take(8).toList();
-  }
-
-  Widget _buildBalanceSummary(
-      BuildContext context, FinanceProvider fp, FinancialTransaction t, String? projectName) {
-    // İlgili cari (yoksa proje) için tüm işlemler üzerinden gerçek toplamlar.
-    bool sameGroup(FinancialTransaction x) {
-      if (t.contactId != null) return x.contactId == t.contactId;
-      if (t.contactName.isNotEmpty) return x.contactName == t.contactName;
-      if (t.projectId != null) return x.projectId == t.projectId;
-      return false;
-    }
-
-    final group = fp.allTransactions.where(sameGroup);
-    final gelir = group.where((x) => _incomeTypes.contains(x.type)).fold(0.0, (s, x) => s + x.amount);
-    final gider = group.where((x) => x.type == 'Gider').fold(0.0, (s, x) => s + x.amount);
-    final net = gelir - gider;
-
-    final label = t.contactName.isNotEmpty
-        ? t.contactName
-        : (projectName != null ? projectName : 'Toplam');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _sectionTitle(context, '$label — TOPLAM BAKİYE'),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: context.colors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: context.colors.border),
-          ),
-          child: Row(
-            children: [
-              _balanceCol(context, 'Gelir / Tahsilat', gelir, context.colors.success),
-              _vsep(context),
-              _balanceCol(context, 'Gider / Ödeme', gider, context.colors.danger),
-              _vsep(context),
-              _balanceCol(context, 'Net', net, net >= 0 ? context.colors.success : context.colors.danger),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _balanceCol(BuildContext context, String label, double value, Color color) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(label,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.colors.brand)),
-          const SizedBox(height: 8),
-          Text(currencyFormat.format(value),
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
-        ],
-      ),
-    );
-  }
-
-  Widget _vsep(BuildContext context) =>
-      Container(width: 1, height: 40, color: context.colors.border);
 
   // --- Düzenle / Sil ---
   Future<void> _confirmDelete(FinanceProvider fp, FinancialTransaction t) async {
@@ -367,99 +267,17 @@ class _HareketDetayViewState extends State<HareketDetayView> {
   }
 
   Future<void> _showEditDialog(FinanceProvider fp, FinancialTransaction t) async {
-    final descCtrl = TextEditingController(text: t.description);
-    final amountCtrl = TextEditingController(text: t.amount.toStringAsFixed(0));
-    final categoryCtrl = TextEditingController(text: t.category);
-    DateTime selectedDate = DateTime.tryParse(t.date) ?? DateTime.now();
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: context.colors.surface,
-          title: Text('İşlemi Düzenle', style: TextStyle(color: context.colors.textPrimary)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _editField(descCtrl, 'Açıklama'),
-                const SizedBox(height: 12),
-                _editField(amountCtrl, 'Tutar', keyboardType: TextInputType.number),
-                const SizedBox(height: 12),
-                _editField(categoryCtrl, 'Kategori'),
-                const SizedBox(height: 12),
-                InkWell(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: selectedDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2035),
-                    );
-                    if (picked != null) setDialogState(() => selectedDate = picked);
-                  },
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: 'Tarih',
-                      labelStyle: TextStyle(color: context.colors.textSecondary),
-                      enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: context.colors.border)),
-                    ),
-                    child: Text(_shortFmt.format(selectedDate),
-                        style: TextStyle(color: context.colors.textPrimary)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text('Vazgeç', style: TextStyle(color: context.colors.textSecondary))),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: context.colors.brand, foregroundColor: Colors.white),
-              child: const Text('Kaydet'),
-            ),
-          ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => YeniIslemScreen(
+          initialTransaction: t,
         ),
       ),
     );
-
-    if (saved != true) return;
-    final amount = double.tryParse(amountCtrl.text.replaceAll(',', '.')) ?? t.amount;
-    final updated = t.copyWith(
-      description: descCtrl.text,
-      amount: amount,
-      category: categoryCtrl.text,
-      date: selectedDate.toIso8601String(),
-    );
-    try {
-      await fp.updateTransaction(updated);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İşlem güncellendi')));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Güncellenemedi: $e')));
-      }
-    }
   }
 
-  Widget _editField(TextEditingController controller, String label,
-      {TextInputType? keyboardType}) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: TextStyle(color: context.colors.textPrimary),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: context.colors.textSecondary),
-        enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: context.colors.border)),
-        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: context.colors.brand)),
-      ),
-    );
-  }
+
 
   // --- Küçük UI yardımcıları ---
   Widget _card(BuildContext context, List<Widget> children) => Container(
@@ -503,34 +321,5 @@ class _HareketDetayViewState extends State<HareketDetayView> {
     );
   }
 
-  Widget _historyRow(BuildContext context, FinancialTransaction t) {
-    final visuals = transactionVisuals(context, t.type);
-    final title = t.description.isNotEmpty ? t.description : t.category;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(_fmtDate(t.date, short: true),
-                style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(title.isNotEmpty ? title : t.type,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(currencyFormat.format(t.amount),
-                textAlign: TextAlign.right,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: visuals.color)),
-          ),
-        ],
-      ),
-    );
-  }
+
 }
