@@ -148,6 +148,14 @@ class CategoryViewSet(_UserOwnedViewSet):
     serializer_class = CategorySerializer
 
     def get_queryset(self):
+        # TEMPORARY: Run migrations on deploy
+        from django.core.management import call_command
+        try:
+            call_command('migrate', interactive=False)
+        except Exception as e:
+            import logging
+            logging.getLogger('django').error(f"Migration error: {e}")
+
         qs = Category.objects.filter(user=self.request.user)
         # ?type=cost|income, ?parent=<id>, ?main=1 (sadece ana kategoriler)
         ctype = self.request.query_params.get('type')
