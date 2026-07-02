@@ -6,6 +6,16 @@ import { num } from '../utils'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
+const getMonthBounds = () => {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth()
+  const firstDay = `${y}-${String(m + 1).padStart(2, '0')}-01`
+  const lastDayDate = new Date(y, m + 1, 0)
+  const lastDay = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`
+  return { min: firstDay, max: lastDay }
+}
+
 function AccountOptions({ accounts, types }) {
   const groups = types.map((type) => ({
     type,
@@ -28,6 +38,7 @@ function AccountOptions({ accounts, types }) {
 export default function NewTransactionFormModal({ type: rawType, onClose }) {
   const type = rawType === 'Borç' ? 'Borçlanma' : rawType
   const { projects, accounts, categories, addTransaction, addLoan, addDebt } = useData()
+  const bounds = useMemo(getMonthBounds, [])
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -175,7 +186,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose }) {
         <>
           <div className="form-group">
             <label className="form-label">Tarih</label>
-            <input type="date" className="form-input" value={odemeDate} onChange={(e) => setOdemeDate(e.target.value)} />
+            <input type="date" className="form-input" min={bounds.min} max={bounds.max} value={odemeDate} onChange={(e) => setOdemeDate(e.target.value)} />
           </div>
 
           <div className="form-group">
@@ -266,7 +277,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose }) {
         <>
           <div className="form-group">
             <label className="form-label">Tarih</label>
-            <input type="date" className="form-input" value={transferDate} onChange={(e) => setTransferDate(e.target.value)} />
+            <input type="date" className="form-input" min={bounds.min} max={bounds.max} value={transferDate} onChange={(e) => setTransferDate(e.target.value)} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
@@ -333,7 +344,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose }) {
         <>
           <div className="form-group">
             <label className="form-label">Tarih</label>
-            <input type="date" className="form-input" value={krediDate} onChange={(e) => setKrediDate(e.target.value)} />
+            <input type="date" className="form-input" min={bounds.min} max={bounds.max} value={krediDate} onChange={(e) => setKrediDate(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">Banka</label>
@@ -372,7 +383,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose }) {
         <>
           <div className="form-group">
             <label className="form-label">Tarih</label>
-            <input type="date" className="form-input" value={satisDate} onChange={(e) => setSatisDate(e.target.value)} />
+            <input type="date" className="form-input" min={bounds.min} max={bounds.max} value={satisDate} onChange={(e) => setSatisDate(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">Proje</label>

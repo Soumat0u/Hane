@@ -202,19 +202,14 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Y-Axis labels (grafik verisine göre dinamik ölçek)
+                  // Y-Axis labels (her aralık sabit 5 milyon)
                   Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildYLabel(_compactAmount(flowMax)),
-                      const SizedBox(height: 20),
-                      _buildYLabel(_compactAmount(flowMax * 0.75)),
-                      const SizedBox(height: 20),
-                      _buildYLabel(_compactAmount(flowMax * 0.5)),
-                      const SizedBox(height: 20),
-                      _buildYLabel(_compactAmount(flowMax * 0.25)),
-                      const SizedBox(height: 20),
-                      _buildYLabel('0'),
+                      for (int i = 0; i <= _flowIntervals; i++) ...[
+                        _buildYLabel(_compactAmount(flowMax - i * _flowStep(flowMax))),
+                        if (i < _flowIntervals) const SizedBox(height: 20),
+                      ],
                     ],
                   ),
                   const SizedBox(width: 12),
@@ -421,15 +416,26 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
     return flows;
   }
 
-  /// Grafik için üst ölçek: en yüksek gelir/gider değerine göre (0 ise 1).
+  /// Y ekseninde her zaman sabit 4 aralık (5 etiket) gösterilir; aralık
+  /// büyüklüğü 5 milyonun katı olacak şekilde son 6 ayın en büyük değerine
+  /// göre hesaplanır. Böylece grafik hem 5M'lik adımlarla bölünür hem de
+  /// etiket sayısı sabit kalıp grafik boyu devasalaşmaz.
+  static const double _flowStepUnit = 5000000;
+  static const int _flowIntervals = 4;
+
+  /// Grafik için üst ölçek: en yüksek gelir/gider değerine göre.
   double _niceMax(List<_MonthFlow> flows) {
     double maxVal = 0;
     for (final f in flows) {
       if (f.income > maxVal) maxVal = f.income;
       if (f.expense > maxVal) maxVal = f.expense;
     }
-    return maxVal <= 0 ? 1 : maxVal;
+    if (maxVal <= 0) return _flowStepUnit * _flowIntervals;
+    final step = ((maxVal / _flowIntervals) / _flowStepUnit).ceil() * _flowStepUnit;
+    return (step <= 0 ? _flowStepUnit : step) * _flowIntervals;
   }
+
+  double _flowStep(double flowMax) => flowMax / _flowIntervals;
 
   /// Y ekseni etiketleri için kısa tutar biçimi (1.2M, 850B, 500).
   String _compactAmount(double v) {

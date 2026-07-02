@@ -147,6 +147,13 @@ export default function TransactionDetail() {
     return p ? p.name : null
   }, [t, projects])
 
+  const isPastMonth = useMemo(() => {
+    if (!t || !t.date) return false
+    const td = new Date(t.date)
+    const now = new Date()
+    return td.getFullYear() < now.getFullYear() || (td.getFullYear() === now.getFullYear() && td.getMonth() < now.getMonth())
+  }, [t])
+
   const related = useMemo(() => {
     if (!t) return []
     const match = (x) => {
@@ -253,14 +260,24 @@ export default function TransactionDetail() {
           </button>
           
           <div style={{ position: 'relative' }}>
-            <button 
-              className="icon-btn" 
-              onClick={() => setMenuOpen((o) => !o)} 
-              style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none' }}
-            >
-              <MoreHorizontal size={20} />
-            </button>
-            {menuOpen && (
+            {isPastMonth ? (
+              <span 
+                className="status-badge-inline" 
+                style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '6px' }}
+                title="Geçmiş aylara ait hareketler kilitlidir."
+              >
+                Kilitli
+              </span>
+            ) : (
+              <button 
+                className="icon-btn" 
+                onClick={() => setMenuOpen((o) => !o)} 
+                style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none' }}
+              >
+                <MoreHorizontal size={20} />
+              </button>
+            )}
+            {!isPastMonth && menuOpen && (
               <>
                 <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
                 <div

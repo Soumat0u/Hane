@@ -46,6 +46,10 @@ class _HareketDetayViewState extends State<HareketDetayView> {
             : null;
         final account = t.sourceName.isNotEmpty ? t.sourceName : t.destName;
         final related = _relatedTransactions(fp, t);
+        final DateTime? tDate = DateTime.tryParse(t.date);
+        final bool isPastMonth = tDate != null &&
+            (tDate.year < DateTime.now().year ||
+                (tDate.year == DateTime.now().year && tDate.month < DateTime.now().month));
 
         return Scaffold(
           backgroundColor: context.colors.scaffold,
@@ -61,38 +65,47 @@ class _HareketDetayViewState extends State<HareketDetayView> {
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
             actions: [
-              PopupMenuButton<String>(
-                icon: Icon(Icons.more_horiz_rounded, color: context.colors.textPrimary, size: 28),
-                color: context.colors.surface,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                onSelected: (value) {
-                  if (value == 'duzenle') {
-                    _showEditDialog(fp, t);
-                  } else if (value == 'sil') {
-                    _confirmDelete(fp, t);
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem<String>(
-                    value: 'duzenle',
-                    child: Row(children: [
-                      Icon(Icons.edit_outlined, size: 18, color: context.colors.accent),
-                      const SizedBox(width: 12),
-                      Text('Düzenle',
-                          style: TextStyle(color: context.colors.textPrimary, fontWeight: FontWeight.w600)),
-                    ]),
+              if (isPastMonth)
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Tooltip(
+                    message: 'Geçmiş aylara ait hareketler değiştirilemez.',
+                    child: Icon(Icons.lock_outline_rounded, color: context.colors.textSecondary, size: 24),
                   ),
-                  PopupMenuItem<String>(
-                    value: 'sil',
-                    child: Row(children: [
-                      Icon(Icons.delete_outline_rounded, size: 18, color: context.colors.danger),
-                      const SizedBox(width: 12),
-                      Text('Sil',
-                          style: TextStyle(color: context.colors.danger, fontWeight: FontWeight.w600)),
-                    ]),
-                  ),
-                ],
-              ),
+                )
+              else
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_horiz_rounded, color: context.colors.textPrimary, size: 28),
+                  color: context.colors.surface,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onSelected: (value) {
+                    if (value == 'duzenle') {
+                      _showEditDialog(fp, t);
+                    } else if (value == 'sil') {
+                      _confirmDelete(fp, t);
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem<String>(
+                      value: 'duzenle',
+                      child: Row(children: [
+                        Icon(Icons.edit_outlined, size: 18, color: context.colors.accent),
+                        const SizedBox(width: 12),
+                        Text('Düzenle',
+                            style: TextStyle(color: context.colors.textPrimary, fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'sil',
+                      child: Row(children: [
+                        Icon(Icons.delete_outline_rounded, size: 18, color: context.colors.danger),
+                        const SizedBox(width: 12),
+                        Text('Sil',
+                            style: TextStyle(color: context.colors.danger, fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                  ],
+                ),
             ],
           ),
           body: SingleChildScrollView(

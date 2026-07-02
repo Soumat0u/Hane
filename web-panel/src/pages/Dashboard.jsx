@@ -36,6 +36,9 @@ export default function Dashboard() {
     { value: netPozisyon * 0.95 }, { value: netPozisyon * 0.92 }, { value: netPozisyon * 0.98 }, { value: netPozisyon }
   ]
 
+  // Y ekseni: her çizgi arası sabit 5 milyon
+  const CASH_FLOW_STEP = 5000000
+
   // Nakit Akışı (Aylık) — son 6 ayın GERÇEK işlemlerinden hesaplanır
   const cashFlowData = (() => {
     const now = new Date()
@@ -50,12 +53,20 @@ export default function Dashboard() {
         const td = new Date(t.date)
         return td.getFullYear() === year && td.getMonth() === month
       })
-      const gelir = txns.filter(t => t.type === 'Gelir' || t.type === 'Tahsilat' || t.type === 'Satış').reduce((s, t) => s + (Number(t.amount) || 0), 0)
+      const gelir = txns.filter(t => t.type === 'Gelir' || t.type === 'Tahsilat').reduce((s, t) => s + (Number(t.amount) || 0), 0)
       const gider = txns.filter(t => t.type === 'Gider' || t.type === 'Ödeme').reduce((s, t) => s + (Number(t.amount) || 0), 0)
       months.push({ name: monthNames[month], Gelir: gelir, Gider: gider })
     }
     return months
   })()
+
+  // Sabit 4 aralık (5 etiket); aralık büyüklüğü 5 milyonun katı olacak
+  // şekilde son 6 ayın en büyük değerine göre ölçeklenir.
+  const CASH_FLOW_INTERVALS = 4
+  const cashFlowMax = Math.max(0, ...cashFlowData.flatMap((m) => [m.Gelir, m.Gider]))
+  const cashFlowStep = Math.max(CASH_FLOW_STEP, Math.ceil(cashFlowMax / CASH_FLOW_INTERVALS / CASH_FLOW_STEP) * CASH_FLOW_STEP)
+  const cashFlowDomainMax = cashFlowStep * CASH_FLOW_INTERVALS
+  const cashFlowTicks = Array.from({ length: CASH_FLOW_INTERVALS + 1 }, (_, i) => i * cashFlowStep)
 
   // Projelerim (Son 3 Proje)
   const projects = allProjects ? [...allProjects].sort((a, b) => b.id - a.id).slice(0, 3) : []
@@ -157,6 +168,8 @@ export default function Dashboard() {
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: 'var(--color-text-muted)' }}
+                  domain={[0, cashFlowDomainMax]}
+                  ticks={cashFlowTicks}
                   tickFormatter={(value) => `${value >= 1000 ? (value / 1000) + 'k' : value}`}
                   dx={-10}
                 />
