@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'https://web-production-77031.up.railway.app/api';
 
 const getHeaders = () => {
   const token = localStorage.getItem('auth_token');
