@@ -13,15 +13,12 @@ const fmtDate = (raw) => {
 
 /** Bir işlemin bu hesaba göre gelir mi gider mi olduğunu belirler (mobil `kasa_detay_view` ile aynı mantık). */
 function resolveIsIncome(t, accountName) {
-  if (t.type === 'Gelir' || t.type === 'Borçlanma' || t.type === 'Sermaye' || t.type === 'Tahsilat' || t.type === 'Satış') {
-    return t.dest_name === accountName
-  }
-  if (t.type === 'Gider' || t.type === 'Geri Ödeme' || t.type === 'Kar Dağıtımı') {
-    return false
-  }
   if (t.type === 'Transfer') {
     if (t.dest_name === accountName) return true
     if (t.source_name === accountName) return false
+  }
+  if (t.type === 'Gelir' || t.type === 'Tahsilat' || t.type === 'Satış' || t.type === 'Borçlanma' || t.type === 'Sermaye' || t.type === 'Kredi Kullanımı') {
+    return true
   }
   return false
 }

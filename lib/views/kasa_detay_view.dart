@@ -204,20 +204,14 @@ class KasaDetayView extends StatelessWidget {
                         separatorBuilder: (context, index) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final t = relatedTx[index];
-                          // Determine if this transaction adds or subtracts from this account
                           bool isIncome = false;
-                          
-                          if (t.type == 'Gelir' || t.type == 'Borçlanma' || t.type == 'Sermaye' || t.type == 'Tahsilat' || t.type == 'Satış') {
-                            // Money comes in, goes to destName
-                            if (t.destName == account.name) isIncome = true;
-                          } else if (t.type == 'Gider' || t.type == 'Geri Ödeme' || t.type == 'Kar Dağıtımı') {
-                            // Money goes out, comes from sourceName
-                            if (t.destName == account.name) isIncome = true; // wait, if destName is account, someone paid into it? No, gider dest is outside.
-                            // Actually, for Gider, sourceName is our account.
-                            if (t.sourceName == account.name) isIncome = false;
-                          } else if (t.type == 'Transfer') {
+                          if (t.type == 'Transfer') {
                             if (t.destName == account.name) isIncome = true;
                             if (t.sourceName == account.name) isIncome = false;
+                          } else if (t.type == 'Gelir' || t.type == 'Tahsilat' || t.type == 'Satış' || t.type == 'Borçlanma' || t.type == 'Sermaye' || t.type == 'Kredi Kullanımı') {
+                            isIncome = true;
+                          } else {
+                            isIncome = false;
                           }
 
                           return _buildTransactionCard(context, t, isIncome);
