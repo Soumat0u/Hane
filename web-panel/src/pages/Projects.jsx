@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ArrowRight, ChevronRight } from 'lucide-react'
+import { Plus, ArrowRight, ChevronRight, CheckCircle, Circle } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num, parseStatusColor, withAlpha15, projectImage } from '../utils'
 import ProjectFormModal from '../components/ProjectFormModal'
 
 export default function Projects() {
   const navigate = useNavigate()
-  const { projects, transactions, addProject, loading, loaded, error } = useData()
+  const { projects, transactions, addProject, deleteProject, loading, loaded, error } = useData()
   const [createOpen, setCreateOpen] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
 
   // İşlemleri proje bazında grupla (mobil provider mantığı).
   const txByProject = useMemo(() => {
@@ -21,6 +23,33 @@ export default function Projects() {
     }
     return map
   }, [transactions])
+
+  const handleToggleEditMode = () => {
+    setIsEditMode(!isEditMode)
+    setSelectedIds([])
+  }
+
+  const handleToggleSelect = (id, e) => {
+    e.stopPropagation()
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return
+    const confirmed = window.confirm(`${selectedIds.length} projeyi silmek istediğinize emin misiniz?`)
+    if (!confirmed) return
+    try {
+      for (const id of selectedIds) {
+        await deleteProject(id)
+      }
+      setSelectedIds([])
+      setIsEditMode(false)
+    } catch (err) {
+      alert("Projeler silinirken bir hata oluştu.")
+    }
+  }
 
   const computeCard = (project) => {
     const list = txByProject.get(project.id) || []
@@ -56,14 +85,37 @@ export default function Projects() {
     <div>
       {projects.length > 0 && (
         <div className="section-header" style={{ marginTop: 0 }}>
-          <span className="section-title" style={{ color: 'var(--color-primary)' }}>DEVAM EDEN PROJELER</span>
+          <span
+            className="section-title"
+            style={{ color: isEditMode ? 'var(--color-danger, #ef4444)' : 'var(--color-primary)' }}
+          >
+            {isEditMode ? `${selectedIds.length} SEÇİLİ` : 'DEVAM EDEN PROJELER'}
+          </span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button className="btn-inline-text" disabled>
-              Tümü <ArrowRight size={14} />
-            </button>
-            <button className="btn-inline-text" onClick={() => setCreateOpen(true)}>
-              <Plus size={16} /> Yeni Proje
-            </button>
+            {isEditMode ? (
+              <>
+                <button
+                  className="btn-inline-text text-danger"
+                  onClick={handleDeleteSelected}
+                  disabled={selectedIds.length === 0}
+                  style={{ color: 'var(--color-danger, #ef4444)', opacity: selectedIds.length === 0 ? 0.5 : 1 }}
+                >
+                  Seçilenleri Sil
+                </button>
+                <button className="btn-inline-text" onClick={handleToggleEditMode}>
+                  Vazgeç
+                </button>
+              </>
+            ) : (
+              <>
+                <button className="btn-inline-text" onClick={handleToggleEditMode}>
+                  Düzenle
+                </button>
+                <button className="btn-inline-text" onClick={() => setCreateOpen(true)}>
+                  <Plus size={16} /> Yeni Proje
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -85,16 +137,45 @@ export default function Projects() {
             const isZero = realizationPercent === 0
             const percentColor = isZero ? 'var(--color-text-muted)' : 'var(--color-success)'
             const imgUrl = projectImage(project)
+            const isSelected = selectedIds.includes(project.id)
 
             return (
               <div
                 key={project.id}
                 className="project-card"
-                onClick={() => navigate(`/dashboard/projects/${project.id}`)}
+                style={isEditMode && isSelected ? { border: '2px solid var(--color-danger, #ef4444)' } : {}}
+                onClick={(e) => {
+                  if (isEditMode) {
+                    handleToggleSelect(project.id, e)
+                  } else {
+                    navigate(`/dashboard/projects/${project.id}`)
+                  }
+                }}
               >
                 {/* Üst satır */}
                 <div className="pcard-top">
-                  <div className="project-thumb" style={{ backgroundImage: `url(${imgUrl})` }} />
+                  {isEditMode ? (
+                    <div
+                      className="project-thumb"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'var(--color-background-alt, #f9fafb)',
+                        color: isSelected ? 'var(--color-danger, #ef4444)' : 'var(--color-text-muted, #9ca3af)',
+                        border: `1px solid ${isSelected ? 'var(--color-danger, #ef4444)' : 'var(--color-border, #e5e7eb)'}`,
+                        borderRadius: '8px'
+                      }}
+                    >
+                      {isSelected ? (
+                        <CheckCircle size={24} style={{ fill: 'var(--color-danger, #ef4444)', color: '#white' }} />
+                      ) : (
+                        <Circle size={24} />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="project-thumb" style={{ backgroundImage: `url(${imgUrl})` }} />
+                  )}
 
                   <div className="pcard-info">
                     <span
@@ -142,7 +223,7 @@ export default function Projects() {
 
                 {/* Detay linki */}
                 <div className="pcard-detail-link">
-                  <span>Detay</span>
+                  <span>{isEditMode ? 'Seç' : 'Detay'}</span>
                   <ChevronRight size={14} />
                 </div>
               </div>

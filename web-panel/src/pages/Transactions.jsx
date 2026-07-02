@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, X, SearchX, ChevronRight, Building2, Wallet } from 'lucide-react'
+import { Search, X, SearchX, ChevronRight, Building2, Wallet, CheckCircle, Circle } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 import { txVisuals, INCOME_TYPES } from '../txVisuals'
@@ -16,7 +16,7 @@ const dayOnly = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
 
 export default function Transactions() {
   const navigate = useNavigate()
-  const { transactions, projects, loading, loaded } = useData()
+  const { transactions, projects, loading, loaded, deleteTransaction } = useData()
 
   const [search, setSearch] = useState('')
   const [type, setType] = useState('Tümü')
@@ -25,6 +25,8 @@ export default function Transactions() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [visibleCount, setVisibleCount] = useState(10)
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState([])
 
   const projectNames = useMemo(() => {
     const m = {}
@@ -41,6 +43,33 @@ export default function Transactions() {
     () => ['Tümü', ...new Set(transactions.map((t) => t.category).filter(Boolean))],
     [transactions],
   )
+
+  const handleToggleEditMode = () => {
+    setIsEditMode(!isEditMode)
+    setSelectedIds([])
+  }
+
+  const handleToggleSelect = (id, e) => {
+    e.stopPropagation()
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return
+    const confirmed = window.confirm(`${selectedIds.length} işlemi silmek istediğinize emin misiniz?`)
+    if (!confirmed) return
+    try {
+      for (const id of selectedIds) {
+        await deleteTransaction(id)
+      }
+      setSelectedIds([])
+      setIsEditMode(false)
+    } catch (err) {
+      alert("İşlemler silinirken bir hata oluştu.")
+    }
+  }
 
   const filtered = useMemo(() => {
     const arr = transactions.filter((t) => {
@@ -114,12 +143,42 @@ export default function Transactions() {
         {/* SOL SÜTUN: Liste */}
         <div>
           <div className="section-header">
-            <span className="section-title">HAREKETLER ({filtered.length})</span>
-            {hasActiveFilter && (
-              <button className="btn-inline-text" onClick={clearFilters} style={{ padding: 0 }}>
-                <X size={16} /> Filtreyi Temizle
-              </button>
-            )}
+            <span
+              className="section-title"
+              style={{ color: isEditMode ? 'var(--color-danger, #ef4444)' : 'inherit' }}
+            >
+              {isEditMode ? `${selectedIds.length} SEÇİLİ` : `HAREKETLER (${filtered.length})`}
+            </span>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {isEditMode ? (
+                <>
+                  <button
+                    className="btn-inline-text text-danger"
+                    onClick={handleDeleteSelected}
+                    disabled={selectedIds.length === 0}
+                    style={{ color: 'var(--color-danger, #ef4444)', opacity: selectedIds.length === 0 ? 0.5 : 1, padding: 0 }}
+                  >
+                    Seçilenleri Sil
+                  </button>
+                  <button className="btn-inline-text" onClick={handleToggleEditMode} style={{ padding: 0 }}>
+                    Vazgeç
+                  </button>
+                </>
+              ) : (
+                <>
+                  {hasActiveFilter && (
+                    <button className="btn-inline-text" onClick={clearFilters} style={{ padding: 0 }}>
+                      <X size={16} /> Filtreyi Temizle
+                    </button>
+                  )}
+                  {filtered.length > 0 && (
+                    <button className="btn-inline-text" onClick={handleToggleEditMode} style={{ padding: 0 }}>
+                      Düzenle
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
           
           {filtered.length === 0 ? (
@@ -137,12 +196,52 @@ export default function Transactions() {
                   const title = t.description || t.category || t.type
                   const projectName = t.project_id != null ? projectNames[t.project_id] : null
                   const account = t.source_name || t.dest_name
+                  const isSelected = selectedIds.includes(t.id)
                   
                   return (
-                    <div className="list-item" key={t.id} onClick={() => navigate(`/dashboard/transactions/${t.id}`)} style={{ cursor: 'pointer' }}>
-                      <div className="list-icon-box" style={{ background: `color-mix(in srgb, ${color} 15%, transparent)`, color: color }}>
-                        <Icon size={20} />
-                      </div>
+                    <div
+                      className="list-item"
+                      key={t.id}
+                      style={{
+                        cursor: 'pointer',
+                        border: isEditMode && isSelected ? '2px solid var(--color-danger, #ef4444)' : '1px solid var(--color-border)',
+                        backgroundColor: isEditMode && isSelected ? 'var(--color-danger-light, rgba(239, 68, 68, 0.08))' : 'inherit'
+                      }}
+                      onClick={(e) => {
+                        if (isEditMode) {
+                          handleToggleSelect(t.id, e)
+                        } else {
+                          navigate(`/dashboard/transactions/${t.id}`)
+                        }
+                      }}
+                    >
+                      {isEditMode ? (
+                        <div
+                          className="list-icon-box"
+                          style={{
+                            background: 'transparent',
+                            color: isSelected ? 'var(--color-danger, #ef4444)' : 'var(--color-text-muted, #9ca3af)',
+                            border: `1px solid ${isSelected ? 'var(--color-danger, #ef4444)' : 'var(--color-border, #e5e7eb)'}`,
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '40px',
+                            height: '40px',
+                            minWidth: '40px'
+                          }}
+                        >
+                          {isSelected ? (
+                            <CheckCircle size={20} style={{ fill: 'var(--color-danger, #ef4444)', color: '#white' }} />
+                          ) : (
+                            <Circle size={20} />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="list-icon-box" style={{ background: `color-mix(in srgb, ${color} 15%, transparent)`, color: color }}>
+                          <Icon size={20} />
+                        </div>
+                      )}
                       <div className="list-item-content">
                         <div className="list-item-title">{title}</div>
                         <div className="list-item-subtitle">
