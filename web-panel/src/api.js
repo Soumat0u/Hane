@@ -50,6 +50,16 @@ export const api = {
     if (!response.ok) throw responseData;
     return responseData;
   },
+  patch: async (endpoint, data) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    const responseData = await response.json();
+    if (!response.ok) throw responseData;
+    return responseData;
+  },
   delete: async (endpoint) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'DELETE',

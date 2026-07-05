@@ -1,2 +1,1 @@
-web: gunicorn hano_backend.wsgi --workers 2 --threads 4 --bind 0.0.0.0:$PORT
-release: python manage.py migrate
+web: python manage.py migrate --noinput && gunicorn hano_backend.wsgi --workers 2 --threads 4 --bind 0.0.0.0:$PORT

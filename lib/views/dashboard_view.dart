@@ -43,8 +43,10 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
           final cashFlow = _computeCashFlow(fp);
           final flowMax = _niceMax(cashFlow);
 
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
+          return RefreshIndicator(
+            onRefresh: fp.refreshSilently,
+            child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 8.0, bottom: 16.0),
             child: ResponsiveCenter(
               maxWidth: 1100,
@@ -247,6 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
             const SizedBox(height: 12),
           ],
               ),
+            ),
             ),
       );
       },

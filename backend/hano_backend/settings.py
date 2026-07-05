@@ -25,6 +25,8 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = _env_bool('DJANGO_DEBUG', default=True)
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,10.0.2.2,*')
 
 INSTALLED_APPS = [

@@ -207,6 +207,9 @@ class FinanceProvider extends ChangeNotifier {
     }
   }
 
+  /// Uygulama arka plandan öne gelince vb. dışarıdan tetiklenen sessiz eşitleme.
+  Future<void> refreshSilently() => _silentRefresh();
+
   /// Sunucuyla sessizce (spinner göstermeden) eşitler. Eşzamanlı çağrılar
   /// birleştirilir: bir eşitleme sürerken gelenler tek bir tekrara indirgenir.
   Future<void> _silentRefresh() async {
@@ -530,6 +533,19 @@ class FinanceProvider extends ChangeNotifier {
       () => ApiService.instance.deleteProjectDocument(id),
       rollback: () => _projectDocuments = snapshot,
       errorLabel: 'Belge silinemedi',
+    ));
+  }
+
+  Future<void> renameProjectDocument(int id, String name) async {
+    final snapshot = List<ProjectDocument>.from(_projectDocuments);
+    _projectDocuments = [
+      for (final d in _projectDocuments) d.id == id ? d.copyWith(name: name) : d,
+    ];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.renameProjectDocument(id, name),
+      rollback: () => _projectDocuments = snapshot,
+      errorLabel: 'Belge adı güncellenemedi',
     ));
   }
 

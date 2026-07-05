@@ -25,6 +25,8 @@ const CATEGORY_COLORS = {
 }
 const FALLBACK_COLORS = ['#032b5e', '#6366f1', '#0ea5e9', '#14b8a6', '#f97316', '#ec4899', '#84cc16']
 
+const isImageFile = (url) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url || '')
+
 function categoryIcon(category) {
   switch ((category || '').toLowerCase()) {
     case 'beton': return Truck
@@ -53,7 +55,7 @@ export default function ProjectDetail() {
     projects, transactions, contacts, projectDocuments, loading, loaded, error,
     updateProject, deleteProject,
     addSale, addReceivable,
-    addProjectDocument, deleteProjectDocument,
+    addProjectDocument, deleteProjectDocument, renameProjectDocument,
   } = useData()
   const [selectedCategory, setSelectedCategory] = useState('Tümü')
   const [saleModalOpen, setSaleModalOpen] = useState(false)
@@ -110,6 +112,18 @@ export default function ProjectDetail() {
       await deleteProjectDocument(doc.id)
     } catch {
       alert('Belge silinemedi.')
+    }
+  }
+
+  const handleRenameDocument = async (doc) => {
+    const newName = window.prompt('Belge adı:', doc.name || '')
+    if (newName === null) return
+    const trimmed = newName.trim()
+    if (!trimmed || trimmed === doc.name) return
+    try {
+      await renameProjectDocument(doc.id, trimmed)
+    } catch {
+      alert('Belge adı güncellenemedi.')
     }
   }
 
@@ -384,24 +398,48 @@ export default function ProjectDetail() {
           </div>
         </div>
       ) : (
-        <div className="list-group">
-          {documents.map((doc) => (
-            <div className="list-item" key={doc.id}>
-              <div className="list-icon-box"><FileText size={18} className="text-primary" /></div>
-              <div className="list-item-content">
-                <div className="list-item-title">{doc.name || 'Belge'}</div>
-                <div className="list-item-subtitle">{formatDate(doc.uploaded_at)}</div>
-              </div>
-              {doc.file && (
-                <a href={doc.file} target="_blank" rel="noreferrer" className="btn-inline-text" style={{ marginRight: '0.5rem' }}>
-                  Aç
-                </a>
-              )}
-              <button className="icon-btn" onClick={() => handleDeleteDocument(doc)} title="Sil">
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))}
+        <div className="document-grid">
+          {documents.map((doc) => {
+            const isImage = isImageFile(doc.file)
+            return (
+              <a
+                href={doc.file}
+                target="_blank"
+                rel="noreferrer"
+                className="document-card"
+                key={doc.id}
+                style={{ cursor: doc.file ? 'pointer' : 'default' }}
+                onClick={(e) => { if (!doc.file) e.preventDefault() }}
+              >
+                <div className="document-card-preview">
+                  {isImage ? (
+                    <img src={doc.file} alt={doc.name || 'Belge'} />
+                  ) : (
+                    <FileText size={40} className="text-primary" />
+                  )}
+                </div>
+                <div
+                  className="document-card-info"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRenameDocument(doc) }}
+                  title="Adı değiştir"
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <div className="document-card-title">{doc.name || 'Belge'}</div>
+                    <div className="document-card-subtitle">{formatDate(doc.uploaded_at)}</div>
+                  </div>
+                  <Pencil size={12} className="text-muted" style={{ flexShrink: 0 }} />
+                </div>
+                <button
+                  className="document-card-delete"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteDocument(doc) }}
+                  title="Sil"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </a>
+            )
+          })}
         </div>
       )}
 

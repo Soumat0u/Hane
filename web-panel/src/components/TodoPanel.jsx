@@ -14,23 +14,27 @@ export default function TodoPanel() {
   const [projectId, setProjectId] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const list = todos.filter((t) => t.scope === tab)
-
-  const projectName = (id) => projects.find((p) => String(p.id) === String(id))?.name || ''
+  const list = todos.filter((t) => {
+    if (t.scope !== tab) return false
+    if (tab === 'project') return projectId && String(t.project) === String(projectId)
+    return true
+  })
 
   const handleAdd = async (e) => {
     e.preventDefault()
     const trimmed = title.trim()
     if (!trimmed) return
+    if (tab === 'project' && !projectId) return
     setSaving(true)
     try {
       await addTodo({
         title: trimmed,
         scope: tab,
-        project: tab === 'project' && projectId ? Number(projectId) : null,
+        project: tab === 'project' ? Number(projectId) : null,
       })
       setTitle('')
-    } catch {
+    } catch (err) {
+      console.error('Yapılacak eklenemedi:', err)
       alert('Yapılacak eklenemedi.')
     } finally {
       setSaving(false)
@@ -78,31 +82,42 @@ export default function TodoPanel() {
         </button>
       </div>
 
-      <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        <input
-          type="text"
-          className="form-input"
-          placeholder="Yeni madde ekle..."
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        {tab === 'project' && (
-          <select className="form-input" style={{ maxWidth: 180 }} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-            <option value="">Proje seç</option>
+      {tab === 'project' && (
+        <div className="form-group" style={{ marginBottom: '1rem' }}>
+          <select className="form-input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <option value="">Proje seçin...</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
-        )}
-        <button type="submit" className="btn-primary" style={{ width: 'auto', marginTop: 0, padding: '0 1rem' }} disabled={saving || !title.trim()}>
-          <Plus size={16} />
-        </button>
-      </form>
+        </div>
+      )}
 
-      {list.length === 0 ? (
+      {(tab === 'personal' || projectId) && (
+        <form onSubmit={handleAdd} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="Yeni madde ekle..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <button type="submit" className="btn-primary" style={{ width: 'auto', marginTop: 0, padding: '0 1rem' }} disabled={saving || !title.trim()}>
+            <Plus size={16} />
+          </button>
+        </form>
+      )}
+
+      {tab === 'project' && !projectId ? (
         <div className="summary-box">
           <div className="empty-state" style={{ padding: '1.25rem 0' }}>
-            <span>{tab === 'personal' ? 'Henüz kişisel madde yok.' : 'Henüz proje maddesi yok.'}</span>
+            <span>Maddeleri görmek için bir proje seçin.</span>
+          </div>
+        </div>
+      ) : list.length === 0 ? (
+        <div className="summary-box">
+          <div className="empty-state" style={{ padding: '1.25rem 0' }}>
+            <span>{tab === 'personal' ? 'Henüz kişisel madde yok.' : 'Bu projede henüz madde yok.'}</span>
           </div>
         </div>
       ) : (
@@ -118,9 +133,6 @@ export default function TodoPanel() {
                   >
                     {t.title}
                   </div>
-                  {tab === 'project' && t.project && (
-                    <div className="list-item-subtitle">{projectName(t.project)}</div>
-                  )}
                 </div>
               </label>
               <button className="icon-btn" onClick={() => handleDelete(t.id)} title="Sil">

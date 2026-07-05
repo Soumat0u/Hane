@@ -25,4 +25,12 @@ class ProjectDocument {
         'project': projectId,
         'name': name,
       };
+
+  ProjectDocument copyWith({String? name}) => ProjectDocument(
+        id: id,
+        projectId: projectId,
+        name: name ?? this.name,
+        fileUrl: fileUrl,
+        uploadedAt: uploadedAt,
+      );
 }

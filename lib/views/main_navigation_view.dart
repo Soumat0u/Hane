@@ -22,7 +22,7 @@ class MainNavigationPage extends StatefulWidget {
   State<MainNavigationPage> createState() => _MainNavigationPageState();
 }
 
-class _MainNavigationPageState extends State<MainNavigationPage> {
+class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBindingObserver {
   int _currentTabIndex = 0;
   String _selectedTransactionType = 'Ödeme';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -32,12 +32,23 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _navbarToPageViewIndex(_currentTabIndex));
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     super.dispose();
+  }
+
+  // Uygulama arka plandan (başka bir cihazda/webde yapılan değişiklikleri
+  // görmek için) öne gelince veriyi sessizce tazele.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<FinanceProvider>().refreshSilently();
+    }
   }
 
   int _navbarToPageViewIndex(int navbarIndex) {

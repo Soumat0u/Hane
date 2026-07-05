@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, MoreHorizontal, Pencil, Trash2, X,
-  Tag, User, Building2, Wallet, Banknote, CalendarClock, Calendar,
+  Tag, User, Building2, Wallet, Banknote, CalendarClock, Calendar, FileText,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 import { txVisuals, INCOME_TYPES } from '../txVisuals'
 import NewTransactionFormModal from '../components/NewTransactionFormModal'
+
+const isImageFile = (url) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url || '')
 
 const fmtDate = (raw, short = false) => {
   if (!raw) return '-'
@@ -224,7 +226,29 @@ export default function TransactionDetail() {
           </div>
         </div>
 
-
+        {/* SAĞ SÜTUN: Fiş/Fatura Görseli */}
+        {t.attachment && (
+          <div>
+            <div className="section-header">
+              <span className="section-title">FİŞ / FATURA</span>
+            </div>
+            <a
+              href={t.attachment}
+              target="_blank"
+              rel="noreferrer"
+              className="document-card"
+              style={{ width: '100%', maxWidth: 280 }}
+            >
+              <div className="document-card-preview" style={{ aspectRatio: '3 / 4' }}>
+                {isImageFile(t.attachment) ? (
+                  <img src={t.attachment} alt="Fiş/Fatura" />
+                ) : (
+                  <FileText size={40} className="text-primary" />
+                )}
+              </div>
+            </a>
+          </div>
+        )}
       </div>
       {/* Grid Layout End */}
 

@@ -574,6 +574,21 @@ class ApiService {
 
   Future<void> deleteProjectDocument(int id) => _delete('project-documents/', id);
 
+  /// Yalnızca adı günceller (PATCH) — `file` alanı zorunlu olduğundan PUT
+  /// dosyayı yeniden göndermeyi gerektirir; ad değişikliği için PATCH yeterli.
+  Future<ProjectDocument> renameProjectDocument(int id, String name) async {
+    final headers = await _getHeaders();
+    final response = await _client.patch(
+      Uri.parse('$baseUrl/project-documents/$id/'),
+      headers: headers,
+      body: jsonEncode({'name': name}),
+    );
+    if (response.statusCode == 200) {
+      return ProjectDocument.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    throw Exception('Belge adı güncellenemedi: ${utf8.decode(response.bodyBytes)}');
+  }
+
   // Todos
   Future<List<Todo>> readAllTodos() => _readList('todos/', Todo.fromMap);
   Future<Todo> createTodo(Todo t) => _create('todos/', t.toMap(), Todo.fromMap);

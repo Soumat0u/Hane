@@ -209,7 +209,7 @@ class _HareketDetayViewState extends State<HareketDetayView> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.network(
-                      t.attachmentUrl!,
+                      t.attachmentUrl!.startsWith('http://web-production') ? t.attachmentUrl!.replaceFirst('http://', 'https://') : t.attachmentUrl!,
                       width: double.infinity,
                       height: 220,
                       fit: BoxFit.cover,

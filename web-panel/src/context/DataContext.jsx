@@ -101,6 +101,20 @@ export function DataProvider({ children }) {
     load()
   }, [load])
 
+  // Sekme arka plandan öne gelince (başka bir cihazda/mobilde yapılan
+  // değişiklikleri görmek için) veriyi sessizce tazele.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [load])
+
   const updateCompanyProfile = useCallback(async (updatedData) => {
     try {
       const updated = await api.put('/company-profile/', updatedData)
@@ -459,6 +473,12 @@ export function DataProvider({ children }) {
     await load()
   }, [load])
 
+  const renameProjectDocument = useCallback(async (id, name) => {
+    const updated = await api.patch(`/project-documents/${id}/`, { name })
+    await load()
+    return updated
+  }, [load])
+
   // --- Yapılacaklar (Todo) ---
   const addTodo = useCallback(async (body) => {
     const created = await api.post('/todos/', body)
@@ -617,6 +637,7 @@ export function DataProvider({ children }) {
       confirmRecurringTransaction,
       addProjectDocument,
       deleteProjectDocument,
+      renameProjectDocument,
       addTodo,
       updateTodo,
       deleteTodo,
@@ -683,6 +704,7 @@ export function DataProvider({ children }) {
       confirmRecurringTransaction,
       addProjectDocument,
       deleteProjectDocument,
+      renameProjectDocument,
       addTodo,
       updateTodo,
       deleteTodo,

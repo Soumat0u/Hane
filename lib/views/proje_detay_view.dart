@@ -249,9 +249,12 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                         children: [
                           Icon(Icons.home_work_outlined, size: 15, color: context.colors.textSecondary),
                           const SizedBox(width: 5),
-                          Text(
-                            project.projectType.isNotEmpty ? project.projectType : '-',
-                            style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
+                          Expanded(
+                            child: Text(
+                              project.projectType.isNotEmpty ? project.projectType : '-',
+                              style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
@@ -260,15 +263,18 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                 ),
                 const SizedBox(width: 12),
                 // Stats
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildProjectStatItem(context, 'Pafta', project.pafta.isNotEmpty ? project.pafta : '-'),
-                    const SizedBox(width: 18),
-                    _buildProjectStatItem(context, 'Parsel', project.parsel.isNotEmpty ? project.parsel : '-'),
-                    const SizedBox(width: 18),
-                    _buildProjectStatItem(context, 'Alan (m²)', currencyFormat.format(project.areaSqMeters).replaceAll('₺', '').trim()),
-                  ],
+                Expanded(
+                  flex: 8,
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 16,
+                    runSpacing: 8,
+                    children: [
+                      _buildProjectStatItem(context, 'Pafta', project.pafta.isNotEmpty ? project.pafta : '-'),
+                      _buildProjectStatItem(context, 'Parsel', project.parsel.isNotEmpty ? project.parsel : '-'),
+                      _buildProjectStatItem(context, 'Alan (m²)', currencyFormat.format(project.areaSqMeters).replaceAll('₺', '').trim()),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -709,51 +715,129 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
             child: Text('Henüz belge eklenmedi.', style: TextStyle(color: context.colors.textSecondary)),
           )
         else
-          Container(
-            decoration: BoxDecoration(
-              color: context.colors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.colors.border),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: documents.length,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 160,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.8,
             ),
-            child: Column(
-              children: [
-                for (int i = 0; i < documents.length; i++) ...[
-                  _buildDocumentRow(context, fp, documents[i]),
-                  if (i < documents.length - 1) Divider(height: 1, indent: 16, color: context.colors.surfaceVariant),
-                ],
-              ],
-            ),
+            itemBuilder: (context, i) => _buildDocumentCard(context, fp, documents[i]),
           ),
       ],
     );
   }
 
-  Widget _buildDocumentRow(BuildContext context, FinanceProvider fp, ProjectDocument doc) {
+  static bool _isImageUrl(String? url) {
+    if (url == null) return false;
+    final lower = url.toLowerCase();
+    return lower.endsWith('.png') ||
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.gif') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.bmp');
+  }
+
+  Widget _buildDocumentCard(BuildContext context, FinanceProvider fp, ProjectDocument doc) {
+    final isImage = _isImageUrl(doc.fileUrl);
     return InkWell(
+      borderRadius: BorderRadius.circular(12),
       onTap: doc.fileUrl == null ? null : () => launchUrl(Uri.parse(doc.fileUrl!), mode: LaunchMode.externalApplication),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Row(
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.colors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(Icons.description_outlined, size: 20, color: context.colors.brand),
-            const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                doc.name.isNotEmpty ? doc.name : 'Belge',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.colors.textPrimary),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Container(
+                    color: context.colors.scaffold,
+                    child: isImage
+                        ? Image.network(
+                            doc.fileUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stack) =>
+                                Icon(Icons.description_outlined, size: 40, color: context.colors.brand),
+                          )
+                        : Icon(Icons.description_outlined, size: 40, color: context.colors.brand),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Material(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => _confirmDeleteDocument(context, fp, doc),
+                        child: const Padding(
+                          padding: EdgeInsets.all(5.0),
+                          child: Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            IconButton(
-              icon: Icon(Icons.delete_outline_rounded, size: 18, color: context.colors.textSecondary),
-              visualDensity: VisualDensity.compact,
-              onPressed: () => _confirmDeleteDocument(context, fp, doc),
+            InkWell(
+              onTap: () => _renameDocument(context, fp, doc),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        doc.name.isNotEmpty ? doc.name : 'Belge',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.colors.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(Icons.edit_outlined, size: 12, color: context.colors.textSecondary),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _renameDocument(BuildContext context, FinanceProvider fp, ProjectDocument doc) async {
+    final controller = TextEditingController(text: doc.name);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Belge Adını Değiştir'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Belge adı'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty || newName == doc.name) return;
+    await fp.renameProjectDocument(doc.id!, newName);
   }
 
   Future<void> _pickAndUploadDocument(BuildContext context, FinanceProvider fp, Project project) async {
