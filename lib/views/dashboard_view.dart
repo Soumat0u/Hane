@@ -7,6 +7,7 @@ import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/kasa_view.dart';
 import 'package:hane/views/borclar_view.dart';
+import 'package:hane/views/alacaklar_view.dart';
 import 'package:hane/views/finansman_gucu_view.dart';
 import 'package:hane/views/widgets/due_calendar_panel.dart';
 import 'package:hane/views/widgets/todo_panel.dart';
@@ -88,6 +89,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                       value: currencyFormat.format(alacaklar > 0 ? alacaklar : 0),
                       icon: Icons.assignment_returned_rounded,
                       accentColor: Theme.of(context).extension<AppColors>()!.success,
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const AlacaklarView()));
+                      },
                     ),
                     _buildMetricCard(context,
                       width: cardWidth,
