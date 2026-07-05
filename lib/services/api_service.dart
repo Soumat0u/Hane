@@ -10,6 +10,8 @@ import '../models/account.dart';
 import '../models/company_profile.dart';
 import '../models/finance_entities.dart';
 import '../models/recurring_transaction.dart';
+import '../models/project_document.dart';
+import '../models/todo.dart';
 
 class ApiService {
   // API adresi. Üretim/staging derlemelerinde tam URL derleme zamanında verilir:
@@ -551,4 +553,30 @@ class ApiService {
     }
     throw Exception('Tekrarlanan işlem onaylanamadı: ${utf8.decode(response.bodyBytes)}');
   }
+
+  // Project Documents
+  Future<List<ProjectDocument>> readAllProjectDocuments() =>
+      _readList('project-documents/', ProjectDocument.fromMap);
+
+  Future<ProjectDocument> uploadProjectDocument(int projectId, String name, String filePath) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/project-documents/'));
+    final token = await getToken();
+    if (token != null) request.headers['Authorization'] = 'Token $token';
+    request.fields['project'] = projectId.toString();
+    request.fields['name'] = name;
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode == 201) {
+      return ProjectDocument.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    throw Exception('Belge yüklenemedi: ${utf8.decode(response.bodyBytes)}');
+  }
+
+  Future<void> deleteProjectDocument(int id) => _delete('project-documents/', id);
+
+  // Todos
+  Future<List<Todo>> readAllTodos() => _readList('todos/', Todo.fromMap);
+  Future<Todo> createTodo(Todo t) => _create('todos/', t.toMap(), Todo.fromMap);
+  Future<Todo> updateTodo(Todo t) => _update('todos/', t.id!, t.toMap(), Todo.fromMap);
+  Future<void> deleteTodo(int id) => _delete('todos/', id);
 }

@@ -3,6 +3,8 @@ import { LineChart, Line, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tool
 import { useNavigate } from 'react-router-dom'
 import { useData } from '../context/DataContext'
 import { projectImage, num } from '../utils'
+import DueCalendarPanel from '../components/DueCalendarPanel'
+import TodoPanel from '../components/TodoPanel'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -14,7 +16,9 @@ export default function Dashboard() {
 
   // GERÇEK VERİLER — veritabanından hesaplanır (mobil `getTotalBorc()` ile aynı mantık:
   // kredi kalanı + kullanılan BCH/kredi kartı + verilen çekler + ticari borçlar)
-  const kasa = (accounts || []).reduce((sum, a) => sum + (Number(a.balance) || 0), 0)
+  const kasa = (accounts || [])
+    .filter((a) => a.type === 'Banka' || a.type === 'Nakit')
+    .reduce((sum, a) => sum + (Number(a.balance) || 0), 0)
   const krediKalan = (loans || []).reduce((sum, l) => sum + num(l.remaining), 0)
   const bchKartKullanilan = (accounts || [])
     .filter((a) => (a.type === 'BCH' || a.type === 'Kredi Kartı') && num(a.balance) < 0)
@@ -31,7 +35,9 @@ export default function Dashboard() {
     const collected = Number(r.collected_amount) || 0
     return sum + (total - collected)
   }, 0)
-  const finansmanGucu = kasa + (accounts || []).reduce((sum, a) => sum + (Number(a.credit_limit) || 0), 0)
+  const finansmanGucu = (accounts || [])
+    .filter((a) => a.type === 'BCH' || a.type === 'Kredi Kartı' || a.type === 'Esnek')
+    .reduce((sum, a) => sum + (Number(a.credit_limit) || 0), 0)
   const netPozisyon = kasa + alacaklar - borclar
 
   const metricCards = [
@@ -79,18 +85,7 @@ export default function Dashboard() {
   const cashFlowDomainMax = cashFlowStep * CASH_FLOW_INTERVALS
   const cashFlowTicks = Array.from({ length: CASH_FLOW_INTERVALS + 1 }, (_, i) => i * cashFlowStep)
 
-  // Projelerim (Son 3 Proje)
-  const projects = allProjects ? [...allProjects].sort((a, b) => b.id - a.id).slice(0, 3) : []
 
-  // Son Hareketler (Son 5 Hareket)
-  const recentTransactions = allTransactions ? [...allTransactions].sort((a, b) => {
-    const da = a.date ? new Date(a.date) : null
-    const db = b.date ? new Date(b.date) : null
-    if (!da && !db) return 0
-    if (!da) return 1
-    if (!db) return -1
-    return db - da
-  }).slice(0, 5) : []
 
   if (loading && !loaded) {
     return (
@@ -155,6 +150,13 @@ export default function Dashboard() {
           </div>
         </div>
 
+
+        {/* TAKVİM + YAPILACAKLAR */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '2rem', alignItems: 'start' }}>
+          <DueCalendarPanel />
+          <TodoPanel />
+        </div>
+
         {/* NAKİT AKIŞI GRAFİĞİ */}
         <div>
           <div className="section-header">
@@ -194,90 +196,6 @@ export default function Dashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
-
-          {/* PROJELERİM */}
-          <div>
-            <div className="section-header">
-              <span className="section-title">PROJELERİM</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {projects.map((project) => {
-                const list = allTransactions.filter(t => t.project_id === project.id)
-                const totalCost = Number(project.estimated_total_cost) || 0
-                const totalGider = list.filter((t) => t.type === 'Gider').reduce((s, t) => s + (Number(t.amount) || 0), 0)
-                const satis = list.filter((t) => t.type === 'Satış').reduce((s, t) => s + (Number(t.amount) || 0), 0)
-                const realizationPercent = totalCost > 0 ? (totalGider / totalCost) * 100 : 0
-                const kar = satis - totalCost
-                const statusColor = project.status_color_hex || '#3b82f6'
-                const imgUrl = projectImage(project)
-
-                return (
-                  <div key={project.id} className="project-card" onClick={() => navigate(`/dashboard/projects/${project.id}`)} style={{ cursor: 'pointer' }}>
-                    <div className="project-card-header">
-                      <div className="project-image" style={{ width: '48px', height: '48px', borderRadius: '8px', backgroundColor: 'var(--color-border)', backgroundImage: `url(${imgUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
-                      <div className="project-info">
-                        <div className="project-title">{project.name}</div>
-                        <div className="status-badge-inline" style={{ color: statusColor, backgroundColor: `${statusColor}22`, marginTop: '0.25rem' }}>
-                          {project.status || 'Aktif'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="project-stats-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                      <div className="project-stat-col">
-                        <span className="project-stat-label">Gerçekleşme</span>
-                        <span className="project-stat-value text-success">%{realizationPercent.toFixed(0)}</span>
-                      </div>
-                      <div className="project-stat-col">
-                        <span className="project-stat-label">Kâr</span>
-                        <span className="project-stat-value">{formatCurrency(kar)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* SON HAREKETLER */}
-          <div>
-            <div className="section-header">
-              <span className="section-title">SON HAREKETLER</span>
-            </div>
-            <div className="list-group">
-              {recentTransactions.map(t => {
-                const date = t.date ? new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(t.date)) : ''
-                const isIncome = t.type === 'Gelir' || t.type === 'Tahsilat'
-                const isExpense = t.type === 'Gider' || t.type === 'Ödeme'
-                const displayType = isIncome ? 'Gelir' : (isExpense ? 'Gider' : t.type)
-                
-                return (
-                  <div key={t.id} className="list-item" onClick={() => navigate(`/dashboard/transactions/${t.id}`)} style={{ cursor: 'pointer' }}>
-                    <div className="list-icon-box">
-                      {isIncome ? (
-                        <ArrowDownRight size={20} className="text-success" />
-                      ) : (
-                        <ArrowUpRight size={20} className="text-danger" />
-                      )}
-                    </div>
-                    <div className="list-item-content">
-                      <div className="list-item-title">{t.category || t.description || t.type}</div>
-                      <div className="list-item-subtitle">{t.contact_name || (t.project_id ? `Proje ID: ${t.project_id}` : '')}</div>
-                    </div>
-                    <div className="list-item-value-box">
-                      <div className={`list-item-value ${isIncome ? 'text-success' : 'text-danger'}`}>
-                        {isIncome ? '+' : '-'}{formatCurrency(t.amount)}
-                      </div>
-                      <div className="list-item-subvalue" style={{ color: 'var(--color-text-muted)' }}>{date}</div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
         </div>
 
       </div>

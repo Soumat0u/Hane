@@ -4,11 +4,10 @@ import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
-import 'package:hane/models/finance_entities.dart';
 import 'package:hane/views/yeni_islem_view.dart';
 import 'package:hane/views/cari_hesap_detay_view.dart';
 import 'package:hane/views/kasa_detay_view.dart';
-import 'package:table_calendar/table_calendar.dart';
+import 'package:hane/views/widgets/app_form.dart';
 
 class BorclarView extends StatefulWidget {
   const BorclarView({super.key});
@@ -18,15 +17,6 @@ class BorclarView extends StatefulWidget {
 }
 
 class _BorclarViewState extends State<BorclarView> {
-  DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedDay = _focusedDay;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -49,33 +39,6 @@ class _BorclarViewState extends State<BorclarView> {
             final krediKullanilanHesaplar = fp.accounts
                 .where((a) => (a.type == 'BCH' || a.type == 'Kredi Kartı') && a.balance < 0)
                 .toList();
-            
-            final payments = fp.getUpcomingPayments();
-
-            final today = DateTime.now();
-            final todayOnly = DateTime(today.year, today.month, today.day);
-            final selectedOnly = _selectedDay != null
-                ? DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)
-                : null;
-            final isPastSelected = selectedOnly != null && selectedOnly.isBefore(todayOnly);
-
-            // Web panelindeki (Debts.jsx) ile aynı mantık:
-            // - Geçmiş bir gün seçiliyse sadece o güne ait ödemeler gösterilir.
-            // - Bugün/gelecek bir gün seçiliyse önce o güne ait ödemeler denenir,
-            //   yoksa bugünden itibaren gelecekteki tüm ödemeler listelenir.
-            List<DuePayment> displayedPayments;
-            if (isPastSelected) {
-              displayedPayments = payments.where((p) => p.date != null && isSameDay(p.date, selectedOnly)).toList();
-            } else {
-              final forDay = selectedOnly != null
-                  ? payments.where((p) => p.date != null && isSameDay(p.date, selectedOnly)).toList()
-                  : <DuePayment>[];
-              if (forDay.isNotEmpty) {
-                displayedPayments = forDay;
-              } else {
-                displayedPayments = payments.where((p) => p.date != null && !p.date!.isBefore(todayOnly)).toList();
-              }
-            }
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -137,9 +100,16 @@ class _BorclarViewState extends State<BorclarView> {
                   _buildSectionHeader(context, 'BANKA BORÇLARI', onNewTap: () {
                     _showNewTransaction(context);
                   }),
-                  _buildGroupList(context, [
+                  _buildGroupList(context, fp, [
                     for (final l in fp.loans)
-                      _ListItemData(name: l.name, value: l.remaining, icon: Icons.account_balance_wallet_rounded, isBank: true),
+                      _ListItemData(
+                        name: l.name,
+                        value: l.remaining,
+                        icon: Icons.account_balance_wallet_rounded,
+                        isBank: true,
+                        payKind: 'loan',
+                        payRef: l,
+                      ),
                     for (final a in krediKullanilanHesaplar)
                       _ListItemData(
                         name: '${a.name} (kullanılan)',
@@ -155,7 +125,7 @@ class _BorclarViewState extends State<BorclarView> {
                   _buildSectionHeader(context, 'TİCARİ BORÇLAR', onNewTap: () {
                     _showNewTransaction(context);
                   }),
-                  _buildGroupList(context, [
+                  _buildGroupList(context, fp, [
                     for (final c in fp.contacts.where((c) =>
                         (c.kind == 'supplier' || c.kind == 'subcontractor') && c.balance > 0))
                       _ListItemData(
@@ -164,6 +134,8 @@ class _BorclarViewState extends State<BorclarView> {
                         icon: Icons.engineering_rounded,
                         isBank: false,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CariHesapDetayView(contact: c))),
+                        payKind: 'contact',
+                        payRef: c,
                       ),
                   ]),
                   const SizedBox(height: 24),
@@ -172,95 +144,17 @@ class _BorclarViewState extends State<BorclarView> {
                   _buildSectionHeader(context, 'ÇEKLER', onNewTap: () {
                     _showNewTransaction(context);
                   }),
-                  _buildGroupList(context, [
+                  _buildGroupList(context, fp, [
                     for (final c in fp.cheques.where((c) => c.isIssued && c.status != 'cashed'))
                       _ListItemData(
                         name: c.bankName.isNotEmpty ? '${c.bankName} çeki' : 'Çek',
                         value: c.amount,
                         icon: Icons.receipt_long_rounded,
                         isBank: false,
+                        payKind: 'cheque',
+                        payRef: c,
                       ),
                   ]),
-                  const SizedBox(height: 24),
-
-                  // VADESİ DOLAN VE YAKLAŞAN ÖDEMELER
-                  Text(
-                    'VADESİ DOLAN VE YAKLAŞAN ÖDEMELER',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: context.colors.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: context.colors.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: context.colors.border),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Column(
-                      children: [
-                        TableCalendar(
-                          firstDay: DateTime.utc(2020, 10, 16),
-                          lastDay: DateTime.utc(2030, 3, 14),
-                          focusedDay: _focusedDay,
-                          selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                          onDaySelected: (selectedDay, focusedDay) {
-                            setState(() {
-                              _selectedDay = selectedDay;
-                              _focusedDay = focusedDay;
-                            });
-                          },
-                          eventLoader: (day) {
-                            return payments.where((p) => p.date != null && isSameDay(p.date, day)).toList();
-                          },
-                          calendarFormat: CalendarFormat.month,
-                          headerStyle: HeaderStyle(
-                            formatButtonVisible: false,
-                            titleCentered: true,
-                            titleTextStyle: TextStyle(
-                              color: context.colors.textPrimary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                            leftChevronIcon: Icon(Icons.chevron_left, color: context.colors.textPrimary),
-                            rightChevronIcon: Icon(Icons.chevron_right, color: context.colors.textPrimary),
-                          ),
-                          calendarStyle: CalendarStyle(
-                            selectedDecoration: BoxDecoration(
-                              color: Theme.of(context).extension<AppColors>()!.danger,
-                              shape: BoxShape.circle,
-                            ),
-                            todayDecoration: BoxDecoration(
-                              color: Theme.of(context).extension<AppColors>()!.danger.withValues(alpha: 0.3),
-                              shape: BoxShape.circle,
-                            ),
-                            markerDecoration: BoxDecoration(
-                              color: Theme.of(context).extension<AppColors>()!.danger,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ),
-                        const Divider(height: 24),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                          child: Column(
-                            children: displayedPayments.isEmpty
-                              ? <Widget>[Text(isPastSelected
-                                  ? 'Bu tarihte geçmiş bir ödeme kaydı bulunmuyor.'
-                                  : 'Yaklaşan ödeme bulunmuyor.')]
-                              : displayedPayments.map((p) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: _buildPaymentItem(context, p.rawDate, p.title, p.amount),
-                                )).cast<Widget>().toList(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             );
@@ -318,7 +212,7 @@ class _BorclarViewState extends State<BorclarView> {
     );
   }
 
-  Widget _buildGroupList(BuildContext context, List<_ListItemData> items) {
+  Widget _buildGroupList(BuildContext context, FinanceProvider fp, List<_ListItemData> items) {
     return Container(
       decoration: BoxDecoration(
         color: context.colors.surface,
@@ -339,6 +233,7 @@ class _BorclarViewState extends State<BorclarView> {
               children: [
                 _buildListItem(
                   context: context,
+                  fp: fp,
                   item: item,
                   isLast: idx == items.length - 1,
                   isFirst: idx == 0,
@@ -355,6 +250,7 @@ class _BorclarViewState extends State<BorclarView> {
 
   Widget _buildListItem({
     required BuildContext context,
+    required FinanceProvider fp,
     required _ListItemData item,
     bool isLast = false,
     bool isFirst = false,
@@ -392,13 +288,29 @@ class _BorclarViewState extends State<BorclarView> {
                 ),
               ),
             ),
-            Text(
-              currencyFormat.format(item.value),
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: context.colors.textPrimary,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  currencyFormat.format(item.value),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: context.colors.textPrimary,
+                  ),
+                ),
+                if (item.payKind != null) ...[
+                  const SizedBox(height: 4),
+                  InkWell(
+                    onTap: () => _showPayDialog(context, fp, item),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Text(
+                      'Öde',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.brand),
+                    ),
+                  ),
+                ],
+              ],
             ),
             if (item.onTap != null) ...[
               const SizedBox(width: 8),
@@ -414,41 +326,77 @@ class _BorclarViewState extends State<BorclarView> {
     );
   }
 
-  Widget _buildPaymentItem(BuildContext context, String date, String title, double amount) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          flex: 2,
-          child: Text(
-            date,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).extension<AppColors>()!.danger,
+  // --- Öde diyaloğu ---
+  void _showPayDialog(BuildContext context, FinanceProvider fp, _ListItemData item) {
+    final amountCtrl = TextEditingController(text: item.value.toStringAsFixed(0));
+    final accounts = fp.accounts.where((a) => a.type == 'Banka' || a.type == 'Nakit').toList();
+    int? selectedAccountId = accounts.isNotEmpty ? accounts.first.id : null;
+    bool saving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Öde'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${item.name} — Kalan: ${currencyFormat.format(item.value)}',
+                  style: TextStyle(color: context.colors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: appInputDecoration(context, 'Ödenen tutar'),
+              ),
+              const SizedBox(height: 12),
+              if (accounts.isNotEmpty)
+                DropdownButtonFormField<int?>(
+                  initialValue: selectedAccountId,
+                  decoration: appInputDecoration(context),
+                  items: accounts
+                      .map((a) => DropdownMenuItem(value: a.id, child: Text('${a.name} hesabından')))
+                      .toList(),
+                  onChanged: (v) => setLocal(() => selectedAccountId = v),
+                )
+              else
+                Text('Önce bir Banka/Nakit hesabı ekleyin.',
+                    style: TextStyle(color: context.colors.danger, fontSize: 12)),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
+            ElevatedButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final amount = double.tryParse(amountCtrl.text.replaceAll('.', '').replaceAll(',', '.')) ?? 0;
+                      if (amount <= 0) return;
+                      setLocal(() => saving = true);
+                      try {
+                        await fp.payDebt(
+                          kind: item.payKind!,
+                          ref: item.payRef!,
+                          amount: amount,
+                          fromAccountId: selectedAccountId,
+                        );
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      } catch (e) {
+                        setLocal(() => saving = false);
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e')));
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(backgroundColor: context.colors.brand, foregroundColor: context.colors.surface),
+              child: saving
+                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: context.colors.surface))
+                  : const Text('Öde'),
             ),
-          ),
+          ],
         ),
-        Expanded(
-          flex: 3,
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: context.colors.textPrimary,
-            ),
-          ),
-        ),
-        Text(
-          currencyFormat.format(amount),
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: context.colors.textPrimary,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -459,6 +407,16 @@ class _ListItemData {
   final IconData icon;
   final bool isBank;
   final VoidCallback? onTap;
+  final String? payKind;
+  final Object? payRef;
 
-  _ListItemData({required this.name, required this.value, required this.icon, required this.isBank, this.onTap});
+  _ListItemData({
+    required this.name,
+    required this.value,
+    required this.icon,
+    required this.isBank,
+    this.onTap,
+    this.payKind,
+    this.payRef,
+  });
 }

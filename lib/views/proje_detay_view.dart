@@ -5,14 +5,16 @@ import 'package:hane/theme/responsive.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/project.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/models/finance_entities.dart';
+import 'package:hane/models/project_document.dart';
 import 'package:hane/views/yeni_proje_view.dart';
 import 'package:hane/views/yeni_islem_view.dart';
-import 'package:hane/views/widgets/butce_form.dart';
 import 'package:hane/views/hareket_detay_view.dart';
 import 'package:hane/services/export_service.dart';
 final dateFormat = DateFormat('dd.MM.yyyy');
@@ -127,9 +129,9 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                 const SizedBox(height: 24),
                 _buildSummaryCards(context, totalGider, buAyHarcama, kalanButce),
                 const SizedBox(height: 32),
-                _buildBudgetSection(context, project, fp.getProjectBudgetLines(project.id!)),
-                const SizedBox(height: 32),
                 _buildSpendingDistribution(context, project, fp, totalGider),
+                const SizedBox(height: 32),
+                _buildDocumentsSection(context, fp, project),
                 const SizedBox(height: 40),
               ],
             ),
@@ -165,25 +167,25 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
 
   Widget _buildHeroCard(BuildContext context, Project project) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: context.colors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: context.colors.border),
       ),
       child: Row(
         children: [
           // Project Image
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             child: Image.asset(
               'assets/images/modern_apartment_building.png',
-              width: 76,
-              height: 76,
+              width: 104,
+              height: 104,
               fit: BoxFit.cover,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 18),
           // Details + Stats
           Expanded(
             child: Row(
@@ -202,7 +204,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                             child: Text(
                               project.name,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 color: context.colors.textPrimary,
                               ),
@@ -210,17 +212,17 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                               maxLines: 1,
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                             decoration: BoxDecoration(
                               color: context.colors.surfaceVariant,
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               project.projectCode.isNotEmpty ? project.projectCode : '—',
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: context.colors.textSecondary,
                               ),
@@ -228,43 +230,43 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 10),
                       Row(
                         children: [
-                          Icon(Icons.location_on_outlined, size: 13, color: context.colors.textSecondary),
-                          const SizedBox(width: 4),
+                          Icon(Icons.location_on_outlined, size: 15, color: context.colors.textSecondary),
+                          const SizedBox(width: 5),
                           Expanded(
                             child: Text(
                               project.location.isNotEmpty ? project.location : '-',
-                              style: TextStyle(fontSize: 11, color: context.colors.textSecondary),
+                              style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Row(
                         children: [
-                          Icon(Icons.home_work_outlined, size: 13, color: context.colors.textSecondary),
-                          const SizedBox(width: 4),
+                          Icon(Icons.home_work_outlined, size: 15, color: context.colors.textSecondary),
+                          const SizedBox(width: 5),
                           Text(
                             project.projectType.isNotEmpty ? project.projectType : '-',
-                            style: TextStyle(fontSize: 11, color: context.colors.textSecondary),
+                            style: TextStyle(fontSize: 13, color: context.colors.textSecondary),
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 // Stats
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildProjectStatItem(context, 'Pafta', project.pafta.isNotEmpty ? project.pafta : '-'),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 18),
                     _buildProjectStatItem(context, 'Parsel', project.parsel.isNotEmpty ? project.parsel : '-'),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 18),
                     _buildProjectStatItem(context, 'Alan (m²)', currencyFormat.format(project.areaSqMeters).replaceAll('₺', '').trim()),
                   ],
                 ),
@@ -283,15 +285,15 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 11,
             color: context.colors.textSecondary,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 5),
         Text(
           value,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             color: context.colors.textPrimary,
           ),
@@ -567,145 +569,6 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
     );
   }
 
-  Widget _buildBudgetSection(BuildContext context, Project project, List<BudgetLine> budgetLines) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'BÜTÇE',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: context.colors.textPrimary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: () => showButceForm(context, project),
-              icon: Icon(Icons.add, size: 16, color: context.colors.brand),
-              label: Text('Bütçe Kalemi Ekle',
-                  style: TextStyle(color: context.colors.brand, fontWeight: FontWeight.bold, fontSize: 13)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (budgetLines.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
-            decoration: BoxDecoration(
-              color: context.colors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: context.colors.border),
-            ),
-            alignment: Alignment.center,
-            child: Text('Henüz bütçe kalemi eklenmedi.', style: TextStyle(color: context.colors.textSecondary)),
-          )
-        else
-          Column(
-            children: budgetLines.map((line) => _buildBudgetLineCard(context, project, line)).toList(),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildBudgetLineCard(BuildContext context, Project project, BudgetLine line) {
-    final usedPct = line.budgetedAmount > 0 ? (line.actualAmount / line.budgetedAmount).clamp(0.0, 1.0) : 0.0;
-    final usedFlex = (usedPct * 100).round();
-    final overBudget = line.isOverBudget;
-    final barColor = overBudget ? context.colors.danger : context.colors.brand;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => showButceForm(context, project, existing: line),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: context.colors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: overBudget ? context.colors.danger : context.colors.border),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(line.category,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: context.colors.textPrimary)),
-                  ),
-                  if (overBudget)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: context.colors.dangerBg,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text('Aşıldı',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: context.colors.danger)),
-                    ),
-                  IconButton(
-                    icon: Icon(Icons.delete_outline_rounded, size: 18, color: context.colors.textSecondary),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => _confirmDeleteBudgetLine(context, line),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${currencyFormat.format(line.actualAmount)} / ${currencyFormat.format(line.budgetedAmount)}',
-                    style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-                  ),
-                  Text('%${(usedPct * 100).toStringAsFixed(0)}',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: barColor)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: SizedBox(
-                  height: 8,
-                  child: Row(
-                    children: [
-                      Expanded(flex: usedFlex, child: Container(color: barColor)),
-                      Expanded(flex: 100 - usedFlex, child: Container(color: context.colors.surfaceVariant)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _confirmDeleteBudgetLine(BuildContext context, BudgetLine line) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Bütçe Kalemini Sil'),
-        content: Text('"${line.category}" bütçe kalemini silmek istediğinize emin misiniz?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil')),
-        ],
-      ),
-    );
-    if (confirmed == true && line.id != null && context.mounted) {
-      await context.read<FinanceProvider>().deleteBudgetLine(line.id!);
-    }
-  }
-
   Widget _buildSpendingDistribution(BuildContext context, Project project, FinanceProvider fp, double totalGider) {
     final categorySpending = fp.getProjectCategorySpending(project.id!);
     
@@ -805,6 +668,124 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
         ],
       ),
     );
+  }
+
+  Widget _buildDocumentsSection(BuildContext context, FinanceProvider fp, Project project) {
+    final documents = fp.getProjectDocuments(project.id!);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'BELGELER',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: context.colors.textPrimary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => _pickAndUploadDocument(context, fp, project),
+              icon: Icon(Icons.upload_file_rounded, size: 16, color: context.colors.brand),
+              label: Text('Belge Ekle',
+                  style: TextStyle(color: context.colors.brand, fontWeight: FontWeight.bold, fontSize: 13)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (documents.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24.0),
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.colors.border),
+            ),
+            alignment: Alignment.center,
+            child: Text('Henüz belge eklenmedi.', style: TextStyle(color: context.colors.textSecondary)),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.colors.border),
+            ),
+            child: Column(
+              children: [
+                for (int i = 0; i < documents.length; i++) ...[
+                  _buildDocumentRow(context, fp, documents[i]),
+                  if (i < documents.length - 1) Divider(height: 1, indent: 16, color: context.colors.surfaceVariant),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDocumentRow(BuildContext context, FinanceProvider fp, ProjectDocument doc) {
+    return InkWell(
+      onTap: doc.fileUrl == null ? null : () => launchUrl(Uri.parse(doc.fileUrl!), mode: LaunchMode.externalApplication),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        child: Row(
+          children: [
+            Icon(Icons.description_outlined, size: 20, color: context.colors.brand),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                doc.name.isNotEmpty ? doc.name : 'Belge',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.colors.textPrimary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.delete_outline_rounded, size: 18, color: context.colors.textSecondary),
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _confirmDeleteDocument(context, fp, doc),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadDocument(BuildContext context, FinanceProvider fp, Project project) async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null || result.files.single.path == null) return;
+    final file = result.files.single;
+    try {
+      await fp.addProjectDocument(project.id!, file.name, file.path!);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Belge yüklenemedi: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteDocument(BuildContext context, FinanceProvider fp, ProjectDocument doc) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Belgeyi Sil'),
+        content: Text('"${doc.name}" belgesini silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil')),
+        ],
+      ),
+    );
+    if (confirmed == true && doc.id != null) {
+      await fp.deleteProjectDocument(doc.id!);
+    }
   }
 }
 

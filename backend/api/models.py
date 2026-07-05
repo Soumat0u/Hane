@@ -217,6 +217,21 @@ class Project(models.Model):
         return self.transactions.filter(type__in=['Tahsilat', 'Gelir']).aggregate(s=Sum('amount'))['s'] or 0
 
 
+class ProjectDocument(models.Model):
+    """Projeye ait belge (plan, sözleşme, ruhsat vb.). FinancialTransaction.attachment ile aynı desen."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='project_documents')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='documents')
+    name = models.CharField(max_length=255, default='', blank=True)
+    file = models.FileField(upload_to='project_docs/%Y/%m/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return self.name or self.file.name
+
+
 class BudgetLine(models.Model):
     """Proje bütçe kalemi: kategori bazında planlanan tutar (gerçekleşme ile karşılaştırılır)."""
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='budget_lines')
@@ -458,6 +473,26 @@ class RecurringTransaction(models.Model):
             d = _date(year, month, day)
         self.next_due_date = d.isoformat()
         self.save(update_fields=['next_due_date'])
+
+
+class Todo(models.Model):
+    """Basit yapılacaklar listesi: kişisel ya da bir projeye bağlı."""
+    PERSONAL = 'personal'
+    PROJECT = 'project'
+    SCOPE_CHOICES = [(PERSONAL, 'Kişisel'), (PROJECT, 'Proje')]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='todos')
+    title = models.CharField(max_length=255)
+    is_done = models.BooleanField(default=False)
+    scope = models.CharField(max_length=10, choices=SCOPE_CHOICES, default=PERSONAL)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, null=True, blank=True, related_name='todos')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['is_done', '-created_at']
+
+    def __str__(self):
+        return self.title
 
 
 # ── Hibrit bakiye: işlem değişince ilgili hesapları yeniden hesapla ────────────

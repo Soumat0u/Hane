@@ -95,7 +95,7 @@ class FinancialTransaction {
       'contact_name': contactName,
       'due_date': dueDate,
       'quantity': quantity,
-      'unit': unit,
+      'unit': unit ?? '',
     };
   }
 

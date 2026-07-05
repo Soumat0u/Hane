@@ -24,7 +24,6 @@ class AlacaklarView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColors>()!;
     return Scaffold(
       backgroundColor: context.colors.scaffold,
       appBar: AppBar(
@@ -35,39 +34,164 @@ class AlacaklarView extends StatelessWidget {
             style: TextStyle(color: context.colors.textPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddReceivable(context),
-        backgroundColor: context.colors.success,
-        icon: Icon(Icons.add, color: context.colors.surface),
-        label: Text('Yeni Alacak', style: TextStyle(color: context.colors.surface)),
-      ),
-      body: Consumer<FinanceProvider>(
-        builder: (context, fp, _) {
-          final receivables = fp.receivables.where((r) => r.remaining > 0).toList();
-          final total = fp.getTotalAlacak();
+      body: SafeArea(
+        child: Consumer<FinanceProvider>(
+          builder: (context, fp, _) {
+            final receivables = fp.receivables.where((r) => r.remaining > 0).toList();
+            final total = fp.getTotalAlacak();
 
-          return RefreshIndicator(
-            onRefresh: fp.refreshData,
-            child: ResponsiveCenter(
-              maxWidth: 1100,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.all(20),
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: centeredPagePadding(context, maxContentWidth: 760, top: 8.0, bottom: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildTopCard(context, total),
                   const SizedBox(height: 24),
-                  if (receivables.isEmpty)
-                    _buildEmptyState(context)
-                  else
-                    ResponsiveWrap(
-                      children: receivables.map((r) => _buildReceivableCard(context, fp, r)).toList(),
-                    ),
-                  const SizedBox(height: 80),
+                  _buildSectionHeader(context, 'AÇIK ALACAKLAR', onNewTap: () => _showAddReceivable(context)),
+                  _buildGroupList(context, fp, receivables),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title, {required VoidCallback onNewTap}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: context.colors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          InkWell(
+            onTap: onNewTap,
+            borderRadius: BorderRadius.circular(4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              child: Row(
+                children: [
+                  Icon(Icons.add, size: 16, color: context.colors.brand),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Yeni Alacak',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: context.colors.brand),
+                  ),
                 ],
               ),
             ),
-          );
-        },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGroupList(BuildContext context, FinanceProvider fp, List<Receivable> receivables) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.colors.border),
+      ),
+      child: receivables.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Center(child: Text('Açık alacak yok.')),
+            )
+          : Column(
+              children: [
+                ...receivables.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final r = entry.value;
+                  return Column(
+                    children: [
+                      _buildListItem(context: context, fp: fp, r: r, isFirst: idx == 0, isLast: idx == receivables.length - 1),
+                      if (idx < receivables.length - 1) Divider(height: 1, indent: 64, color: context.colors.surfaceVariant),
+                    ],
+                  );
+                }),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildListItem({
+    required BuildContext context,
+    required FinanceProvider fp,
+    required Receivable r,
+    bool isFirst = false,
+    bool isLast = false,
+  }) {
+    final df = DateFormat('d MMM yyyy', 'tr_TR');
+    final due = DateTime.tryParse(r.dueDate);
+    final overdue = due != null && due.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: context.colors.scaffold,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.all(4.0),
+            child: Icon(Icons.assignment_returned_rounded, color: context.colors.success, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  r.description.isNotEmpty ? r.description : (_kindLabels[r.kind] ?? 'Alacak'),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: context.colors.textPrimary),
+                ),
+                if (r.dueDate.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    due != null ? df.format(due) : r.dueDate,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: overdue ? context.colors.danger : context.colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                currencyFormat.format(r.remaining),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
+              ),
+              const SizedBox(height: 4),
+              InkWell(
+                onTap: () => _showCollectDialog(context, fp, r),
+                borderRadius: BorderRadius.circular(4),
+                child: Text(
+                  'Tahsil Et',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.success),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -101,111 +225,6 @@ class AlacaklarView extends StatelessWidget {
             decoration: BoxDecoration(color: context.colors.surface.withAlpha(20), borderRadius: BorderRadius.circular(12)),
             child: Icon(Icons.assignment_returned_rounded, color: context.colors.surface, size: 32),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReceivableCard(BuildContext context, FinanceProvider fp, Receivable r) {
-    final df = DateFormat('d MMM yyyy', 'tr_TR');
-    final due = DateTime.tryParse(r.dueDate);
-    final overdue = due != null && due.isBefore(DateTime.now().subtract(const Duration(days: 1)));
-    final ratio = r.totalAmount > 0 ? (r.collectedAmount / r.totalAmount).clamp(0.0, 1.0) : 0.0;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.colors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(r.description.isNotEmpty ? r.description : (_kindLabels[r.kind] ?? 'Alacak'),
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: context.colors.textPrimary)),
-                    const SizedBox(height: 2),
-                    Text(_kindLabels[r.kind] ?? r.kind,
-                        style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(currencyFormat.format(r.remaining),
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF059669))),
-                  Text('kalan', style: TextStyle(fontSize: 11, color: context.colors.textSecondary)),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: ratio,
-              minHeight: 6,
-              backgroundColor: context.colors.surfaceVariant,
-              valueColor: AlwaysStoppedAnimation<Color>(context.colors.success),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (r.dueDate.isNotEmpty)
-                Row(
-                  children: [
-                    Icon(Icons.event_outlined, size: 14, color: overdue ? context.colors.danger : context.colors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      due != null ? df.format(due) : r.dueDate,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: overdue ? context.colors.danger : context.colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                )
-              else
-                const SizedBox(),
-              TextButton.icon(
-                onPressed: () => _showCollectDialog(context, fp, r),
-                icon: Icon(Icons.payments_outlined, size: 16, color: context.colors.success),
-                label: Text('Tahsil Et', style: TextStyle(color: context.colors.success, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 60),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: context.colors.surfaceVariant, shape: BoxShape.circle),
-            child: Icon(Icons.assignment_returned_outlined, size: 48, color: context.colors.success),
-          ),
-          const SizedBox(height: 16),
-          Text('Açık alacak yok',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
-          const SizedBox(height: 6),
-          Text('Yeni alacak eklemek için sağ alttaki butonu kullanın.',
-              textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: context.colors.textSecondary)),
         ],
       ),
     );
@@ -352,7 +371,6 @@ class _AddReceivableFormState extends State<_AddReceivableForm> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColors>()!;
     final projects = context.watch<FinanceProvider>().projects;
     final projectOptions = <int?, String>{null: 'Genel (proje yok)'};
     for (final p in projects) {

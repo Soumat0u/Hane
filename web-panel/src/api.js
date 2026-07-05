@@ -8,6 +8,13 @@ const getHeaders = () => {
   };
 };
 
+// Multipart istekler için: Content-Type header'ı KOYULMAZ, tarayıcı FormData'nın
+// boundary'sini kendisi ekler.
+const getFileHeaders = () => {
+  const token = localStorage.getItem('auth_token');
+  return token ? { 'Authorization': `Token ${token}` } : {};
+};
+
 export const api = {
   get: async (endpoint) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -57,5 +64,15 @@ export const api = {
     }
     // 204 No Content döner; gövde yok.
     return response.status === 204 ? null : response.json().catch(() => null);
-  }
+  },
+  postFile: async (endpoint, formData) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: getFileHeaders(),
+      body: formData,
+    });
+    const responseData = await response.json().catch(() => null);
+    if (!response.ok) throw responseData || new Error('Yükleme başarısız oldu');
+    return responseData;
+  },
 };

@@ -8,6 +8,8 @@ import '../models/company_profile.dart';
 import '../models/finance_panel.dart';
 import '../models/finance_entities.dart';
 import '../models/recurring_transaction.dart';
+import '../models/project_document.dart';
+import '../models/todo.dart';
 import '../services/api_service.dart';
 
 class FinanceProvider extends ChangeNotifier {
@@ -22,6 +24,8 @@ class FinanceProvider extends ChangeNotifier {
   List<Category> _categories = [];
   List<BudgetLine> _budgetLines = [];
   List<RecurringTransaction> _recurringTransactions = [];
+  List<ProjectDocument> _projectDocuments = [];
+  List<Todo> _todos = [];
   CompanyProfile? _companyProfile;
 
   // Selection states
@@ -67,7 +71,12 @@ class FinanceProvider extends ChangeNotifier {
   List<Category> get categories => _categories;
   List<BudgetLine> get budgetLines => _budgetLines;
   List<RecurringTransaction> get recurringTransactions => _recurringTransactions;
+  List<ProjectDocument> get projectDocuments => _projectDocuments;
+  List<Todo> get todos => _todos;
   CompanyProfile? get companyProfile => _companyProfile;
+
+  List<ProjectDocument> getProjectDocuments(int projectId) =>
+      _projectDocuments.where((d) => d.projectId == projectId).toList();
 
   /// Uygulama başlığı/markası için firma adı (yoksa jenerik).
   String get companyName {
@@ -171,6 +180,8 @@ class FinanceProvider extends ChangeNotifier {
         _safe(ApiService.instance.readAllContacts, _contacts),
         _safe(ApiService.instance.readAllCategories, _categories),
         _safe(ApiService.instance.readAllBudgetLines, _budgetLines),
+        _safe(ApiService.instance.readAllProjectDocuments, _projectDocuments),
+        _safe(ApiService.instance.readAllTodos, _todos),
       ]);
 
       _projects = results[0] as List<Project>;
@@ -183,6 +194,8 @@ class FinanceProvider extends ChangeNotifier {
       _contacts = results[7] as List<Contact>;
       _categories = results[8] as List<Category>;
       _budgetLines = results[9] as List<BudgetLine>;
+      _projectDocuments = results[10] as List<ProjectDocument>;
+      _todos = results[11] as List<Todo>;
       try {
         _companyProfile = await ApiService.instance.getCompanyProfile();
       } catch (e) {
@@ -499,6 +512,65 @@ class FinanceProvider extends ChangeNotifier {
     }
   }
 
+  // --- Proje Belgeleri ---
+  /// Belge yükleme gerçek dosya baytlarını gerektirdiğinden (optimistic önizleme
+  /// mümkün değil) sunucu yanıtı beklenir, ardından listeye eklenir.
+  Future<ProjectDocument> addProjectDocument(int projectId, String name, String filePath) async {
+    final doc = await ApiService.instance.uploadProjectDocument(projectId, name, filePath);
+    _projectDocuments = [doc, ..._projectDocuments];
+    notifyListeners();
+    return doc;
+  }
+
+  Future<void> deleteProjectDocument(int id) async {
+    final snapshot = List<ProjectDocument>.from(_projectDocuments);
+    _projectDocuments = _projectDocuments.where((d) => d.id != id).toList();
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.deleteProjectDocument(id),
+      rollback: () => _projectDocuments = snapshot,
+      errorLabel: 'Belge silinemedi',
+    ));
+  }
+
+  // --- Yapılacaklar (Todo) ---
+  List<Todo> get personalTodos => _todos.where((t) => t.scope == Todo.personal).toList();
+  List<Todo> get projectTodos => _todos.where((t) => t.scope == Todo.project).toList();
+
+  Future<void> addTodo(Todo t) async {
+    final snapshot = List<Todo>.from(_todos);
+    _todos = [..._todos, t.withId(_nextTempId())];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createTodo(t),
+      rollback: () => _todos = snapshot,
+      errorLabel: 'Yapılacak eklenemedi',
+    ));
+  }
+
+  Future<void> toggleTodo(Todo t) async {
+    final snapshot = List<Todo>.from(_todos);
+    final updated = t.copyWith(isDone: !t.isDone);
+    _todos = [for (final x in _todos) x.id == t.id ? updated : x];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.updateTodo(updated),
+      rollback: () => _todos = snapshot,
+      errorLabel: 'Yapılacak güncellenemedi',
+    ));
+  }
+
+  Future<void> deleteTodo(int id) async {
+    final snapshot = List<Todo>.from(_todos);
+    _todos = _todos.where((t) => t.id != id).toList();
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.deleteTodo(id),
+      rollback: () => _todos = snapshot,
+      errorLabel: 'Yapılacak silinemedi',
+    ));
+  }
+
   double getProjectBudgetTotal(int projectId) =>
       getProjectBudgetLines(projectId).fold(0.0, (s, b) => s + b.budgetedAmount);
 
@@ -554,8 +626,88 @@ class FinanceProvider extends ChangeNotifier {
     ));
   }
 
+  /// Bir borcu öder: kind'e göre ilgili kayıt güncellenir ve seçilen hesaptan
+  /// gerçek bir para çıkışı işlenir (`collectReceivable` ile simetrik).
+  /// Birden fazla sunucu çağrısını içerdiğinden (kayıt güncelleme + işlem
+  /// oluşturma) optimistic önizleme yapılmıyor; tamamlanınca sessizce eşitlenir.
+  Future<void> payDebt({
+    required String kind, // 'contact' | 'loan' | 'cheque'
+    required Object ref,
+    required double amount,
+    int? fromAccountId,
+    String date = '',
+  }) async {
+    final txDate = date.isNotEmpty ? date : DateTime.now().toIso8601String().split('T').first;
+    try {
+      if (kind == 'contact') {
+        final contact = ref as Contact;
+        await ApiService.instance.createTransaction(FinancialTransaction(
+          type: 'Gelir',
+          amount: amount,
+          date: txDate,
+          category: 'Borç Ödemesi',
+          description: '${contact.name} borç ödemesi',
+          contactId: contact.id,
+          fromAccountId: fromAccountId,
+        ));
+      } else if (kind == 'loan') {
+        final loan = ref as Loan;
+        final updated = Loan(
+          id: loan.id,
+          name: loan.name,
+          kind: loan.kind,
+          creditorId: loan.creditorId,
+          bankName: loan.bankName,
+          principal: loan.principal,
+          totalPayable: loan.totalPayable,
+          paidAmount: loan.paidAmount + amount,
+          interestRate: loan.interestRate,
+          termMonths: loan.termMonths,
+          startDate: loan.startDate,
+          isActive: loan.isActive,
+        );
+        await ApiService.instance.updateLoan(updated);
+        await ApiService.instance.createTransaction(FinancialTransaction(
+          type: 'Gider',
+          amount: amount,
+          date: txDate,
+          category: 'Kredi Ödemesi',
+          description: '${loan.name} kredi ödemesi',
+          fromAccountId: fromAccountId,
+        ));
+      } else if (kind == 'cheque') {
+        final cheque = ref as Cheque;
+        final updated = Cheque(
+          id: cheque.id,
+          direction: cheque.direction,
+          status: 'given',
+          amount: cheque.amount,
+          dueDate: cheque.dueDate,
+          bankName: cheque.bankName,
+          serialNo: cheque.serialNo,
+          contactId: cheque.contactId,
+          projectId: cheque.projectId,
+        );
+        await ApiService.instance.updateCheque(updated);
+        await ApiService.instance.createTransaction(FinancialTransaction(
+          type: 'Gider',
+          amount: amount,
+          date: txDate,
+          category: 'Çek Ödemesi',
+          description: cheque.bankName.isNotEmpty ? '${cheque.bankName} çeki ödemesi' : 'Çek ödemesi',
+          fromAccountId: fromAccountId,
+        ));
+      }
+      await _silentRefresh();
+    } catch (e) {
+      debugPrint('Borç ödenemedi: $e');
+      syncError.value = 'Borç ödenemedi';
+      rethrow;
+    }
+  }
+
   // --- Calculations for UI ---
-  
+
   double getTotalBalance() {
     return _accounts.fold(0, (sum, item) => sum + item.balance);
   }

@@ -8,6 +8,8 @@ import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/kasa_view.dart';
 import 'package:hane/views/borclar_view.dart';
 import 'package:hane/views/finansman_gucu_view.dart';
+import 'package:hane/views/widgets/due_calendar_panel.dart';
+import 'package:hane/views/widgets/todo_panel.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -166,6 +168,14 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Vadesi Dolan/Yaklaşan Ödeme+Alacak Takvimi
+            const DueCalendarPanel(),
+            const SizedBox(height: 24),
+
+            // Yapılacaklar (Kişisel/Projeler)
+            const TodoPanel(),
             const SizedBox(height: 24),
 
             // Nakit Akisi (Aylik) Section

@@ -22,6 +22,8 @@ export function DataProvider({ children }) {
   const [contacts, setContacts] = useState([])
   const [categories, setCategories] = useState([])
   const [recurringTransactions, setRecurringTransactions] = useState([])
+  const [projectDocuments, setProjectDocuments] = useState([])
+  const [todos, setTodos] = useState([])
   const [companyProfile, setCompanyProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loaded, setLoaded] = useState(false)
@@ -56,6 +58,8 @@ export function DataProvider({ children }) {
         api.get('/categories/'),
         api.get('/budget-lines/'),
         api.get('/recurring-transactions/'),
+        api.get('/project-documents/'),
+        api.get('/todos/'),
       ])
 
       const projs = results[0].status === 'fulfilled' ? results[0].value : []
@@ -69,6 +73,8 @@ export function DataProvider({ children }) {
       const cats = results[8].status === 'fulfilled' ? results[8].value : []
       const bls = results[9].status === 'fulfilled' ? results[9].value : []
       const rects = results[10].status === 'fulfilled' ? results[10].value : []
+      const docs = results[11].status === 'fulfilled' ? results[11].value : []
+      const tds = results[12].status === 'fulfilled' ? results[12].value : []
 
       setProjects(Array.isArray(projs) ? projs : [])
       setTransactions(Array.isArray(txns) ? txns : [])
@@ -80,6 +86,8 @@ export function DataProvider({ children }) {
       setCategories(Array.isArray(cats) ? cats : [])
       setBudgetLines(Array.isArray(bls) ? bls : [])
       setRecurringTransactions(Array.isArray(rects) ? rects : [])
+      setProjectDocuments(Array.isArray(docs) ? docs : [])
+      setTodos(Array.isArray(tds) ? tds : [])
       setCompanyProfile(profile)
       setLoaded(true)
     } catch {
@@ -320,6 +328,55 @@ export function DataProvider({ children }) {
     [load],
   )
 
+  /**
+   * Bir borcu öder: kind'e göre ilgili kayıt güncellenir ve seçilen hesaptan
+   * gerçek bir para çıkışı işlenir. `collectReceivable` ile simetrik —
+   * `from_account` FK alanı kullanılır (source_name değil) böylece bakiye
+   * backend'in sinyal tabanlı yeniden hesaplama yolundan güncellenir.
+   * - contact: type='Gelir' + contact FK + from_account FK -> Contact.balance düşer, hesap bakiyesi düşer.
+   * - loan: paid_amount artırılır (remaining düşer) + type='Gider' + from_account FK -> hesap bakiyesi düşer.
+   * - cheque: status='given' yapılır + type='Gider' + from_account FK -> hesap bakiyesi düşer.
+   */
+  const payDebt = useCallback(
+    async ({ kind, ref, amount, fromAccountId, date = '' }) => {
+      const txDate = date || new Date().toISOString().split('T')[0]
+      if (kind === 'contact') {
+        await api.post('/transactions/', {
+          type: 'Gelir',
+          category: 'Borç Ödemesi',
+          amount,
+          date: txDate,
+          contact: ref.id,
+          from_account: fromAccountId ?? null,
+          description: `${ref.name} borç ödemesi`,
+        })
+      } else if (kind === 'loan') {
+        const newPaid = (parseFloat(ref.paid_amount) || 0) + amount
+        await api.put(`/loans/${ref.id}/`, { ...ref, paid_amount: newPaid })
+        await api.post('/transactions/', {
+          type: 'Gider',
+          category: 'Kredi Ödemesi',
+          amount,
+          date: txDate,
+          from_account: fromAccountId ?? null,
+          description: `${ref.name} kredi ödemesi`,
+        })
+      } else if (kind === 'cheque') {
+        await api.put(`/cheques/${ref.id}/`, { ...ref, status: 'given' })
+        await api.post('/transactions/', {
+          type: 'Gider',
+          category: 'Çek Ödemesi',
+          amount,
+          date: txDate,
+          from_account: fromAccountId ?? null,
+          description: ref.bank_name ? `${ref.bank_name} çeki ödemesi` : 'Çek ödemesi',
+        })
+      }
+      await load()
+    },
+    [load],
+  )
+
   // --- Tekrarlayan İşlemler (Recurring Transactions) ---
   const addRecurringTransaction = useCallback(async (body) => {
     const created = await api.post('/recurring-transactions/', body)
@@ -385,6 +442,40 @@ export function DataProvider({ children }) {
     },
     [load],
   )
+
+  // --- Proje Belgeleri ---
+  const addProjectDocument = useCallback(async (projectId, name, file) => {
+    const formData = new FormData()
+    formData.append('project', projectId)
+    formData.append('name', name)
+    formData.append('file', file)
+    const created = await api.postFile('/project-documents/', formData)
+    await load()
+    return created
+  }, [load])
+
+  const deleteProjectDocument = useCallback(async (id) => {
+    await api.delete(`/project-documents/${id}/`)
+    await load()
+  }, [load])
+
+  // --- Yapılacaklar (Todo) ---
+  const addTodo = useCallback(async (body) => {
+    const created = await api.post('/todos/', body)
+    await load()
+    return created
+  }, [load])
+
+  const updateTodo = useCallback(async (id, body) => {
+    const updated = await api.put(`/todos/${id}/`, body)
+    await load()
+    return updated
+  }, [load])
+
+  const deleteTodo = useCallback(async (id) => {
+    await api.delete(`/todos/${id}/`)
+    await load()
+  }, [load])
 
   const getReceivableKindLabel = useCallback((kind) => {
     switch (kind) {
@@ -487,6 +578,8 @@ export function DataProvider({ children }) {
       categories,
       budgetLines,
       recurringTransactions,
+      projectDocuments,
+      todos,
       companyProfile,
       updateCompanyProfile,
       addProject,
@@ -517,10 +610,16 @@ export function DataProvider({ children }) {
       updateReceivable,
       deleteReceivable,
       collectReceivable,
+      payDebt,
       addRecurringTransaction,
       updateRecurringTransaction,
       deleteRecurringTransaction,
       confirmRecurringTransaction,
+      addProjectDocument,
+      deleteProjectDocument,
+      addTodo,
+      updateTodo,
+      deleteTodo,
       updateTransaction,
       deleteTransaction,
       notifications,
@@ -545,6 +644,8 @@ export function DataProvider({ children }) {
       categories,
       budgetLines,
       recurringTransactions,
+      projectDocuments,
+      todos,
       companyProfile,
       updateCompanyProfile,
       addProject,
@@ -575,10 +676,16 @@ export function DataProvider({ children }) {
       updateReceivable,
       deleteReceivable,
       collectReceivable,
+      payDebt,
       addRecurringTransaction,
       updateRecurringTransaction,
       deleteRecurringTransaction,
       confirmRecurringTransaction,
+      addProjectDocument,
+      deleteProjectDocument,
+      addTodo,
+      updateTodo,
+      deleteTodo,
       updateTransaction,
       deleteTransaction,
       notifications,

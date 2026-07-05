@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import {
-  ArrowLeft, Pencil, Plus, MapPin, Building2, ChevronRight, X, Trash2,
+  ArrowLeft, Pencil, Plus, MapPin, Building2, ChevronRight,
   Truck, Grid3x3, BrickWall, Zap, Droplet, HardHat, Construction, Wrench,
+  FileText, UploadCloud, Trash2,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, formatNumber, num, projectImage } from '../utils'
@@ -49,16 +50,15 @@ export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const {
-    projects, transactions, budgetLines, contacts, loading, loaded, error,
-    updateProject, deleteProject, addBudgetLine, updateBudgetLine, deleteBudgetLine,
+    projects, transactions, contacts, projectDocuments, loading, loaded, error,
+    updateProject, deleteProject,
     addSale, addReceivable,
+    addProjectDocument, deleteProjectDocument,
   } = useData()
   const [selectedCategory, setSelectedCategory] = useState('Tümü')
-  const [budgetModal, setBudgetModal] = useState(null) // null | { line: existing|null }
-  const [budgetForm, setBudgetForm] = useState({ category: '', budgeted_amount: '' })
-  const [savingBudget, setSavingBudget] = useState(false)
   const [saleModalOpen, setSaleModalOpen] = useState(false)
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
+  const [uploadingDoc, setUploadingDoc] = useState(false)
 
   const project = useMemo(
     () => projects.find((p) => String(p.id) === String(id)) || null,
@@ -85,6 +85,34 @@ export default function ProjectDetail() {
     [transactions, id],
   )
 
+  const documents = useMemo(
+    () => projectDocuments.filter((d) => String(d.project) === String(id)),
+    [projectDocuments, id],
+  )
+
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !project) return
+    setUploadingDoc(true)
+    try {
+      await addProjectDocument(project.id, file.name, file)
+    } catch {
+      alert('Belge yüklenemedi.')
+    } finally {
+      setUploadingDoc(false)
+    }
+  }
+
+  const handleDeleteDocument = async (doc) => {
+    if (!window.confirm(`"${doc.name}" belgesini silmek istediğinize emin misiniz?`)) return
+    try {
+      await deleteProjectDocument(doc.id)
+    } catch {
+      alert('Belge silinemedi.')
+    }
+  }
+
   const harcamalar = useMemo(
     () => projectTransactions.filter((t) => t.type === 'Gider'),
     [projectTransactions],
@@ -110,51 +138,6 @@ export default function ProjectDetail() {
     () => (selectedCategory === 'Tümü' ? harcamalar : harcamalar.filter((t) => t.category === selectedCategory)),
     [harcamalar, selectedCategory],
   )
-
-  const projectBudgetLines = useMemo(
-    () => budgetLines.filter((b) => String(b.project) === String(id)),
-    [budgetLines, id],
-  )
-
-  const openAddBudget = () => {
-    setBudgetForm({ category: '', budgeted_amount: '' })
-    setBudgetModal({ line: null })
-  }
-
-  const openEditBudget = (line) => {
-    setBudgetForm({ category: line.category || '', budgeted_amount: line.budgeted_amount || '' })
-    setBudgetModal({ line })
-  }
-
-  const handleSaveBudget = async () => {
-    try {
-      setSavingBudget(true)
-      const body = {
-        project: project.id,
-        category: budgetForm.category,
-        budgeted_amount: budgetForm.budgeted_amount,
-      }
-      if (budgetModal.line) {
-        await updateBudgetLine(budgetModal.line.id, body)
-      } else {
-        await addBudgetLine(body)
-      }
-      setBudgetModal(null)
-    } catch {
-      alert('Bütçe kalemi kaydedilemedi.')
-    } finally {
-      setSavingBudget(false)
-    }
-  }
-
-  const handleDeleteBudget = async (line) => {
-    if (!window.confirm(`"${line.category}" bütçe kalemini silmek istediğinize emin misiniz?`)) return
-    try {
-      await deleteBudgetLine(line.id)
-    } catch {
-      alert('Bütçe kalemi silinemedi.')
-    }
-  }
 
   const spendingData = useMemo(() => {
     const sums = new Map()
@@ -221,7 +204,7 @@ export default function ProjectDetail() {
             <span className="detail-code-badge">{project.project_code || '—'}</span>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.75rem', marginTop: '1.75rem' }}>
             <div className="detail-stat" style={{ alignItems: 'flex-start' }}>
               <span className="detail-stat-label">Lokasyon</span>
               <span className="detail-stat-value" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -331,68 +314,6 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      {/* Bütçe */}
-      <div className="detail-section-head" style={{ marginTop: '2rem' }}>
-        <h2 className="detail-section-title">BÜTÇE</h2>
-        <button className="btn-inline-text" style={{ color: 'var(--color-primary)' }} onClick={openAddBudget}>
-          <Plus size={16} /> Bütçe Kalemi Ekle
-        </button>
-      </div>
-
-      {projectBudgetLines.length === 0 ? (
-        <div className="summary-box">
-          <div className="empty-state" style={{ padding: '1.5rem 0' }}>
-            <span>Henüz bütçe kalemi eklenmedi.</span>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {projectBudgetLines.map((line) => {
-            const budgeted = num(line.budgeted_amount)
-            const actual = num(line.actual_amount)
-            const usedPct = budgeted > 0 ? Math.min(actual / budgeted, 1) : 0
-            const overBudget = budgeted > 0 && actual > budgeted
-            const barColor = overBudget ? 'var(--color-danger)' : 'var(--color-primary)'
-
-            return (
-              <div
-                key={line.id}
-                className="summary-box"
-                style={{ padding: '1rem 1.25rem', cursor: 'pointer', border: overBudget ? '1px solid var(--color-danger)' : undefined }}
-                onClick={() => openEditBudget(line)}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span style={{ flex: 1, fontWeight: 700, fontSize: '0.95rem' }}>{line.category}</span>
-                  {overBudget && (
-                    <span style={{
-                      marginRight: '0.5rem', padding: '2px 8px', borderRadius: 8,
-                      fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-danger)', background: 'var(--color-dangerBg)',
-                    }}>
-                      Aşıldı
-                    </span>
-                  )}
-                  <button
-                    className="icon-btn"
-                    style={{ width: 28, height: 28 }}
-                    onClick={(e) => { e.stopPropagation(); handleDeleteBudget(line) }}
-                    title="Sil"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
-                  <span>{formatCurrency(actual)} / {formatCurrency(budgeted)}</span>
-                  <span style={{ fontWeight: 700, color: barColor }}>%{(usedPct * 100).toFixed(0)}</span>
-                </div>
-                <div className="pcard-progress">
-                  <div className="pcard-progress-fill" style={{ width: `${usedPct * 100}%`, background: barColor }} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
       {/* Harcama Dağılımı */}
       <div className="spending-card" style={{ marginTop: '2rem' }}>
         <div className="spending-head">
@@ -445,6 +366,45 @@ export default function ProjectDetail() {
           </div>
         )}
       </div>
+
+      {/* Belgeler */}
+      <div className="detail-section-head" style={{ marginTop: '2rem' }}>
+        <h2 className="detail-section-title">BELGELER</h2>
+        <label className="btn-inline-text" style={{ color: 'var(--color-primary)', cursor: uploadingDoc ? 'default' : 'pointer' }}>
+          {uploadingDoc ? <span className="loader" /> : <UploadCloud size={16} />}
+          {uploadingDoc ? 'Yükleniyor...' : 'Belge Ekle'}
+          <input type="file" hidden disabled={uploadingDoc} onChange={handleFileSelected} />
+        </label>
+      </div>
+
+      {documents.length === 0 ? (
+        <div className="summary-box">
+          <div className="empty-state" style={{ padding: '1.5rem 0' }}>
+            <span>Henüz belge eklenmedi.</span>
+          </div>
+        </div>
+      ) : (
+        <div className="list-group">
+          {documents.map((doc) => (
+            <div className="list-item" key={doc.id}>
+              <div className="list-icon-box"><FileText size={18} className="text-primary" /></div>
+              <div className="list-item-content">
+                <div className="list-item-title">{doc.name || 'Belge'}</div>
+                <div className="list-item-subtitle">{formatDate(doc.uploaded_at)}</div>
+              </div>
+              {doc.file && (
+                <a href={doc.file} target="_blank" rel="noreferrer" className="btn-inline-text" style={{ marginRight: '0.5rem' }}>
+                  Aç
+                </a>
+              )}
+              <button className="icon-btn" onClick={() => handleDeleteDocument(doc)} title="Sil">
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {isEditing && (
         <ProjectFormModal
           project={project}
@@ -453,51 +413,6 @@ export default function ProjectDetail() {
           onDelete={handleDelete}
         />
       )}
-      {budgetModal && (
-        <div className="modal-overlay" onClick={() => !savingBudget && setBudgetModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">{budgetModal.line ? 'Bütçe Kalemini Düzenle' : 'Bütçe Kalemi Ekle'}</h2>
-              <button className="modal-close" onClick={() => setBudgetModal(null)} disabled={savingBudget}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="modal-body" style={{ display: 'grid', gap: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Kategori</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={budgetForm.category}
-                  onChange={(e) => setBudgetForm({ ...budgetForm, category: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Planlanan Tutar</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  value={budgetForm.budgeted_amount}
-                  onChange={(e) => setBudgetForm({ ...budgetForm, budgeted_amount: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setBudgetModal(null)} disabled={savingBudget}>
-                İptal
-              </button>
-              <button
-                className="btn-primary"
-                onClick={handleSaveBudget}
-                disabled={savingBudget || !budgetForm.category}
-              >
-                {savingBudget ? <span className="loader"></span> : 'Kaydet'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {saleModalOpen && project && (
         <SaleFormModal
           projectId={project.id}

@@ -6,6 +6,7 @@ from rest_framework.authtoken.models import Token
 from .models import (
     User, CompanyProfile, Contact, Category, Account, Project, BudgetLine,
     FinancialTransaction, Loan, Cheque, Sale, Receivable, RecurringTransaction,
+    ProjectDocument, Todo,
 )
 from .serializers import (
     RegisterSerializer, LoginSerializer, UserSerializer,
@@ -13,6 +14,7 @@ from .serializers import (
     AccountSerializer, ProjectSerializer, BudgetLineSerializer,
     FinancialTransactionSerializer, LoanSerializer, ChequeSerializer,
     SaleSerializer, ReceivableSerializer, RecurringTransactionSerializer, apply_legacy_balance,
+    ProjectDocumentSerializer, TodoSerializer,
 )
 
 
@@ -215,3 +217,20 @@ class RecurringTransactionViewSet(_UserOwnedViewSet):
         )
         template.advance_next_due_date()
         return Response(FinancialTransactionSerializer(transaction).data, status=status.HTTP_201_CREATED)
+
+
+class ProjectDocumentViewSet(_UserOwnedViewSet):
+    model = ProjectDocument
+    serializer_class = ProjectDocumentSerializer
+
+    def get_queryset(self):
+        qs = ProjectDocument.objects.filter(user=self.request.user)
+        project_id = self.request.query_params.get('project_id')
+        if project_id:
+            qs = qs.filter(project_id=project_id)
+        return qs
+
+
+class TodoViewSet(_UserOwnedViewSet):
+    model = Todo
+    serializer_class = TodoSerializer

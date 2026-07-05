@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate
 from .models import (
     User, CompanyProfile, Contact, Category, Account, Project, BudgetLine,
     FinancialTransaction, Loan, Cheque, Sale, Receivable, RecurringTransaction,
+    ProjectDocument, Todo,
 )
 
 
@@ -254,3 +255,17 @@ class RecurringTransactionSerializer(serializers.ModelSerializer):
             'from_account', 'to_account', 'interval', 'day_of_month', 'next_due_date', 'is_active',
         ]
         read_only_fields = ['id']
+
+
+class ProjectDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectDocument
+        fields = ['id', 'project', 'name', 'file', 'uploaded_at']
+        read_only_fields = ['id', 'uploaded_at']
+
+
+class TodoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Todo
+        fields = ['id', 'title', 'is_done', 'scope', 'project', 'created_at']
+        read_only_fields = ['id', 'created_at']

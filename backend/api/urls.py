@@ -14,6 +14,8 @@ router.register(r'sales', views.SaleViewSet, basename='sale')
 router.register(r'receivables', views.ReceivableViewSet, basename='receivable')
 router.register(r'budget-lines', views.BudgetLineViewSet, basename='budgetline')
 router.register(r'recurring-transactions', views.RecurringTransactionViewSet, basename='recurringtransaction')
+router.register(r'project-documents', views.ProjectDocumentViewSet, basename='projectdocument')
+router.register(r'todos', views.TodoViewSet, basename='todo')
 
 urlpatterns = [
     # Auth

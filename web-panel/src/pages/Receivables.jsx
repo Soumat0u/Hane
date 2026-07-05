@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDownToLine, Plus, X, Banknote } from 'lucide-react'
+import { ArrowDownToLine, Plus, X, Banknote, ChevronRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 
@@ -234,47 +234,37 @@ export default function Receivables() {
         </button>
       </div>
 
-      {openReceivables.length === 0 ? (
-        <div className="summary-box">
-          <div className="empty-state">
-            <span>Açık alacak yok.</span>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
-          {openReceivables.map((r) => {
+      <div className="list-group">
+        {openReceivables.length === 0 ? (
+          <div className="debt-empty">Açık alacak yok.</div>
+        ) : (
+          openReceivables.map((r) => {
             const remaining = num(r.total_amount) - num(r.collected_amount)
-            const ratio = num(r.total_amount) > 0 ? Math.min(num(r.collected_amount) / num(r.total_amount), 1) : 0
             const due = fmtDate(r.due_date)
             const overdue = r.due_date && new Date(r.due_date) < new Date(new Date().setHours(0, 0, 0, 0))
             return (
-              <div key={r.id} className="summary-box" style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>{r.description || KIND_LABELS[r.kind] || 'Alacak'}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{KIND_LABELS[r.kind] || r.kind}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 700, color: 'var(--color-success)' }}>{formatCurrency(remaining)}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>kalan</div>
-                  </div>
+              <div className="list-item" key={r.id}>
+                <div className="list-icon-box"><Banknote size={20} className="text-primary" /></div>
+                <div className="list-item-content">
+                  <div className="list-item-title">{r.description || KIND_LABELS[r.kind] || 'Alacak'}</div>
+                  {due && (
+                    <div className="list-item-subtitle" style={{ color: overdue ? 'var(--color-danger)' : undefined, fontWeight: 600 }}>
+                      {due}
+                    </div>
+                  )}
                 </div>
-                <div style={{ height: 6, background: 'var(--color-surface-variant)', borderRadius: 3, margin: '0.75rem 0', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${ratio * 100}%`, background: 'var(--color-success)' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: overdue ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
-                    {due || ''}
-                  </span>
-                  <button className="btn-inline-text" onClick={() => setCollectTarget(r)}>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="list-item-value">{formatCurrency(remaining)}</div>
+                  <button className="btn-inline-text" style={{ fontSize: '0.8rem' }} onClick={() => setCollectTarget(r)}>
                     Tahsil Et
                   </button>
                 </div>
+                <ChevronRight size={14} className="text-muted" style={{ marginLeft: '0.75rem' }} />
               </div>
             )
-          })}
-        </div>
-      )}
+          })
+        )}
+      </div>
 
       {collectTarget && (
         <CollectModal
