@@ -115,12 +115,14 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
     });
   }
 
-  List<Widget> get _screens => [
-        DashboardScreen(),
-        ProjelerScreen(),
-        HareketlerView(),
-        const ProfilScreen(),
-      ];
+  // Sekme widget'ları tek sefer oluşturulur; her build'de yeniden allocate
+  // edilmezler (state kaybı yaşanmaz ama gereksiz yeniden inşa maliyeti azalır).
+  late final List<Widget> _screens = [
+    DashboardScreen(),
+    ProjelerScreen(),
+    HareketlerView(),
+    const ProfilScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -129,9 +131,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
 
   Widget _buildMobile(BuildContext context) {
     final List<Widget> screens = _screens;
-    final fp = context.watch<FinanceProvider>();
-    final bool isProjelerSelection = _currentTabIndex == 1 && fp.selectedProjectIds.isNotEmpty;
-    final bool isHareketlerSelection = _currentTabIndex == 3 && fp.selectedTransactionIds.isNotEmpty;
+    // Sadece bu iki sayaç değiştiğinde yeniden inşa et — context.watch ile
+    // tüm sağlayıcıyı izlemek, her arka plan senkronunda (her notifyListeners
+    // çağrısında) sayfa geçiş animasyonuyla çakışan tam kabuk yeniden inşasına
+    // (takılmaya) sebep oluyordu.
+    final fp = context.read<FinanceProvider>();
+    final selectedProjectCount = context.select<FinanceProvider, int>((p) => p.selectedProjectIds.length);
+    final selectedTransactionCount = context.select<FinanceProvider, int>((p) => p.selectedTransactionIds.length);
+    final bool isProjelerSelection = _currentTabIndex == 1 && selectedProjectCount > 0;
+    final bool isHareketlerSelection = _currentTabIndex == 3 && selectedTransactionCount > 0;
     final bool isSelectionActive = isProjelerSelection || isHareketlerSelection;
 
     return Scaffold(
@@ -177,7 +185,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
                             const SizedBox(width: 8),
                             Text(
                               isSelectionActive
-                                  ? '${isProjelerSelection ? fp.selectedProjectIds.length : fp.selectedTransactionIds.length} Seçili'
+                                  ? '${isProjelerSelection ? selectedProjectCount : selectedTransactionCount} Seçili'
                                   : _getHeaderTitle(_currentTabIndex),
                               style: TextStyle(
                                 fontSize: 24,
@@ -256,9 +264,11 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
   Widget _buildDesktop(BuildContext context) {
     final List<Widget> screens = _screens;
     final bool showTopBar = _currentTabIndex != 2;
-    final fp = context.watch<FinanceProvider>();
-    final bool isProjelerSelection = _currentTabIndex == 1 && fp.selectedProjectIds.isNotEmpty;
-    final bool isHareketlerSelection = _currentTabIndex == 3 && fp.selectedTransactionIds.isNotEmpty;
+    final fp = context.read<FinanceProvider>();
+    final selectedProjectCount = context.select<FinanceProvider, int>((p) => p.selectedProjectIds.length);
+    final selectedTransactionCount = context.select<FinanceProvider, int>((p) => p.selectedTransactionIds.length);
+    final bool isProjelerSelection = _currentTabIndex == 1 && selectedProjectCount > 0;
+    final bool isHareketlerSelection = _currentTabIndex == 3 && selectedTransactionCount > 0;
     final bool isSelectionActive = isProjelerSelection || isHareketlerSelection;
 
     return Scaffold(
@@ -297,7 +307,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
                               ],
                               Text(
                                 isSelectionActive
-                                    ? '${isProjelerSelection ? fp.selectedProjectIds.length : fp.selectedTransactionIds.length} Seçili'
+                                    ? '${isProjelerSelection ? selectedProjectCount : selectedTransactionCount} Seçili'
                                     : _getHeaderTitle(_currentTabIndex),
                                 style: TextStyle(
                                   fontSize: 26,
@@ -418,7 +428,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
           },
         ),
         // Sadece okunmamış bildirim varken kırmızı nokta göster.
-        if (context.watch<FinanceProvider>().hasUnreadNotifications)
+        if (context.select<FinanceProvider, bool>((p) => p.hasUnreadNotifications))
           Positioned(
             right: 10,
             top: 10,

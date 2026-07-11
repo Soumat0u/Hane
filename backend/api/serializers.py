@@ -52,7 +52,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             'id', 'company_name', 'tax_office', 'tax_number',
             'commercial_registry', 'mersis_no', 'address_title',
             'address_line1', 'address_line2', 'city', 'country',
-            'phone1', 'phone2', 'email', 'website',
+            'phone1', 'phone2', 'email', 'website', 'read_notifications',
         ]
         read_only_fields = ['id']
 
@@ -144,9 +144,11 @@ def apply_legacy_balance(user, transaction, sign):
     if t.from_account_id or t.to_account_id:
         return
     if t.type == 'Gider':
-        _adjust_account_balance(user, t.source_name, -t.amount * sign)
+        account_name = t.source_name or t.dest_name
+        _adjust_account_balance(user, account_name, -t.amount * sign)
     elif t.type in ('Gelir', 'Tahsilat', 'Kredi Kullanımı'):
-        _adjust_account_balance(user, t.source_name, t.amount * sign)
+        account_name = t.source_name or t.dest_name
+        _adjust_account_balance(user, account_name, t.amount * sign)
     elif t.type == 'Transfer':
         _adjust_account_balance(user, t.source_name, -t.amount * sign)
         _adjust_account_balance(user, t.dest_name, t.amount * sign)
@@ -163,9 +165,9 @@ class FinancialTransactionSerializer(serializers.ModelSerializer):
             'quantity', 'unit',
             'from_account', 'to_account', 'contact',
             'source_name', 'dest_name', 'contact_name', 'document_no', 'due_date',
-            'attachment',
+            'attachment', 'source',
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'source']
 
     def create(self, validated_data):
         request = self.context.get('request')

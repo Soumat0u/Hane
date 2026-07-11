@@ -74,7 +74,7 @@ class ResponsiveCardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!context.isDesktop) {
       return ListView.builder(
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: padding,
         itemCount: itemCount,
         itemBuilder: itemBuilder,
@@ -86,7 +86,7 @@ class ResponsiveCardGrid extends StatelessWidget {
         final int cols = responsiveColumns(avail, minCardWidth: minCardWidth, maxColumns: maxColumns);
         final double cardWidth = cols <= 1 ? avail : (avail - gap * (cols - 1)) / cols;
         return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: padding,
           child: ResponsiveCenter(
             maxWidth: maxWidth - padding.horizontal,

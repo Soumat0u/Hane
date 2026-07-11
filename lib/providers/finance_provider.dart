@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/project.dart';
@@ -169,6 +170,14 @@ class FinanceProvider extends ChangeNotifier {
   /// değişikliklerden sonra arkaplanda çağrılarak yereli sunucuyla eşitler.
   Future<void> _fetchAll() async {
     try {
+      // Tekrarlayan işlemler önce çekilir: sunucu bu istek sırasında vadesi
+      // gelmiş şablonları otomatik olarak gerçek işleme dönüştürür, bu yüzden
+      // aşağıdaki işlemler (transactions) isteği bu adımdan sonra yapılmalı.
+      _recurringTransactions = await _safe(
+        ApiService.instance.readAllRecurringTransactions,
+        _recurringTransactions,
+      );
+
       final results = await Future.wait([
         _safe(ApiService.instance.readAllProjects, _projects),
         _safe(ApiService.instance.readAllAccounts, _accounts),
@@ -198,6 +207,17 @@ class FinanceProvider extends ChangeNotifier {
       _todos = results[11] as List<Todo>;
       try {
         _companyProfile = await ApiService.instance.getCompanyProfile();
+        if (_companyProfile != null && _companyProfile!.readNotifications.isNotEmpty) {
+          try {
+            final parsed = jsonDecode(_companyProfile!.readNotifications);
+            if (parsed is List) {
+              _readNotificationKeys.addAll(parsed.map((e) => e.toString()));
+              await _persistReadNotifications();
+            }
+          } catch (e) {
+            debugPrint("Failed to parse readNotifications from company profile: $e");
+          }
+        }
       } catch (e) {
         debugPrint("Company profile load failed: $e");
       }
@@ -891,9 +911,31 @@ class FinanceProvider extends ChangeNotifier {
     return list;
   }
 
-  /// Tüm yaklaşan vadeler (ödeme + tahsilat) — bildirimler için.
+  /// Henüz vadesi gelmemiş ama yaklaşan (kUpcomingRecurringWindowDays gün içinde)
+  /// tekrarlayan işlem şablonları; takvim ve bildirimlerde önizleme olarak gösterilir.
+  /// Vadesi gelmiş şablonlar sunucu tarafında otomatik onaylandığı için burada yer almaz.
+  static const int kUpcomingRecurringWindowDays = 3;
+
+  List<DuePayment> _getUpcomingRecurringAsPayments() {
+    final today = DateTime.now();
+    final limit = today.add(const Duration(days: kUpcomingRecurringWindowDays));
+    return _recurringTransactions.where((r) {
+      if (!r.isActive) return false;
+      final due = DateTime.tryParse(r.nextDueDate);
+      return due != null && due.isAfter(today) && !due.isAfter(limit);
+    }).map((r) => DuePayment(
+          title: r.description.isNotEmpty ? r.description : r.category,
+          amount: r.amount,
+          date: DateTime.tryParse(r.nextDueDate),
+          rawDate: r.nextDueDate,
+          isPayable: r.type == 'Gider',
+          recurringTemplateId: r.id,
+        )).toList();
+  }
+
+  /// Tüm yaklaşan vadeler (ödeme + tahsilat + yaklaşan tekrarlayan işlemler) — takvim ve bildirimler için.
   List<DuePayment> getAllDuePayments() {
-    final all = [...getUpcomingPayments(), ...getUpcomingCollections()];
+    final all = [...getUpcomingPayments(), ...getUpcomingCollections(), ..._getUpcomingRecurringAsPayments()];
     _sortByDate(all);
     return all;
   }
@@ -917,6 +959,7 @@ class FinanceProvider extends ChangeNotifier {
     if (_readNotificationKeys.add(notificationKey(p))) {
       notifyListeners();
       await _persistReadNotifications();
+      await _syncReadNotificationsToServer();
     }
   }
 
@@ -928,6 +971,35 @@ class FinanceProvider extends ChangeNotifier {
     if (changed) {
       notifyListeners();
       await _persistReadNotifications();
+      await _syncReadNotificationsToServer();
+    }
+  }
+
+  Future<void> _syncReadNotificationsToServer() async {
+    if (_companyProfile != null) {
+      final updatedProfile = CompanyProfile(
+        id: _companyProfile!.id,
+        companyName: _companyProfile!.companyName,
+        taxOffice: _companyProfile!.taxOffice,
+        taxNumber: _companyProfile!.taxNumber,
+        commercialRegistry: _companyProfile!.commercialRegistry,
+        mersisNo: _companyProfile!.mersisNo,
+        addressTitle: _companyProfile!.addressTitle,
+        addressLine1: _companyProfile!.addressLine1,
+        addressLine2: _companyProfile!.addressLine2,
+        city: _companyProfile!.city,
+        country: _companyProfile!.country,
+        phone1: _companyProfile!.phone1,
+        phone2: _companyProfile!.phone2,
+        email: _companyProfile!.email,
+        website: _companyProfile!.website,
+        readNotifications: jsonEncode(_readNotificationKeys.toList()),
+      );
+      try {
+        _companyProfile = await ApiService.instance.updateCompanyProfile(updatedProfile);
+      } catch (e) {
+        debugPrint("Failed to sync read notifications to server: $e");
+      }
     }
   }
 

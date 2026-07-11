@@ -40,17 +40,20 @@ class AlacaklarView extends StatelessWidget {
             final receivables = fp.receivables.where((r) => r.remaining > 0).toList();
             final total = fp.getTotalAlacak();
 
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: centeredPagePadding(context, maxContentWidth: 760, top: 8.0, bottom: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildTopCard(context, total),
-                  const SizedBox(height: 24),
-                  _buildSectionHeader(context, 'AÇIK ALACAKLAR', onNewTap: () => _showAddReceivable(context)),
-                  _buildGroupList(context, fp, receivables),
-                ],
+            return RefreshIndicator(
+              onRefresh: fp.refreshSilently,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: centeredPagePadding(context, maxContentWidth: 760, top: 8.0, bottom: 24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildTopCard(context, total),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader(context, 'AÇIK ALACAKLAR', onNewTap: () => _showAddReceivable(context)),
+                    _buildGroupList(context, fp, receivables),
+                  ],
+                ),
               ),
             );
           },

@@ -46,6 +46,17 @@ export function DataProvider({ children }) {
     setLoading(true)
     setError('')
     try {
+      // Tekrarlayan işlemler önce çekilir: sunucu bu istek sırasında vadesi
+      // gelmiş şablonları otomatik olarak gerçek işleme dönüştürür, bu yüzden
+      // /transactions/ isteği bu adımdan sonra yapılmalı ki sonucu yansıtsın.
+      let rects = []
+      try {
+        rects = await api.get('/recurring-transactions/')
+      } catch {
+        rects = []
+      }
+      setRecurringTransactions(Array.isArray(rects) ? rects : [])
+
       const results = await Promise.allSettled([
         api.get('/projects/'),
         api.get('/transactions/'),
@@ -57,7 +68,6 @@ export function DataProvider({ children }) {
         api.get('/contacts/'),
         api.get('/categories/'),
         api.get('/budget-lines/'),
-        api.get('/recurring-transactions/'),
         api.get('/project-documents/'),
         api.get('/todos/'),
       ])
@@ -72,9 +82,8 @@ export function DataProvider({ children }) {
       const cnts = results[7].status === 'fulfilled' ? results[7].value : []
       const cats = results[8].status === 'fulfilled' ? results[8].value : []
       const bls = results[9].status === 'fulfilled' ? results[9].value : []
-      const rects = results[10].status === 'fulfilled' ? results[10].value : []
-      const docs = results[11].status === 'fulfilled' ? results[11].value : []
-      const tds = results[12].status === 'fulfilled' ? results[12].value : []
+      const docs = results[10].status === 'fulfilled' ? results[10].value : []
+      const tds = results[11].status === 'fulfilled' ? results[11].value : []
 
       setProjects(Array.isArray(projs) ? projs : [])
       setTransactions(Array.isArray(txns) ? txns : [])
@@ -85,10 +94,22 @@ export function DataProvider({ children }) {
       setContacts(Array.isArray(cnts) ? cnts : [])
       setCategories(Array.isArray(cats) ? cats : [])
       setBudgetLines(Array.isArray(bls) ? bls : [])
-      setRecurringTransactions(Array.isArray(rects) ? rects : [])
       setProjectDocuments(Array.isArray(docs) ? docs : [])
       setTodos(Array.isArray(tds) ? tds : [])
       setCompanyProfile(profile)
+      if (profile && profile.read_notifications) {
+        try {
+          const parsed = JSON.parse(profile.read_notifications)
+          if (Array.isArray(parsed)) {
+            setReadKeys(prev => {
+              const merged = new Set([...prev, ...parsed])
+              return Array.from(merged)
+            })
+          }
+        } catch (e) {
+          console.error("Failed to parse read_notifications from profile", e)
+        }
+      }
       setLoaded(true)
     } catch {
       setError('Veriler yüklenemedi. Lütfen tekrar deneyin.')
@@ -596,21 +617,32 @@ export function DataProvider({ children }) {
     return `${p.isPayable}|${p.title}|${p.rawDate}|${p.amount}`
   }, [])
 
-  const markNotificationRead = useCallback((p) => {
+  const markNotificationRead = useCallback(async (p) => {
     const key = getNotificationKey(p)
-    setReadKeys(prev => {
-      if (prev.includes(key)) return prev
-      return [...prev, key]
-    })
-  }, [getNotificationKey])
+    if (!readKeys.includes(key)) {
+      const nextKeys = [...readKeys, key]
+      setReadKeys(nextKeys)
+      try {
+        await api.put('/company-profile/', { read_notifications: JSON.stringify(nextKeys) })
+      } catch (err) {
+        console.error('Failed to sync read notifications', err)
+      }
+    }
+  }, [readKeys, getNotificationKey])
 
-  const markAllNotificationsRead = useCallback(() => {
+  const markAllNotificationsRead = useCallback(async () => {
     const keysToAdd = notifications.map(p => getNotificationKey(p))
-    setReadKeys(prev => {
-      const newKeys = new Set([...prev, ...keysToAdd])
-      return Array.from(newKeys)
-    })
-  }, [notifications, getNotificationKey])
+    const newKeysSet = new Set([...readKeys, ...keysToAdd])
+    const nextKeys = Array.from(newKeysSet)
+    if (nextKeys.length !== readKeys.length) {
+      setReadKeys(nextKeys)
+      try {
+        await api.put('/company-profile/', { read_notifications: JSON.stringify(nextKeys) })
+      } catch (err) {
+        console.error('Failed to sync read notifications', err)
+      }
+    }
+  }, [notifications, readKeys, getNotificationKey])
 
   const unreadNotificationsCount = useMemo(() => {
     return notifications.filter(p => !readKeys.includes(getNotificationKey(p))).length

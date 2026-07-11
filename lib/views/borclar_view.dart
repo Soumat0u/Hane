@@ -40,10 +40,12 @@ class _BorclarViewState extends State<BorclarView> {
                 .where((a) => (a.type == 'BCH' || a.type == 'Kredi Kartı') && a.balance < 0)
                 .toList();
 
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: centeredPagePadding(context, maxContentWidth: 760, top: 8.0, bottom: 24.0),
-              child: Column(
+            return RefreshIndicator(
+              onRefresh: fp.refreshSilently,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: centeredPagePadding(context, maxContentWidth: 760, top: 8.0, bottom: 24.0),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Top Total Borç Card (Red)
@@ -157,8 +159,9 @@ class _BorclarViewState extends State<BorclarView> {
                   ]),
                 ],
               ),
-            );
-          },
+            ),
+          );
+        },
         ),
       ),
     );

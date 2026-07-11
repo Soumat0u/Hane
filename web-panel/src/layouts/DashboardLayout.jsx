@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { Navigate, Outlet, useNavigate } from 'react-router-dom'
-import { Sun, Moon, Bell, AlertTriangle, ArrowDownToLine, CreditCard, Info, Repeat, Check, Settings, User } from 'lucide-react'
+import { Sun, Moon, Bell, AlertTriangle, ArrowDownToLine, CreditCard, Repeat, Check, CheckCheck, Settings, User } from 'lucide-react'
 import Sidebar from '../components/Sidebar'
 import { DataProvider, useData } from '../context/DataContext'
+import RecurringFormModal, { DeleteRecurringModal } from '../components/RecurringFormModal'
+
+// Vadesi henüz gelmemiş ama bu kadar gün içinde olan tekrarlayan işlem şablonları
+// bildirim çanında "yaklaşan" olarak önizlenir (vadesi gelenler sunucuda otomatik onaylanır).
+const UPCOMING_RECURRING_WINDOW_DAYS = 3
 
 function TopbarActions({ theme, toggleTheme }) {
   const {
@@ -14,11 +19,16 @@ function TopbarActions({ theme, toggleTheme }) {
     markAllNotificationsRead,
     recurringTransactions,
     confirmRecurringTransaction,
+    accounts,
+    updateRecurringTransaction,
+    deleteRecurringTransaction,
   } = useData()
 
   const navigate = useNavigate()
   const [showNotifications, setShowNotifications] = useState(false)
   const [confirmingId, setConfirmingId] = useState(null)
+  const [editTarget, setEditTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const dropdownRef = useRef(null)
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -26,6 +36,14 @@ function TopbarActions({ theme, toggleTheme }) {
     if (!r.is_active || !r.next_due_date) return false
     const due = new Date(r.next_due_date)
     return !Number.isNaN(due.getTime()) && due <= today
+  })
+  const upcomingTemplates = recurringTransactions.filter((r) => {
+    if (!r.is_active || !r.next_due_date) return false
+    const due = new Date(r.next_due_date)
+    if (Number.isNaN(due.getTime())) return false
+    const limit = new Date(today)
+    limit.setDate(limit.getDate() + UPCOMING_RECURRING_WINDOW_DAYS)
+    return due > today && due <= limit
   })
 
   const handleConfirm = async (id) => {
@@ -82,85 +100,152 @@ function TopbarActions({ theme, toggleTheme }) {
         {showNotifications && (
           <div className="notification-dropdown">
             <div className="notification-header">
-              <span className="notification-title">Bildirimler</span>
+              <span className="notification-title">
+                Bildirimler
+                {unreadNotificationsCount > 0 && (
+                  <span className="notification-header-badge">{unreadNotificationsCount} yeni</span>
+                )}
+              </span>
               {unreadNotificationsCount > 0 && (
                 <button className="notification-clear-btn" onClick={markAllNotificationsRead}>
                   Tümünü Oku
                 </button>
               )}
             </div>
-            {dueTemplates.length > 0 && (
-              <div className="notification-list" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                {dueTemplates.map((r) => (
-                  <div key={r.id} className="notification-item">
-                    <div className="notification-item-icon-box warning">
-                      <Repeat size={18} />
-                    </div>
-                    <div className="notification-item-content">
-                      <div className="notification-item-header">
-                        <span className="notification-item-type">Tekrarlayan İşlem</span>
-                        <span className="notification-item-date overdue">{r.next_due_date}</span>
-                      </div>
-                      <span className="notification-item-desc">
-                        {(r.description || r.category || 'İşlem')} — {formatCurrency(r.amount)}
-                      </span>
-                    </div>
-                    <button
-                      className="btn-inline-text"
-                      style={{ flexShrink: 0 }}
-                      disabled={confirmingId === r.id}
-                      onClick={(e) => { e.stopPropagation(); handleConfirm(r.id) }}
-                    >
-                      <Check size={14} /> Onayla
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="notification-list">
-              {notifications.length === 0 ? (
+            
+            <div className="notification-dropdown-body">
+              {dueTemplates.length === 0 && upcomingTemplates.length === 0 && notifications.length === 0 ? (
                 <div className="notification-empty">
-                  <Info size={32} />
-                  <span>Bildiriminiz bulunmuyor.</span>
+                  <div className="notification-empty-icon">
+                    <Bell size={32} />
+                  </div>
+                  <span className="notification-empty-title">Her Şey Güncel!</span>
+                  <span className="notification-empty-subtitle">Okunmamış veya yaklaşan bir bildiriminiz bulunmuyor.</span>
                 </div>
               ) : (
-                notifications.map((n) => {
-                  const overdue = isOverdue(n.rawDate)
-                  const read = readKeys.includes(getNotificationKey(n))
-                  
-                  let Icon = n.isPayable ? CreditCard : ArrowDownToLine
-                  let colorClass = n.isPayable ? 'danger' : 'success'
-                  if (overdue) {
-                    Icon = AlertTriangle
-                    colorClass = 'warning'
-                  }
-
-                  return (
-                    <div 
-                      key={n.id} 
-                      className={`notification-item ${read ? 'read' : ''}`}
-                      onClick={() => markNotificationRead(n)}
-                    >
-                      {!read && <div className="notification-item-unread-dot" />}
-                      <div className={`notification-item-icon-box ${colorClass}`}>
-                        <Icon size={18} />
+                <>
+                  {dueTemplates.length > 0 && (
+                    <div className="notification-section">
+                      <div className="notification-section-title">
+                        <span>Tekrarlayan İşlemler</span>
+                        <span className="notification-section-badge">{dueTemplates.length}</span>
                       </div>
-                      <div className="notification-item-content">
-                        <div className="notification-item-header">
-                          <span className="notification-item-type">
-                            {overdue ? (n.isPayable ? 'Gecikmiş Ödeme' : 'Gecikmiş Tahsilat') : (n.isPayable ? 'Yaklaşan Ödeme' : 'Yaklaşan Tahsilat')}
-                          </span>
-                          <span className={`notification-item-date ${overdue ? 'overdue' : ''}`}>
-                            {n.rawDate ? new Date(n.rawDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : ''}
-                          </span>
+                      {dueTemplates.map((r) => (
+                        <div key={r.id} className="notification-item" onClick={() => setEditTarget(r)} style={{ cursor: 'pointer' }}>
+                          <div className="notification-item-icon-box warning">
+                            <Repeat size={18} />
+                          </div>
+                          <div className="notification-item-content">
+                            <div className="notification-item-header">
+                              <span className="notification-item-type">Tekrarlayan İşlem</span>
+                              <span className="notification-item-date overdue">{r.next_due_date}</span>
+                            </div>
+                            <span className="notification-item-desc">
+                              {(r.description || r.category || 'İşlem')} — {formatCurrency(r.amount)}
+                            </span>
+                          </div>
+                          <button
+                            className="notification-action-btn"
+                            disabled={confirmingId === r.id}
+                            onClick={(e) => { e.stopPropagation(); handleConfirm(r.id) }}
+                          >
+                            <Check size={14} /> Onayla
+                          </button>
                         </div>
-                        <span className="notification-item-desc">
-                          {n.title} için {formatCurrency(n.amount)} tutarında işlem bekleniyor.
-                        </span>
-                      </div>
+                      ))}
                     </div>
-                  )
-                })
+                  )}
+
+                  {upcomingTemplates.length > 0 && (
+                    <div className="notification-section">
+                      <div className="notification-section-title">
+                        <span>Yaklaşan Tekrarlayan İşlemler</span>
+                        <span className="notification-section-badge">{upcomingTemplates.length}</span>
+                      </div>
+                      {upcomingTemplates.map((r) => (
+                        <div
+                          key={r.id}
+                          className="notification-item"
+                          onClick={() => setEditTarget(r)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div className="notification-item-icon-box">
+                            <Repeat size={18} />
+                          </div>
+                          <div className="notification-item-content">
+                            <div className="notification-item-header">
+                              <span className="notification-item-type">Yaklaşan Tekrarlayan İşlem</span>
+                              <span className="notification-item-date">{r.next_due_date}</span>
+                            </div>
+                            <span className="notification-item-desc">
+                              {(r.description || r.category || 'İşlem')} — {formatCurrency(r.amount)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {notifications.length > 0 && (
+                    <div className="notification-section">
+                      <div className="notification-section-title">
+                        <span>Yaklaşan ve Geciken İşlemler</span>
+                      </div>
+                      {notifications.map((n) => {
+                        const overdue = isOverdue(n.rawDate)
+                        const read = readKeys.includes(getNotificationKey(n))
+                        
+                        let Icon = n.isPayable ? CreditCard : ArrowDownToLine
+                        let colorClass = n.isPayable ? 'danger' : 'success'
+                        if (overdue) {
+                          Icon = AlertTriangle
+                          colorClass = 'warning'
+                        }
+
+                        return (
+                          <div 
+                            key={n.id} 
+                            className={`notification-item ${read ? 'read' : ''}`}
+                            onClick={() => markNotificationRead(n)}
+                          >
+                            {!read && <div className="notification-item-unread-dot" />}
+                            <div className={`notification-item-icon-box ${colorClass}`}>
+                              <Icon size={18} />
+                            </div>
+                            <div className="notification-item-content">
+                              <div className="notification-item-header">
+                                <span className="notification-item-type">
+                                  {overdue ? (n.isPayable ? 'Gecikmiş Ödeme' : 'Gecikmiş Tahsilat') : (n.isPayable ? 'Yaklaşan Ödeme' : 'Yaklaşan Tahsilat')}
+                                </span>
+                                <span className={`notification-item-date ${overdue ? 'overdue' : ''}`}>
+                                  {n.rawDate ? new Date(n.rawDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' }) : ''}
+                                </span>
+                              </div>
+                              <span className="notification-item-desc">
+                                {n.title} için {formatCurrency(n.amount)} tutarında işlem bekleniyor.
+                              </span>
+                            </div>
+                            <div className="notification-item-status" onClick={(e) => e.stopPropagation()}>
+                              {read ? (
+                                <span className="read-status read" title="Okundu">
+                                  <CheckCheck size={16} />
+                                </span>
+                              ) : (
+                                <button 
+                                  className="read-status-btn" 
+                                  onClick={() => markNotificationRead(n)}
+                                  title="Okundu Olarak İşaretle"
+                                >
+                                  <CheckCheck size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -177,6 +262,23 @@ function TopbarActions({ theme, toggleTheme }) {
           <User size={20} />
         </div>
       </button>
+
+      {editTarget && (
+        <RecurringFormModal
+          existing={editTarget}
+          accounts={accounts}
+          onClose={() => setEditTarget(null)}
+          onSave={(body) => updateRecurringTransaction(editTarget.id, body)}
+          onDelete={(r) => { setDeleteTarget({ id: r.id, description: r.description || r.category }); setEditTarget(null) }}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteRecurringModal
+          target={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={async (id) => { await deleteRecurringTransaction(id); setDeleteTarget(null) }}
+        />
+      )}
     </div>
   )
 }

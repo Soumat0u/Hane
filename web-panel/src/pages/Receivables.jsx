@@ -209,25 +209,17 @@ export default function Receivables() {
 
   return (
     <div>
-      <div className="page-header-banner" style={{ background: 'var(--banner-receivables)', color: 'var(--banner-text)' }}>
+      <div className="page-header-banner total-card-green" style={{ background: 'var(--banner-receivables)', color: 'var(--banner-text)' }}>
         <div>
-          <div className="total-card-label" style={{ color: 'var(--banner-label)' }}>ALACAKLAR</div>
-          <div className="total-card-value" style={{ fontSize: '1.5rem', color: 'var(--banner-text)' }}>Tüm Alacaklar ve Tahsilatlar</div>
+          <div className="total-card-label" style={{ color: 'var(--banner-label)' }}>TOPLAM ALACAK</div>
+          <div className="total-card-value" style={{ color: 'var(--banner-text)' }}>{formatCurrency(total)}</div>
         </div>
         <div className="total-card-icon">
-          <ArrowDownToLine size={34} color="#ffffff" />
+          <ArrowDownToLine size={36} color="var(--banner-text)" />
         </div>
       </div>
 
-      <div className="debt-total-card" style={{ marginTop: '1.75rem' }}>
-        <div>
-          <div className="total-card-label">TOPLAM ALACAK</div>
-          <div className="total-card-value">{formatCurrency(total)}</div>
-        </div>
-        <div className="debt-total-icon"><Banknote size={40} /></div>
-      </div>
-
-      <div className="section-header">
+      <div className="section-header" style={{ marginTop: '1.75rem' }}>
         <span className="section-title">AÇIK ALACAKLAR</span>
         <button className="btn-inline-text" onClick={() => setNewModalOpen(true)}>
           <Plus size={16} /> Yeni Alacak

@@ -72,6 +72,7 @@ class _FirmaDuzenleViewState extends State<FirmaDuzenleView> {
       phone2: existing?.phone2 ?? '',
       email: _v('email'),
       website: _v('website'),
+      readNotifications: existing?.readNotifications ?? '',
     );
     try {
       await context.read<FinanceProvider>().updateCompanyProfile(profile);

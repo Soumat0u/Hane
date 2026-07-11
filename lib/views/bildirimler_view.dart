@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
-import 'package:hane/models/finance_entities.dart';
 import 'package:hane/models/recurring_transaction.dart';
 import 'package:hane/utils/formatters.dart';
+import 'package:hane/views/tekrarlanan_islemler_view.dart' show showRecurringTransactionForm;
 
 class BildirimlerView extends StatelessWidget {
   const BildirimlerView({super.key});
@@ -97,11 +97,17 @@ class BildirimlerView extends StatelessWidget {
                             Color iconColor = isPayable ? context.colors.danger : context.colors.success;
                             Color bgColor = isPayable ? context.colors.dangerBg : context.colors.successBg;
                             IconData icon = isPayable ? Icons.payment_outlined : Icons.account_balance_wallet_outlined;
-                            
+
                             if (isOverdue) {
                               iconColor = context.colors.warning;
                               bgColor = context.colors.warningBg;
                               icon = Icons.warning_amber_rounded;
+                            }
+
+                            if (notif.isUpcomingRecurring) {
+                              iconColor = context.colors.accent;
+                              bgColor = context.colors.accentBg;
+                              icon = Icons.repeat_rounded;
                             }
 
                             return Opacity(
@@ -147,7 +153,9 @@ class BildirimlerView extends StatelessWidget {
                                     ],
                                     Expanded(
                                       child: Text(
-                                        isPayable ? 'Yaklaşan Ödeme' : 'Yaklaşan Tahsilat',
+                                        notif.isUpcomingRecurring
+                                            ? 'Yaklaşan Tekrarlayan İşlem'
+                                            : (isPayable ? 'Yaklaşan Ödeme' : 'Yaklaşan Tahsilat'),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 15,
@@ -176,7 +184,17 @@ class BildirimlerView extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                onTap: () => fp.markNotificationRead(notif),
+                                onTap: () {
+                                  fp.markNotificationRead(notif);
+                                  if (notif.recurringTemplateId != null) {
+                                    final template = fp.recurringTransactions
+                                        .where((r) => r.id == notif.recurringTemplateId)
+                                        .firstOrNull;
+                                    if (template != null) {
+                                      showRecurringTransactionForm(context, existing: template);
+                                    }
+                                  }
+                                },
                               ),
                             ),
                             );
@@ -192,7 +210,10 @@ class BildirimlerView extends StatelessWidget {
   }
 
   Widget _buildRecurringCard(BuildContext context, FinanceProvider fp, RecurringTransaction r) {
-    return Container(
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => showRecurringTransactionForm(context, existing: r),
+      child: Container(
       decoration: BoxDecoration(
         color: context.colors.accentBg,
         borderRadius: BorderRadius.circular(12),
@@ -246,6 +267,7 @@ class BildirimlerView extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

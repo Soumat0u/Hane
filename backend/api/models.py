@@ -57,6 +57,7 @@ class CompanyProfile(models.Model):
     phone2 = models.CharField(max_length=30, default='', blank=True)
     email = models.CharField(max_length=255, default='', blank=True)
     website = models.CharField(max_length=255, default='', blank=True)
+    read_notifications = models.TextField(default='', blank=True)
 
     def __str__(self):
         return self.company_name or f'Profile of {self.user.email}'
@@ -280,6 +281,11 @@ class FinancialTransaction(models.Model):
     due_date = models.CharField(max_length=50, default='', blank=True)
     attachment = models.FileField(upload_to='attachments/%Y/%m/', null=True, blank=True)
 
+    MANUAL = 'manual'
+    RECURRING_AUTO = 'recurring_auto'
+    SOURCE_CHOICES = [(MANUAL, 'Manuel'), (RECURRING_AUTO, 'Otomatik (Tekrarlayan)')]
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=MANUAL, blank=True)
+
     class Meta:
         ordering = ['-id']
 
@@ -473,6 +479,34 @@ class RecurringTransaction(models.Model):
             d = _date(year, month, day)
         self.next_due_date = d.isoformat()
         self.save(update_fields=['next_due_date'])
+
+    @classmethod
+    def auto_confirm_due(cls, user=None):
+        """Vadesi gelmiş (next_due_date <= bugün) aktif şablonları otomatik olarak
+        FinancialTransaction'a dönüştürür ve next_due_date'i ilerletir.
+        Döner: oluşturulan FinancialTransaction listesi."""
+        from datetime import date as _date
+        qs = cls.objects.filter(is_active=True, next_due_date__lte=_date.today().isoformat())
+        if user is not None:
+            qs = qs.filter(user=user)
+        created = []
+        for template in qs:
+            transaction = FinancialTransaction.objects.create(
+                user=template.user,
+                type=template.type,
+                amount=template.amount,
+                category=template.category,
+                description=template.description,
+                project=template.project,
+                contact=template.contact,
+                from_account=template.from_account,
+                to_account=template.to_account,
+                date=template.next_due_date,
+                source=FinancialTransaction.RECURRING_AUTO,
+            )
+            template.advance_next_due_date()
+            created.append(transaction)
+        return created
 
 
 class Todo(models.Model):

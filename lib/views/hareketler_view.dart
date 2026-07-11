@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:hane/theme/app_theme.dart';
@@ -6,8 +7,14 @@ import 'package:hane/theme/responsive.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/financial_transaction.dart';
+import 'package:hane/models/project.dart';
 import 'package:hane/views/hareket_detay_view.dart';
 import 'package:hane/services/export_service.dart';
+
+// Bu ekran projeler, işlemler ve seçim kümesine bağlıdır. selectedTransactionIds
+// yerinde (in-place) değiştirildiği için Set içerik karşılaştırması gerekir
+// (referans eşitliği hep aynı nesneyi görür), bu yüzden shouldRebuild kullanılır.
+typedef _HareketlerDeps = (List<Project> projects, List<FinancialTransaction> transactions, Set<int> selectedIds);
 
 /// Bir işlem tipinin renk ve ikonunu döndürür (liste ve detay ekranı paylaşır).
 ({Color color, IconData icon}) transactionVisuals(BuildContext context, String type) {
@@ -105,8 +112,12 @@ class _HareketlerViewState extends State<HareketlerView> with AutomaticKeepAlive
     super.build(context);
     return Scaffold(
       backgroundColor: context.colors.scaffold,
-      body: Consumer<FinanceProvider>(
-        builder: (context, fp, child) {
+      body: Selector<FinanceProvider, _HareketlerDeps>(
+        selector: (_, fp) => (fp.projects, fp.allTransactions, Set<int>.of(fp.selectedTransactionIds)),
+        shouldRebuild: (previous, next) =>
+            previous.$1 != next.$1 || previous.$2 != next.$2 || !setEquals(previous.$3, next.$3),
+        builder: (context, deps, child) {
+          final fp = context.read<FinanceProvider>();
           final projectNames = {for (final p in fp.projects) if (p.id != null) p.id!: p.name};
           final categoryOptions = ['Tümü', ...{for (final t in fp.allTransactions) t.type}];
           final projeOptions = ['Tümü', ...projectNames.values];
@@ -260,33 +271,42 @@ class _HareketlerViewState extends State<HareketlerView> with AutomaticKeepAlive
 
               // Liste
               Expanded(
-                child: filtered.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.search_off_rounded, size: 48, color: context.colors.textSecondary),
-                            const SizedBox(height: 12),
-                            Text(
-                              fp.allTransactions.isEmpty
-                                  ? 'Henüz işlem yok'
-                                  : 'Seçilen filtrelere uygun işlem yok',
-                              style: TextStyle(fontSize: 14, color: context.colors.textSecondary),
+                child: RefreshIndicator(
+                  onRefresh: fp.refreshSilently,
+                  child: filtered.isEmpty
+                      ? SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                          child: Container(
+                            height: MediaQuery.of(context).size.height - 340,
+                            alignment: Alignment.center,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.search_off_rounded, size: 48, color: context.colors.textSecondary),
+                                const SizedBox(height: 12),
+                                Text(
+                                  fp.allTransactions.isEmpty
+                                      ? 'Henüz işlem yok'
+                                      : 'Seçilen filtrelere uygun işlem yok',
+                                  style: TextStyle(fontSize: 14, color: context.colors.textSecondary),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
+                        )
+                      : ResponsiveCenter(
+                          maxWidth: 820,
+                          child: ListView.separated(
+                            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                            padding: const EdgeInsets.only(bottom: 24),
+                            itemCount: filtered.length,
+                            separatorBuilder: (context, i) =>
+                                Divider(color: context.colors.border, height: 1),
+                            itemBuilder: (context, i) =>
+                                _buildTransactionItem(context, filtered[i], projectNames),
+                          ),
                         ),
-                      )
-                    : ResponsiveCenter(
-                        maxWidth: 820,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.only(bottom: 24),
-                          itemCount: filtered.length,
-                          separatorBuilder: (context, i) =>
-                              Divider(color: context.colors.border, height: 1),
-                          itemBuilder: (context, i) =>
-                              _buildTransactionItem(context, filtered[i], projectNames),
-                        ),
-                      ),
+                ),
               ),
             ],
           );
@@ -505,12 +525,38 @@ class _HareketlerViewState extends State<HareketlerView> with AutomaticKeepAlive
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(t.type.toUpperCase(),
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: visuals.color,
-                          letterSpacing: 0.5)),
+                  Row(
+                    children: [
+                      Text(t.type.toUpperCase(),
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: visuals.color,
+                              letterSpacing: 0.5)),
+                      if (t.isAutoCreated) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: context.colors.accentBg,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.repeat_rounded, size: 10, color: context.colors.accent),
+                              const SizedBox(width: 2),
+                              Text('Otomatik',
+                                  style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: context.colors.accent)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                   const SizedBox(height: 2),
                   Text(title,
                       style: TextStyle(

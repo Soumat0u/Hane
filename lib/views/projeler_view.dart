@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show setEquals;
 
 import 'package:hane/theme/app_theme.dart';
 import 'package:hane/theme/responsive.dart';
@@ -7,7 +8,13 @@ import 'package:hane/utils/formatters.dart';
 import 'package:hane/views/proje_detay_view.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/project.dart';
+import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/views/yeni_proje_view.dart';
+
+// Bu ekran proje listesi, işlemler (kart üzerindeki harcama/tahsilat
+// tutarları için) ve seçim kümesine bağlıdır. selectedProjectIds yerinde
+// (in-place) değiştirildiği için Set içerik karşılaştırması gerekir.
+typedef _ProjelerDeps = (bool isLoading, List<Project> projects, List<FinancialTransaction> transactions, Set<int> selectedIds);
 
 class ProjelerScreen extends StatefulWidget {
   const ProjelerScreen({super.key});
@@ -23,9 +30,13 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Consumer<FinanceProvider>(
-      builder: (context, financeProvider, child) {
-        if (financeProvider.isLoading) {
+    return Selector<FinanceProvider, _ProjelerDeps>(
+      selector: (_, fp) => (fp.isLoading, fp.projects, fp.allTransactions, Set<int>.of(fp.selectedProjectIds)),
+      shouldRebuild: (previous, next) =>
+          previous.$1 != next.$1 || previous.$2 != next.$2 || previous.$3 != next.$3 || !setEquals(previous.$4, next.$4),
+      builder: (context, deps, child) {
+        final financeProvider = context.read<FinanceProvider>();
+        if (deps.$1) {
           return const Center(child: CircularProgressIndicator());
         }
 
@@ -77,51 +88,58 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
               ),
             ),
 
-          // Project Cards List
           Expanded(
-            child: projects.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.transparent,
-                            border: Border.all(
-                              color: Colors.grey[300]!,
-                              width: 6,
+            child: RefreshIndicator(
+              onRefresh: financeProvider.refreshSilently,
+              child: projects.isEmpty
+                  ? SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      child: Container(
+                        height: MediaQuery.of(context).size.height - 220,
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.transparent,
+                                border: Border.all(
+                                  color: Colors.grey[300]!,
+                                  width: 6,
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.add,
+                                  size: 40,
+                                  color: Colors.grey[300],
+                                ),
+                              ),
                             ),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              Icons.add,
-                              size: 40,
-                              color: Colors.grey[300],
+                            const SizedBox(height: 24),
+                            Text(
+                              'Henüz bir projeniz yok',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: context.colors.textSecondary,
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Henüz bir projeniz yok',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: context.colors.textSecondary,
-                          ),
-                        ),
-                      ],
+                      ),
+                    )
+                  : ResponsiveCardGrid(
+                      itemCount: projects.length,
+                      itemBuilder: (context, index) {
+                        final project = projects[index];
+                        return _buildProjectCard(context, project, financeProvider);
+                      },
                     ),
-                  )
-                : ResponsiveCardGrid(
-                    itemCount: projects.length,
-                    itemBuilder: (context, index) {
-                      final project = projects[index];
-                      return _buildProjectCard(context, project, financeProvider);
-                    },
-                  ),
+            ),
           ),
         ],
       ),

@@ -199,6 +199,10 @@ class RecurringTransactionViewSet(_UserOwnedViewSet):
     model = RecurringTransaction
     serializer_class = RecurringTransactionSerializer
 
+    def get_queryset(self):
+        RecurringTransaction.auto_confirm_due(user=self.request.user)
+        return super().get_queryset()
+
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
         """Şablonu onayla: gerçek bir FinancialTransaction oluştur, next_due_date'i ilerlet."""

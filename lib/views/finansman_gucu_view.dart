@@ -36,10 +36,12 @@ class FinansmanGucuView extends StatelessWidget {
             final esnekTotal = esnekAccounts.fold(0.0, (sum, a) => sum + a.availableLimit);
             final fTotal = bchTotal + cardLimitTotal + esnekTotal;
 
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: centeredPagePadding(context, maxContentWidth: 760, top: 8.0, bottom: 24.0),
-              child: Column(
+            return RefreshIndicator(
+              onRefresh: fp.refreshSilently,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: centeredPagePadding(context, maxContentWidth: 760, top: 8.0, bottom: 24.0),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Top Total Finansman Gücü Card (Green)
@@ -180,8 +182,9 @@ class FinansmanGucuView extends StatelessWidget {
                   ),
                 ],
               ),
-            );
-          },
+            ),
+          );
+        },
         ),
       ),
     );

@@ -44,39 +44,45 @@ class CariHesaplarView extends StatelessWidget {
             final byKind = fp.contactsByKind;
             final hasAny = byKind.values.any((l) => l.isNotEmpty);
 
-            if (!hasAny) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.groups_outlined, size: 64, color: Colors.grey[300]),
-                    const SizedBox(height: 16),
-                    Text('Henüz cari hesap bulunmuyor.', style: TextStyle(color: Colors.grey[500])),
-                    const SizedBox(height: 16),
-                    TextButton.icon(
-                      onPressed: () => _showNewContactForm(context),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Yeni Cari Ekle'),
+            return RefreshIndicator(
+              onRefresh: fp.refreshSilently,
+              child: !hasAny
+                  ? SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      child: Container(
+                        height: MediaQuery.of(context).size.height - 200,
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.groups_outlined, size: 64, color: Colors.grey[300]),
+                            const SizedBox(height: 16),
+                            Text('Henüz cari hesap bulunmuyor.', style: TextStyle(color: Colors.grey[500])),
+                            const SizedBox(height: 16),
+                            TextButton.icon(
+                              onPressed: () => _showNewContactForm(context),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Yeni Cari Ekle'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 8.0, bottom: 24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final kind in kContactKindLabels.keys)
+                            if ((byKind[kind] ?? const <Contact>[]).isNotEmpty) ...[
+                              _buildSectionHeader(context, kContactKindLabels[kind]!.toUpperCase()),
+                              _buildGroupList(context, byKind[kind]!),
+                              const SizedBox(height: 24),
+                            ],
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              );
-            }
-
-            return SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(left: 20.0, right: 20.0, top: 8.0, bottom: 24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final kind in kContactKindLabels.keys)
-                    if ((byKind[kind] ?? const <Contact>[]).isNotEmpty) ...[
-                      _buildSectionHeader(context, kContactKindLabels[kind]!.toUpperCase()),
-                      _buildGroupList(context, byKind[kind]!),
-                      const SizedBox(height: 24),
-                    ],
-                ],
-              ),
             );
           },
         ),

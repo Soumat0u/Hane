@@ -18,6 +18,37 @@ const Map<String, String> kRecurringIntervalLabels = {
   RecurringTransaction.weekly: 'Haftalık',
 };
 
+/// Tekrarlayan işlem oluşturma/düzenleme formunu açar. Takvim ve bildirimler
+/// gibi başka ekranlardan da bir şablonun detayına/düzenlemesine ulaşmak için kullanılır.
+void showRecurringTransactionForm(BuildContext context, {RecurringTransaction? existing}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _RecurringForm(existing: existing),
+  );
+}
+
+Future<bool> _confirmDeleteRecurringTransaction(
+    BuildContext context, FinanceProvider fp, RecurringTransaction r) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Şablonu Sil'),
+      content: Text('"${r.description.isNotEmpty ? r.description : r.category}" şablonunu silmek istediğinize emin misiniz?'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil')),
+      ],
+    ),
+  );
+  if (confirmed == true && r.id != null) {
+    await fp.deleteRecurringTransaction(r.id!);
+    return true;
+  }
+  return false;
+}
+
 /// Tekrarlayan işlem şablonlarını listeler ve yönetir (oluştur/düzenle/sil).
 /// Şablonlar otomatik işlem oluşturmaz — vadesi geldiğinde Bildirimler
 /// ekranında kullanıcı onayına sunulur.
@@ -38,36 +69,44 @@ class TekrarlananIslemlerView extends StatelessWidget {
         actions: [
           IconButton(
             icon: Icon(Icons.add_rounded, color: context.colors.brand),
-            onPressed: () => _showForm(context),
+            onPressed: () => showRecurringTransactionForm(context),
           ),
         ],
       ),
       body: Consumer<FinanceProvider>(
         builder: (context, fp, child) {
           final templates = fp.recurringTransactions;
-          if (templates.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.repeat_rounded, size: 64, color: Colors.grey[300]),
-                  const SizedBox(height: 16),
-                  Text('Henüz tekrarlayan işlem şablonu yok.', style: TextStyle(color: Colors.grey[500])),
-                  const SizedBox(height: 16),
-                  TextButton.icon(
-                    onPressed: () => _showForm(context),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Yeni Şablon Ekle'),
+          return RefreshIndicator(
+            onRefresh: fp.refreshSilently,
+            child: templates.isEmpty
+                ? SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    child: Container(
+                      height: MediaQuery.of(context).size.height - 200,
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.repeat_rounded, size: 64, color: Colors.grey[300]),
+                          const SizedBox(height: 16),
+                          Text('Henüz tekrarlayan işlem şablonu yok.', style: TextStyle(color: Colors.grey[500])),
+                          const SizedBox(height: 16),
+                          TextButton.icon(
+                            onPressed: () => showRecurringTransactionForm(context),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Yeni Şablon Ekle'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: templates.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) => _buildCard(context, fp, templates[index]),
                   ),
-                ],
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: templates.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) => _buildCard(context, fp, templates[index]),
           );
         },
       ),
@@ -77,7 +116,7 @@ class TekrarlananIslemlerView extends StatelessWidget {
   Widget _buildCard(BuildContext context, FinanceProvider fp, RecurringTransaction r) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () => _showForm(context, existing: r),
+      onTap: () => showRecurringTransactionForm(context, existing: r),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -105,37 +144,11 @@ class TekrarlananIslemlerView extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.delete_outline_rounded, size: 18, color: context.colors.textSecondary),
               visualDensity: VisualDensity.compact,
-              onPressed: () => _confirmDelete(context, fp, r),
+              onPressed: () => _confirmDeleteRecurringTransaction(context, fp, r),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Future<void> _confirmDelete(BuildContext context, FinanceProvider fp, RecurringTransaction r) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Şablonu Sil'),
-        content: Text('"${r.description.isNotEmpty ? r.description : r.category}" şablonunu silmek istediğinize emin misiniz?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil')),
-        ],
-      ),
-    );
-    if (confirmed == true && r.id != null) {
-      await fp.deleteRecurringTransaction(r.id!);
-    }
-  }
-
-  void _showForm(BuildContext context, {RecurringTransaction? existing}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _RecurringForm(existing: existing),
     );
   }
 }
@@ -283,6 +296,19 @@ class _RecurringFormState extends State<_RecurringForm> {
                     label: 'Sıradaki Vade Tarihi', value: _nextDueDate, onChanged: (d) => setState(() => _nextDueDate = d)),
                 const SizedBox(height: 8),
                 AppSaveButton(saving: _saving, onPressed: _save),
+                if (widget.existing != null) ...[
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: _saving
+                        ? null
+                        : () async {
+                            final deleted = await _confirmDeleteRecurringTransaction(context, fp, widget.existing!);
+                            if (deleted && mounted) Navigator.pop(context);
+                          },
+                    icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                    label: const Text('Şablonu Sil', style: TextStyle(color: Colors.redAccent)),
+                  ),
+                ],
                 const SizedBox(height: 12),
               ],
             ),

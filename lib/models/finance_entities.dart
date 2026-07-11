@@ -10,6 +10,7 @@ class DuePayment {
   final DateTime? date; // ayrıştırılamadıysa null
   final String rawDate;
   final bool isPayable; // true = ödeme (borç), false = tahsilat (alacak)
+  final int? recurringTemplateId; // set edilmişse: henüz vadesi gelmemiş tekrarlayan işlem şablonundan gelir
 
   DuePayment({
     required this.title,
@@ -17,7 +18,10 @@ class DuePayment {
     required this.date,
     required this.rawDate,
     required this.isPayable,
+    this.recurringTemplateId,
   });
+
+  bool get isUpcomingRecurring => recurringTemplateId != null;
 
   bool get isOverdue =>
       date != null && date!.isBefore(DateTime.now().subtract(const Duration(days: 1)));

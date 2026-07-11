@@ -17,6 +17,9 @@ class FinancialTransaction {
   final String? attachmentUrl; // sunucudan gelen fiş/fatura görseli (salt okunur)
   final double? quantity;
   final String? unit;
+  final String source; // 'manual' | 'recurring_auto' (salt okunur, sunucudan gelir)
+
+  bool get isAutoCreated => source == 'recurring_auto';
 
   FinancialTransaction({
     this.id,
@@ -36,6 +39,7 @@ class FinancialTransaction {
     this.attachmentUrl,
     this.quantity,
     this.unit,
+    this.source = 'manual',
   });
 
   FinancialTransaction copyWith({
@@ -119,6 +123,7 @@ class FinancialTransaction {
       attachmentUrl: map['attachment'],
       quantity: map['quantity']?.toDouble(),
       unit: map['unit'],
+      source: map['source'] ?? 'manual',
     );
   }
 }

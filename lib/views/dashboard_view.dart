@@ -11,6 +11,22 @@ import 'package:hane/views/alacaklar_view.dart';
 import 'package:hane/views/finansman_gucu_view.dart';
 import 'package:hane/views/widgets/due_calendar_panel.dart';
 import 'package:hane/views/widgets/todo_panel.dart';
+import 'package:hane/models/account.dart';
+import 'package:hane/models/finance_entities.dart';
+import 'package:hane/models/financial_transaction.dart';
+
+// Bu ekranın gösterdiği özet tutarlar bu ham listelere bağlıdır. Sadece bu
+// listeler değiştiğinde yeniden inşa edilir — bildirim okundu işaretleme,
+// seçim modu vb. bu ekranla ilgisiz bildirimler artık tetiklemiyor.
+typedef _DashboardDeps = (
+  bool isLoading,
+  List<Account> accounts,
+  List<Loan> loans,
+  List<Cheque> cheques,
+  List<Contact> contacts,
+  List<Receivable> receivables,
+  List<FinancialTransaction> transactions,
+);
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -29,9 +45,19 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: SafeArea(
-        child: Consumer<FinanceProvider>(
-        builder: (context, fp, child) {
-          if (fp.isLoading) {
+        child: Selector<FinanceProvider, _DashboardDeps>(
+        selector: (_, fp) => (
+          fp.isLoading,
+          fp.accounts,
+          fp.loans,
+          fp.cheques,
+          fp.contacts,
+          fp.receivables,
+          fp.allTransactions,
+        ),
+        builder: (context, deps, child) {
+          final fp = context.read<FinanceProvider>();
+          if (deps.$1) {
             return const Center(child: CircularProgressIndicator());
           }
 

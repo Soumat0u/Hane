@@ -5,6 +5,7 @@ import 'package:hane/theme/app_theme.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/finance_entities.dart';
+import 'package:hane/views/tekrarlanan_islemler_view.dart' show showRecurringTransactionForm;
 
 /// Yaklaşan/vadesi dolan borç ÖDEMELERİ ve alacak/tahsilat kalemlerini birlikte
 /// gösteren takvim paneli. Eskiden Borçlar ekranındaydı; Genel Bakış'a taşındı.
@@ -129,7 +130,7 @@ class _DueCalendarPanelState extends State<DueCalendarPanel> {
                           : displayedItems
                               .map((p) => Padding(
                                     padding: const EdgeInsets.only(bottom: 12.0),
-                                    child: _buildItem(context, p),
+                                    child: _buildItem(context, fp, p),
                                   ))
                               .toList(),
                     ),
@@ -143,9 +144,9 @@ class _DueCalendarPanelState extends State<DueCalendarPanel> {
     );
   }
 
-  Widget _buildItem(BuildContext context, DuePayment p) {
+  Widget _buildItem(BuildContext context, FinanceProvider fp, DuePayment p) {
     final color = p.isPayable ? context.colors.danger : context.colors.success;
-    return Row(
+    final row = Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
@@ -157,9 +158,20 @@ class _DueCalendarPanelState extends State<DueCalendarPanel> {
         ),
         Expanded(
           flex: 3,
-          child: Text(
-            p.title,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: context.colors.textPrimary),
+          child: Row(
+            children: [
+              if (p.isUpcomingRecurring) ...[
+                Icon(Icons.repeat_rounded, size: 14, color: context.colors.brand),
+                const SizedBox(width: 4),
+              ],
+              Expanded(
+                child: Text(
+                  p.title,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: context.colors.textPrimary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
         Text(
@@ -167,6 +179,14 @@ class _DueCalendarPanelState extends State<DueCalendarPanel> {
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
         ),
       ],
+    );
+    if (!p.isUpcomingRecurring) return row;
+    return InkWell(
+      onTap: () {
+        final template = fp.recurringTransactions.where((r) => r.id == p.recurringTemplateId).firstOrNull;
+        if (template != null) showRecurringTransactionForm(context, existing: template);
+      },
+      child: row,
     );
   }
 }

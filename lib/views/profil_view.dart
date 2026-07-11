@@ -18,6 +18,10 @@ import 'package:hane/views/auth/login_view.dart';
 import 'package:hane/views/yeni_hesap_view.dart';
 import 'package:hane/views/firma_duzenle_view.dart';
 
+// Bu ekran sadece firma profili ve hesap listesine bağlıdır. Diğer
+// ekranlardaki seçim/bildirim gibi ilgisiz bildirimler artık tetiklemiyor.
+typedef _ProfilDeps = (bool isLoading, CompanyProfile? companyProfile, List<Account> accounts);
+
 class ProfilScreen extends StatefulWidget {
   const ProfilScreen({super.key});
 
@@ -78,9 +82,11 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Consumer<FinanceProvider>(
-      builder: (context, fp, child) {
-        if (fp.isLoading && fp.companyProfile == null && fp.accounts.isEmpty) {
+    return Selector<FinanceProvider, _ProfilDeps>(
+      selector: (_, fp) => (fp.isLoading, fp.companyProfile, fp.accounts),
+      builder: (context, deps, child) {
+        final fp = context.read<FinanceProvider>();
+        if (deps.$1 && deps.$2 == null && deps.$3.isEmpty) {
           return Scaffold(
             backgroundColor: context.colors.scaffold,
             body: const Center(child: CircularProgressIndicator()),

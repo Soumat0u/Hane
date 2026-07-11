@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Search, X, SearchX, ChevronRight, Building2, Wallet, CheckCircle, Circle, Edit2, Trash2 } from 'lucide-react'
+import { Search, X, SearchX, ChevronRight, Building2, Wallet, CheckCircle, Circle, Edit2, Trash2, Repeat } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 import { txVisuals, INCOME_TYPES } from '../txVisuals'
@@ -394,7 +394,22 @@ export default function Transactions() {
                       </div>
                     )}
                     <div className="list-item-content">
-                      <div className="list-item-title">{title}</div>
+                      <div className="list-item-title" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        {title}
+                        {t.source === 'recurring_auto' && (
+                          <span
+                            title="Tekrarlayan işlemden otomatik oluşturuldu"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
+                              fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem',
+                              borderRadius: '6px', background: 'var(--color-accent-bg, rgba(99,102,241,0.12))',
+                              color: 'var(--color-accent, #6366f1)',
+                            }}
+                          >
+                            <Repeat size={10} /> Otomatik
+                          </span>
+                        )}
+                      </div>
                       <div className="list-item-subtitle">
                         <span style={{ color }}>{(t.type || '').toUpperCase()}</span>
                         {t.contact_name && ` • ${t.contact_name}`}

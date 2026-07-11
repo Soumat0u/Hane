@@ -421,12 +421,9 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                      // Tahsilat, Ödeme ekranının gelir tarafına sabitlenmiş halidir (_isIncome her zaman true).
                      type = _isIncome ? 'Gelir' : 'Gider';
                      category = _selectedSubCategory?.name ?? _selectedMainCategory?.name ?? '';
-                     // Gelir: para hesaba GİRER -> dest_name; Gider: para hesaptan ÇIKAR -> source_name
-                     if (_isIncome) {
-                       dest = _selectedSource;
-                     } else {
-                       source = _selectedSource;
-                     }
+                     // Web ile ve backend bakiye güncelleme mantığıyla uyumluluk için hesabı source_name olarak atıyoruz.
+                     source = _selectedSource;
+                     dest = '';
                      date = _isoDate(_dateController.text);
                      contactName = _buyerSellerController.text.trim();
                      description = _descriptionController.text.trim();
