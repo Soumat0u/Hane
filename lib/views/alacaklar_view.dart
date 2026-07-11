@@ -199,12 +199,15 @@ class AlacaklarView extends StatelessWidget {
   Widget _buildTopCard(BuildContext context, double total) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [context.colors.success, Color(0xFF059669)],
-        ),
+        color: context.colors.success,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: context.colors.success.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(20.0),
       child: Row(
@@ -213,17 +216,30 @@ class AlacaklarView extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('TOPLAM ALACAK',
-                  style: TextStyle(color: context.colors.surface.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+              Text(
+                'TOPLAM ALACAK',
+                style: TextStyle(
+                  color: Colors.white.withAlpha(180),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(currencyFormat.format(total),
-                  style: TextStyle(color: context.colors.surface, fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(
+                currencyFormat.format(total),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: context.colors.surface.withAlpha(20), borderRadius: BorderRadius.circular(12)),
-            child: Icon(Icons.assignment_returned_rounded, color: context.colors.surface, size: 32),
+          SizedBox(
+            width: 52,
+            height: 52,
+            child: Icon(Icons.assignment_returned_rounded, color: Colors.white.withAlpha(160), size: 48),
           ),
         ],
       ),

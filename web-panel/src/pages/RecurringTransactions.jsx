@@ -1,10 +1,49 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Repeat, Plus, X, Trash2 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 
 const TYPE_LABELS = { Gider: 'Gider', Gelir: 'Gelir', Tahsilat: 'Tahsilat' }
 const INTERVAL_LABELS = { monthly: 'Aylık', weekly: 'Haftalık' }
+
+function DeleteRecurringModal({ target, onClose, onConfirm }) {
+  const [deleting, setDeleting] = useState(false)
+  const [err, setErr] = useState('')
+  const handleDelete = async () => {
+    setDeleting(true)
+    setErr('')
+    try {
+      await onConfirm(target.id)
+    } catch {
+      setErr('Silinemedi. Lütfen tekrar deneyin.')
+      setDeleting(false)
+    }
+  }
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 340 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ padding: '1rem 1.25rem' }}>
+          <span className="modal-title">Şablonu Sil</span>
+          <button className="modal-close" onClick={onClose} title="Kapat"><X size={18} /></button>
+        </div>
+        <div className="modal-body" style={{ padding: '0.25rem 1.25rem 1.1rem' }}>
+          {err && <div className="error-message">{err}</div>}
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', margin: 0 }}>
+            "{target.description}" şablonunu silmek istediğinize emin misiniz?
+          </p>
+        </div>
+        <div className="modal-footer" style={{ padding: '0 1.25rem 1.1rem' }}>
+          <button type="button" className="btn-ghost" onClick={onClose} disabled={deleting}>Vazgeç</button>
+          <button type="button" className="btn-danger" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <><span className="loader" /> Siliniyor...</> : 'Sil'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
 
 function RecurringFormModal({ existing, accounts, onClose, onSave }) {
   const [type, setType] = useState(existing?.type || 'Gider')
@@ -57,7 +96,7 @@ function RecurringFormModal({ existing, accounts, onClose, onSave }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -127,25 +166,31 @@ function RecurringFormModal({ existing, accounts, onClose, onSave }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
 export default function RecurringTransactions() {
   const { recurringTransactions, accounts, addRecurringTransaction, updateRecurringTransaction, deleteRecurringTransaction, loading, loaded } = useData()
   const [formTarget, setFormTarget] = useState(undefined) // undefined = closed, null = create, object = edit
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const sorted = useMemo(
     () => [...recurringTransactions].sort((a, b) => (a.next_due_date || '').localeCompare(b.next_due_date || '')),
     [recurringTransactions],
   )
 
-  const handleDelete = async (id, label) => {
-    if (!window.confirm(`"${label}" şablonunu silmek istediğinize emin misiniz?`)) return
+  const handleDelete = (id, label) => {
+    setDeleteTarget({ id, description: label })
+  }
+
+  const confirmDelete = async (id) => {
     try {
       await deleteRecurringTransaction(id)
+      setDeleteTarget(null)
     } catch {
-      alert('Şablon silinemedi.')
+      throw new Error('Şablon silinemedi.')
     }
   }
 
@@ -213,6 +258,13 @@ export default function RecurringTransactions() {
           accounts={accounts}
           onClose={() => setFormTarget(undefined)}
           onSave={handleSave}
+        />
+      )}
+      {deleteTarget && (
+        <DeleteRecurringModal
+          target={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
         />
       )}
     </div>

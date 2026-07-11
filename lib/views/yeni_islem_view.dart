@@ -90,6 +90,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   Category? _selectedSubCategory;
   String _selectedSource = '';
   XFile? _pickedAttachment;
+  bool _removeExistingAttachment = false;
 
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _buyerSellerController = TextEditingController();
@@ -545,7 +546,13 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
 
                   if (widget.initialTransaction != null) {
                     final updated = t.copyWith(id: widget.initialTransaction!.id);
-                    await fp.updateTransaction(updated);
+                    if (_pickedAttachment != null) {
+                      await fp.updateTransactionWithAttachment(updated, _pickedAttachment!.path);
+                    } else if (_removeExistingAttachment) {
+                      await fp.updateTransaction(updated, clearAttachment: true);
+                    } else {
+                      await fp.updateTransaction(updated);
+                    }
                   } else if ((_selectedType == 'Ödeme' || _selectedType == 'Tahsilat') && _pickedAttachment != null) {
                     await fp.addTransactionWithAttachment(t, _pickedAttachment!.path);
                   } else {
@@ -1038,10 +1045,32 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   icon: Icon(Icons.close_rounded, color: context.colors.textSecondary, size: 18),
                   onPressed: () => setState(() => _pickedAttachment = null),
                 ),
+              ] else if (!_removeExistingAttachment &&
+                  widget.initialTransaction?.attachmentUrl != null &&
+                  widget.initialTransaction!.attachmentUrl!.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: Image.network(
+                    widget.initialTransaction!.attachmentUrl!,
+                    width: 32,
+                    height: 32,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) =>
+                        Icon(Icons.description_outlined, size: 24, color: context.colors.brand),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(Icons.close_rounded, color: context.colors.textSecondary, size: 18),
+                  onPressed: () => setState(() => _removeExistingAttachment = true),
+                ),
               ] else
                 IconButton(
                   icon: Icon(Icons.link_rounded, color: context.colors.brand, size: 22),
-                  onPressed: _pickAttachment,
+                  onPressed: () async {
+                    await _pickAttachment();
+                    if (mounted) setState(() => _removeExistingAttachment = false);
+                  },
                 ),
             ],
           ),

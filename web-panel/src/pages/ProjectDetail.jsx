@@ -1,16 +1,55 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import {
   ArrowLeft, Pencil, Plus, MapPin, Building2, ChevronRight,
   Truck, Grid3x3, BrickWall, Zap, Droplet, HardHat, Construction, Wrench,
-  FileText, UploadCloud, Trash2,
+  FileText, UploadCloud, Trash2, X,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, formatNumber, num, projectImage } from '../utils'
 import SaleFormModal from '../components/SaleFormModal'
 import ProjectFormModal from '../components/ProjectFormModal'
 import NewTransactionFormModal from '../components/NewTransactionFormModal'
+
+function DeleteDocumentModal({ doc, onClose, onConfirm }) {
+  const [deleting, setDeleting] = useState(false)
+  const [err, setErr] = useState('')
+  const handleDelete = async () => {
+    setDeleting(true)
+    setErr('')
+    try {
+      await onConfirm(doc)
+    } catch {
+      setErr('Silinemedi. Lütfen tekrar deneyin.')
+      setDeleting(false)
+    }
+  }
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 340 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ padding: '1rem 1.25rem' }}>
+          <span className="modal-title">Belgeyi Sil</span>
+          <button className="modal-close" onClick={onClose} title="Kapat"><X size={18} /></button>
+        </div>
+        <div className="modal-body" style={{ padding: '0.25rem 1.25rem 1.1rem' }}>
+          {err && <div className="error-message">{err}</div>}
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', margin: 0 }}>
+            "{doc.name}" belgesini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+          </p>
+        </div>
+        <div className="modal-footer" style={{ padding: '0 1.25rem 1.1rem' }}>
+          <button type="button" className="btn-ghost" onClick={onClose} disabled={deleting}>Vazgeç</button>
+          <button type="button" className="btn-danger" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <><span className="loader" /> Siliniyor...</> : 'Sil'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
 
 const CATEGORY_COLORS = {
   'Beton': '#0F172A',
@@ -61,6 +100,7 @@ export default function ProjectDetail() {
   const [saleModalOpen, setSaleModalOpen] = useState(false)
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [docToDelete, setDocToDelete] = useState(null)
 
   const project = useMemo(
     () => projects.find((p) => String(p.id) === String(id)) || null,
@@ -107,12 +147,8 @@ export default function ProjectDetail() {
   }
 
   const handleDeleteDocument = async (doc) => {
-    if (!window.confirm(`"${doc.name}" belgesini silmek istediğinize emin misiniz?`)) return
-    try {
-      await deleteProjectDocument(doc.id)
-    } catch {
-      alert('Belge silinemedi.')
-    }
+    await deleteProjectDocument(doc.id)
+    setDocToDelete(null)
   }
 
   const handleRenameDocument = async (doc) => {
@@ -402,26 +438,25 @@ export default function ProjectDetail() {
           {documents.map((doc) => {
             const isImage = isImageFile(doc.file)
             return (
-              <a
-                href={doc.file}
-                target="_blank"
-                rel="noreferrer"
-                className="document-card"
-                key={doc.id}
-                style={{ cursor: doc.file ? 'pointer' : 'default' }}
-                onClick={(e) => { if (!doc.file) e.preventDefault() }}
-              >
-                <div className="document-card-preview">
-                  {isImage ? (
-                    <img src={doc.file} alt={doc.name || 'Belge'} />
-                  ) : (
-                    <FileText size={40} className="text-primary" />
-                  )}
-                </div>
+              <div className="document-card" key={doc.id}>
+                <a
+                  href={doc.file}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
+                >
+                  <div className="document-card-preview">
+                    {isImage ? (
+                      <img src={doc.file} alt={doc.name || 'Belge'} />
+                    ) : (
+                      <FileText size={40} className="text-primary" />
+                    )}
+                  </div>
+                </a>
                 <div
                   className="document-card-info"
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRenameDocument(doc) }}
+                  onClick={() => handleRenameDocument(doc)}
                   title="Adı değiştir"
                 >
                   <div style={{ minWidth: 0 }}>
@@ -432,12 +467,12 @@ export default function ProjectDetail() {
                 </div>
                 <button
                   className="document-card-delete"
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteDocument(doc) }}
+                  onClick={() => setDocToDelete(doc)}
                   title="Sil"
                 >
                   <Trash2 size={14} />
                 </button>
-              </a>
+              </div>
             )
           })}
         </div>
@@ -467,6 +502,14 @@ export default function ProjectDetail() {
           type="Ödeme"
           initialProjectId={project.id}
           onClose={() => setExpenseModalOpen(false)}
+        />
+      )}
+
+      {docToDelete && (
+        <DeleteDocumentModal
+          doc={docToDelete}
+          onClose={() => setDocToDelete(null)}
+          onConfirm={handleDeleteDocument}
         />
       )}
     </div>

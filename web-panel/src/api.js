@@ -85,4 +85,14 @@ export const api = {
     if (!response.ok) throw responseData || new Error('Yükleme başarısız oldu');
     return responseData;
   },
+  putFile: async (endpoint, formData) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: getFileHeaders(),
+      body: formData,
+    });
+    const responseData = await response.json().catch(() => null);
+    if (!response.ok) throw responseData || new Error('Güncelleme başarısız oldu');
+    return responseData;
+  },
 };

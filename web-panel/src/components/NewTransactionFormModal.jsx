@@ -1,8 +1,10 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { X } from 'lucide-react'
+import { X, Link2, FileText } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { num } from '../utils'
+
+const isImageFile = (url) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url || '')
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -42,7 +44,10 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
     ? 'Ödeme'
     : (rawType === 'Borç' ? 'Borçlanma' : (initialTransaction?.type || rawType))
     
-  const { projects, accounts, categories, addTransaction, updateTransaction, addLoan, addDebt, addCategory } = useData()
+  const {
+    projects, accounts, categories, addTransaction, addTransactionWithAttachment,
+    updateTransaction, updateTransactionWithAttachment, addLoan, addDebt, addCategory,
+  } = useData()
   const bounds = useMemo(getMonthBounds, [])
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
@@ -63,6 +68,9 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState('')
   const [odemeDesc, setOdemeDesc] = useState('')
+  const [pickedAttachment, setPickedAttachment] = useState(null) // File
+  const [removeExistingAttachment, setRemoveExistingAttachment] = useState(false)
+  const attachmentInputRef = useRef(null)
 
   const mainCategories = useMemo(
     () => categories.filter((c) => !c.parent && (isIncome ? c.type === 'income' : c.type === 'cost')),
@@ -238,8 +246,19 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           quantity: quantity ? num(quantity) : null,
           unit,
         }
-        if (initialTransaction) await updateTransaction(initialTransaction.id, data)
-        else await addTransaction(data)
+        if (initialTransaction) {
+          if (pickedAttachment) {
+            await updateTransactionWithAttachment(initialTransaction.id, data, pickedAttachment)
+          } else if (removeExistingAttachment) {
+            await updateTransaction(initialTransaction.id, { ...data, attachment: null })
+          } else {
+            await updateTransaction(initialTransaction.id, data)
+          }
+        } else if (pickedAttachment) {
+          await addTransactionWithAttachment(data, pickedAttachment)
+        } else {
+          await addTransaction(data)
+        }
       } else if (type === 'Transfer') {
         if (num(transferAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
         const data = {
@@ -459,6 +478,49 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           <div className="form-group">
             <label className="form-label">Açıklama</label>
             <textarea className="form-input textarea-field" rows={2} value={odemeDesc} onChange={(e) => setOdemeDesc(e.target.value)} />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Fiş / Fatura</label>
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null
+                setPickedAttachment(file)
+                if (file) setRemoveExistingAttachment(false)
+              }}
+            />
+            {pickedAttachment ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                {isImageFile(pickedAttachment.name) ? (
+                  <img src={URL.createObjectURL(pickedAttachment)} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover' }} />
+                ) : (
+                  <FileText size={20} className="text-primary" />
+                )}
+                <span style={{ fontSize: '0.85rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pickedAttachment.name}</span>
+                <button type="button" className="icon-btn" onClick={() => setPickedAttachment(null)} title="Kaldır">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : !removeExistingAttachment && initialTransaction?.attachment ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                {isImageFile(initialTransaction.attachment) ? (
+                  <img src={initialTransaction.attachment} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover' }} />
+                ) : (
+                  <FileText size={20} className="text-primary" />
+                )}
+                <span style={{ fontSize: '0.85rem', flex: 1 }}>Mevcut ek</span>
+                <button type="button" className="icon-btn" onClick={() => setRemoveExistingAttachment(true)} title="Kaldır">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="btn-secondary" style={{ width: 'auto', marginTop: 0 }} onClick={() => attachmentInputRef.current?.click()}>
+                <Link2 size={16} /> Dosya Seç
+              </button>
+            )}
           </div>
         </>
       )

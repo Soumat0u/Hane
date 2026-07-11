@@ -272,13 +272,16 @@ class ApiService {
   }
 
   Future<FinancialTransaction> updateTransaction(
-    FinancialTransaction transaction,
-  ) async {
+    FinancialTransaction transaction, {
+    bool clearAttachment = false,
+  }) async {
     final headers = await _getHeaders();
+    final map = transaction.toMap();
+    if (clearAttachment) map['attachment'] = null;
     final response = await _client.put(
       Uri.parse('$baseUrl/transactions/${transaction.id}/'),
       headers: headers,
-      body: jsonEncode(transaction.toMap()),
+      body: jsonEncode(map),
     );
     if (response.statusCode == 200) {
       return FinancialTransaction.fromMap(

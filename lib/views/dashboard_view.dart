@@ -26,8 +26,10 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return SafeArea(
-      child: Consumer<FinanceProvider>(
+    return GestureDetector(
+      onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+      child: SafeArea(
+        child: Consumer<FinanceProvider>(
         builder: (context, fp, child) {
           if (fp.isLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -72,7 +74,10 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                       icon: Icons.account_balance_wallet_rounded,
                       accentColor: context.colors.accent,
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const KasaScreen()));
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const KasaScreen())).then((_) {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                        });
                       },
                     ),
                     _buildMetricCard(context,
@@ -82,7 +87,10 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                       icon: Icons.receipt_long_rounded,
                       accentColor: Theme.of(context).extension<AppColors>()!.danger,
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BorclarView()));
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BorclarView())).then((_) {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                        });
                       },
                     ),
                     _buildMetricCard(context,
@@ -92,7 +100,10 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                       icon: Icons.assignment_returned_rounded,
                       accentColor: Theme.of(context).extension<AppColors>()!.success,
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const AlacaklarView()));
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const AlacaklarView())).then((_) {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                        });
                       },
                     ),
                     _buildMetricCard(context,
@@ -102,7 +113,10 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
                       icon: Icons.shield_rounded,
                       accentColor: const Color(0xFF8B5CF6),
                       onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const FinansmanGucuView()));
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const FinansmanGucuView())).then((_) {
+                          FocusManager.instance.primaryFocus?.unfocus();
+                        });
                       },
                     ),
                   ],
@@ -254,6 +268,7 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
       );
       },
       ),
+      ),
     );
   }
 
@@ -267,7 +282,10 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
     VoidCallback? onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
+        if (onTap != null) onTap();
+      },
       child: Container(
         width: width,
       decoration: BoxDecoration(

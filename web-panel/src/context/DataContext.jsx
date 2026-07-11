@@ -183,6 +183,36 @@ export function DataProvider({ children }) {
     [load],
   )
 
+  /** Fiş/fatura eki değiştirilirken kullanılır (multipart PUT). */
+  const updateTransactionWithAttachment = useCallback(
+    async (id, body, file) => {
+      const formData = new FormData()
+      Object.entries(body).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) formData.append(key, value)
+      })
+      formData.append('attachment', file)
+      const updated = await api.putFile(`/transactions/${id}/`, formData)
+      await load()
+      return updated
+    },
+    [load],
+  )
+
+  /** Fiş/fatura eki ile birlikte yeni işlem oluşturur (multipart POST). */
+  const addTransactionWithAttachment = useCallback(
+    async (body, file) => {
+      const formData = new FormData()
+      Object.entries(body).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) formData.append(key, value)
+      })
+      formData.append('attachment', file)
+      const created = await api.postFile('/transactions/', formData)
+      await load()
+      return created
+    },
+    [load],
+  )
+
   /** Yeni bir kredi (Loan) kaydı oluşturur ve veriyi tazeler. */
   const addLoan = useCallback(
     async (body) => {
@@ -613,6 +643,8 @@ export function DataProvider({ children }) {
       deleteBudgetLine,
       addDebt,
       addTransaction,
+      addTransactionWithAttachment,
+      updateTransactionWithAttachment,
       addLoan,
       updateLoan,
       deleteLoan,
@@ -680,6 +712,8 @@ export function DataProvider({ children }) {
       deleteBudgetLine,
       addDebt,
       addTransaction,
+      addTransactionWithAttachment,
+      updateTransactionWithAttachment,
       addLoan,
       updateLoan,
       deleteLoan,

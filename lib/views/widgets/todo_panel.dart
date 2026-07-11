@@ -15,12 +15,14 @@ class TodoPanel extends StatefulWidget {
 class _TodoPanelState extends State<TodoPanel> {
   String _scope = Todo.personal;
   final TextEditingController _titleController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   int? _selectedProjectId;
   bool _saving = false;
 
   @override
   void dispose() {
     _titleController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -36,6 +38,7 @@ class _TodoPanelState extends State<TodoPanel> {
         projectId: _scope == Todo.project ? _selectedProjectId : null,
       ));
       _titleController.clear();
+      _focusNode.unfocus();
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -99,6 +102,9 @@ class _TodoPanelState extends State<TodoPanel> {
                   Expanded(
                     child: TextField(
                       controller: _titleController,
+                      focusNode: _focusNode,
+                      onTapOutside: (event) => _focusNode.unfocus(),
+                      onSubmitted: (_) => _add(fp),
                       decoration: InputDecoration(
                         hintText: 'Yeni madde ekle...',
                         isDense: true,

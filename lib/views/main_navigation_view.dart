@@ -74,6 +74,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
 
   // Methods to change tabs from the sidebar drawer or sub-pages
   void _selectTab(int index) {
+    FocusManager.instance.primaryFocus?.unfocus();
     final int oldIndex = _currentTabIndex;
     setState(() {
       _currentTabIndex = index;

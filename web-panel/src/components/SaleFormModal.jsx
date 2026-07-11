@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 const UNIT_TYPES = { apartment: 'Daire', shop: 'Dükkan', land: 'Arsa', other: 'Diğer' }
@@ -51,7 +52,7 @@ export default function SaleFormModal({ projectId, projectName, contacts, onClos
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -108,6 +109,7 @@ export default function SaleFormModal({ projectId, projectName, contacts, onClos
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

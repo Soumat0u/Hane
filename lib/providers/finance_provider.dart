@@ -300,15 +300,24 @@ class FinanceProvider extends ChangeNotifier {
     ));
   }
 
-  Future<void> updateTransaction(FinancialTransaction transaction) async {
+  Future<void> updateTransaction(FinancialTransaction transaction, {bool clearAttachment = false}) async {
     final snapshot = List<FinancialTransaction>.from(_allTransactions);
-    _allTransactions = [for (final t in _allTransactions) t.id == transaction.id ? transaction : t];
+    final localTx = clearAttachment ? transaction.copyWith(clearAttachmentUrl: true) : transaction;
+    _allTransactions = [for (final t in _allTransactions) t.id == transaction.id ? localTx : t];
     notifyListeners();
     unawaited(_runSync(
-      () => ApiService.instance.updateTransaction(transaction),
+      () => ApiService.instance.updateTransaction(transaction, clearAttachment: clearAttachment),
       rollback: () => _allTransactions = snapshot,
       errorLabel: 'İşlem güncellenemedi',
     ));
+  }
+
+  /// Düzenlerken fiş/fatura eki değiştirilirse (yeni dosya seçilirse) çağrılır.
+  /// Dosya baytları gerektirdiğinden optimistic önizleme yapılmıyor.
+  Future<void> updateTransactionWithAttachment(FinancialTransaction transaction, String attachmentPath) async {
+    final updated = await ApiService.instance.updateTransactionWithAttachment(transaction, attachmentPath);
+    _allTransactions = [for (final t in _allTransactions) t.id == updated.id ? updated : t];
+    notifyListeners();
   }
 
   Future<void> deleteTransaction(int id) async {

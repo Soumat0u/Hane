@@ -56,6 +56,7 @@ class FinancialTransaction {
     String? attachmentUrl,
     double? quantity,
     String? unit,
+    bool clearAttachmentUrl = false,
   }) {
     return FinancialTransaction(
       id: id ?? this.id,
@@ -72,7 +73,7 @@ class FinancialTransaction {
       destName: destName ?? this.destName,
       contactName: contactName ?? this.contactName,
       dueDate: dueDate ?? this.dueDate,
-      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
+      attachmentUrl: clearAttachmentUrl ? null : (attachmentUrl ?? this.attachmentUrl),
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
     );
