@@ -56,25 +56,29 @@ class _TodoPanelState extends State<TodoPanel> {
         final projects = fp.projects;
         final canAdd = _scope == Todo.personal || _selectedProjectId != null;
 
-        return Container(
-          decoration: BoxDecoration(
-            color: context.colors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: context.colors.border),
-          ),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'YAPILACAKLAR',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: context.colors.textPrimary,
-                ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'YAPILACAKLAR',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: context.colors.textSecondary,
+                letterSpacing: 0.5,
               ),
-              const SizedBox(height: 16),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: context.colors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: context.colors.border),
+              ),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             Row(
               children: [
                 Expanded(child: _buildTab(context, 'Kişisel', Icons.person_outline_rounded, Todo.personal)),
@@ -177,8 +181,10 @@ class _TodoPanelState extends State<TodoPanel> {
                   ],
                 ),
               ),
-            ],
-          ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );

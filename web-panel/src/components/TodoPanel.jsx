@@ -58,10 +58,11 @@ export default function TodoPanel() {
   }
 
   return (
-    <div className="spending-card" style={{ marginBottom: 0 }}>
+    <div>
       <div className="section-header">
         <span className="section-title">YAPILACAKLAR</span>
       </div>
+      <div className="spending-card" style={{ marginBottom: 0 }}>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         <button
@@ -136,12 +137,12 @@ export default function TodoPanel() {
                 </div>
               </label>
               <button className="icon-btn" onClick={() => handleDelete(t.id)} title="Sil">
-                <Trash2 size={16} />
               </button>
             </div>
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

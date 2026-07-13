@@ -40,18 +40,11 @@ class _DueCalendarPanelState extends State<DueCalendarPanel> {
         final isPastSelected = selectedOnly != null && selectedOnly.isBefore(todayOnly);
 
         List<DuePayment> displayedItems;
-        if (isPastSelected) {
+        if (selectedOnly != null && !isSameDay(selectedOnly, todayOnly)) {
           displayedItems = items.where((p) => p.date != null && isSameDay(p.date, selectedOnly)).toList();
         } else {
-          final forDay = selectedOnly != null
-              ? items.where((p) => p.date != null && isSameDay(p.date, selectedOnly)).toList()
-              : <DuePayment>[];
-          if (forDay.isNotEmpty) {
-            displayedItems = forDay;
-          } else {
-            final nextWeek = todayOnly.add(const Duration(days: 7));
-            displayedItems = items.where((p) => p.date != null && !p.date!.isBefore(todayOnly) && !p.date!.isAfter(nextWeek)).toList();
-          }
+          final nextWeek = todayOnly.add(const Duration(days: 7));
+          displayedItems = items.where((p) => p.date != null && !p.date!.isBefore(todayOnly) && !p.date!.isAfter(nextWeek)).toList();
         }
 
         return Column(

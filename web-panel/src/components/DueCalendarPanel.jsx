@@ -172,13 +172,10 @@ export default function DueCalendarPanel() {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    if (selectedDay && selectedDay < today) {
+    if (selectedDay && !isSameDay(selectedDay, today)) {
       return items.filter((p) => p.date && isSameDay(p.date, selectedDay))
     }
-    if (selectedDay) {
-      const forDay = items.filter((p) => p.date && isSameDay(p.date, selectedDay))
-      if (forDay.length > 0) return forDay
-    }
+
     const nextWeek = new Date(today)
     nextWeek.setDate(nextWeek.getDate() + 7)
     return items.filter((p) => p.date && p.date >= today && p.date <= nextWeek)
