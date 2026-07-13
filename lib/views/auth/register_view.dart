@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:hane/services/api_service.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/root_screen.dart';
+import 'package:hane/utils/api_error.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
@@ -49,9 +50,11 @@ class _RegisterViewState extends State<RegisterView> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Kayıt başarısız. Lütfen bilgilerinizi kontrol edin.')),
+        final message = friendlyApiErrorMessage(
+          e,
+          fallback: 'Kayıt başarısız. Lütfen bilgilerinizi kontrol edin.',
         );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

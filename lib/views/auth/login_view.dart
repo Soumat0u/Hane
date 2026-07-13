@@ -7,6 +7,7 @@ import 'package:hane/services/api_service.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/root_screen.dart';
 import 'package:hane/views/auth/register_view.dart';
+import 'package:hane/utils/api_error.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -46,9 +47,11 @@ class _LoginViewState extends State<LoginView> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.')),
+        final message = friendlyApiErrorMessage(
+          e,
+          fallback: 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.',
         );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

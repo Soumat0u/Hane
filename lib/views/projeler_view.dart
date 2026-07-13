@@ -154,7 +154,10 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
     final double tahsilat = fp.getProjectTotalTahsilat(project.id!);
     final double satis = fp.getProjectTotalSatis(project.id!);
     
-    final int realizationPercent = totalCost > 0 ? ((totalGider / totalCost) * 100).toInt() : 0;
+    int realizationPercent = totalCost > 0 ? ((totalGider / totalCost) * 100).toInt() : 0;
+    if (project.status.toLowerCase() == 'tamamlandı') {
+      realizationPercent = 100;
+    }
     final double kar = satis - totalCost;
     final int karPercent = satis > 0 ? ((kar / satis) * 100).toInt() : 0;
 

@@ -180,7 +180,7 @@ function NewReceivableModal({ projects, onClose, onSave }) {
 }
 
 export default function Receivables() {
-  const { receivables, accounts, projects, addReceivable, collectReceivable, loading, loaded } = useData()
+  const { receivables, accounts, projects, cheques, addReceivable, collectReceivable, loading, loaded } = useData()
   const [collectTarget, setCollectTarget] = useState(null)
   const [newModalOpen, setNewModalOpen] = useState(false)
 
@@ -189,9 +189,16 @@ export default function Receivables() {
     [receivables],
   )
 
+  // Toplam alacak, mobil `FinanceProvider.getTotalAlacak()` ile aynı mantıkla
+  // henüz tahsil edilmemiş (kasaya girmemiş) alınan çekleri de içerir.
+  const alinanCekler = useMemo(
+    () => (cheques || []).filter((c) => c.direction === 'received' && c.status !== 'cashed').reduce((s, c) => s + num(c.amount), 0),
+    [cheques],
+  )
+
   const total = useMemo(
-    () => openReceivables.reduce((s, r) => s + (num(r.total_amount) - num(r.collected_amount)), 0),
-    [openReceivables],
+    () => openReceivables.reduce((s, r) => s + (num(r.total_amount) - num(r.collected_amount)), 0) + alinanCekler,
+    [openReceivables, alinanCekler],
   )
 
   const collectableAccounts = useMemo(

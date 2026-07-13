@@ -138,4 +138,31 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# DEBUG=False'ta (production) Django varsayılan olarak 500 hatalarının tam
+# traceback'ini hiçbir yere yazmaz (sadece mail_admins configürasyonu varsa
+# e-posta atar, o da genelde ayarlı değil) — bu yüzden Railway loglarında hata
+# detayı görünmüyordu. Burada `django.request` logger'ını konsola (stdout/stderr)
+# bağlıyoruz ki Railway'in Deploy Logs'u tam traceback'i yakalasın.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+    },
+}
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

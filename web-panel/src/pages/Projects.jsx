@@ -57,7 +57,10 @@ export default function Projects() {
     const totalGider = list.filter((t) => t.type === 'Gider').reduce((s, t) => s + num(t.amount), 0)
     const tahsilat = list.filter((t) => t.type === 'Tahsilat' || t.type === 'Gelir').reduce((s, t) => s + num(t.amount), 0)
     const satis = list.filter((t) => t.type === 'Satış').reduce((s, t) => s + num(t.amount), 0)
-    const realizationPercent = totalCost > 0 ? Math.trunc((totalGider / totalCost) * 100) : 0
+    let realizationPercent = totalCost > 0 ? Math.trunc((totalGider / totalCost) * 100) : 0
+    if (project.status && project.status.toLowerCase() === 'tamamlandı') {
+      realizationPercent = 100
+    }
     const kar = satis - totalCost
     const karPercent = satis > 0 ? Math.trunc((kar / satis) * 100) : 0
     return { totalCost, tahsilat, satis, realizationPercent, karPercent }

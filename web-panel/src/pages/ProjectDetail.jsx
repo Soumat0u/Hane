@@ -364,119 +364,123 @@ export default function ProjectDetail() {
         </div>
       </div>
 
-      {/* Harcama Dağılımı */}
-      <div className="spending-card" style={{ marginTop: '2rem' }}>
-        <div className="spending-head">
-          <h2 className="detail-section-title" style={{ margin: 0 }}>Harcama Dağılımı</h2>
-          <span className="btn-inline-text" style={{ color: 'var(--color-primary)', cursor: 'default' }}>
-            Tümünü Gör <ChevronRight size={14} />
-          </span>
-        </div>
-
-        {spendingData.length === 0 ? (
-          <p className="text-muted" style={{ marginTop: '1rem' }}>Harcama verisi bulunamadı.</p>
-        ) : (
-          <div className="spending-body">
-            <div className="donut-wrap">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={spendingData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={54}
-                    outerRadius={72}
-                    paddingAngle={2}
-                    stroke="none"
-                  >
-                    {spendingData.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="donut-center">
-                <span className="donut-center-label">Toplam</span>
-                <span className="donut-center-value">{formatCurrency(totalGider)}</span>
-              </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', marginTop: '2rem', alignItems: 'start' }}>
+        {/* Sol Kolon - Harcama Dağılımı */}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="spending-card" style={{ marginTop: 0, height: '100%' }}>
+            <div className="spending-head">
+              <h2 className="detail-section-title" style={{ margin: 0 }}>Harcama Dağılımı</h2>
+              <span className="btn-inline-text" style={{ color: 'var(--color-primary)', cursor: 'default' }}>
+                Tümünü Gör <ChevronRight size={14} />
+              </span>
             </div>
 
-            <div className="spending-legend">
-              {spendingData.map((item) => (
-                <div className="spending-legend-row" key={item.name}>
-                  <span className="legend-dot" style={{ background: item.color }} />
-                  <span className="legend-name">{item.name}</span>
-                  <span className="legend-amount">{item.amount}</span>
-                  <span className="legend-pct">%{item.percentage.toFixed(1)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Belgeler */}
-      <div className="detail-section-head" style={{ marginTop: '2rem' }}>
-        <h2 className="detail-section-title">BELGELER</h2>
-        <label className="btn-inline-text" style={{ color: 'var(--color-primary)', cursor: uploadingDoc ? 'default' : 'pointer' }}>
-          {uploadingDoc ? <span className="loader" /> : <UploadCloud size={16} />}
-          {uploadingDoc ? 'Yükleniyor...' : 'Belge Ekle'}
-          <input type="file" hidden disabled={uploadingDoc} onChange={handleFileSelected} />
-        </label>
-      </div>
-
-      {documents.length === 0 ? (
-        <div className="summary-box">
-          <div className="empty-state" style={{ padding: '1.5rem 0' }}>
-            <span>Henüz belge eklenmedi.</span>
-          </div>
-        </div>
-      ) : (
-        <div className="document-grid">
-          {documents.map((doc) => {
-            const isImage = isImageFile(doc.file)
-            return (
-              <div className="document-card" key={doc.id}>
-                <a
-                  href={doc.file}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
-                >
-                  <div className="document-card-preview">
-                    {isImage ? (
-                      <img src={doc.file} alt={doc.name || 'Belge'} />
-                    ) : (
-                      <FileText size={40} className="text-primary" />
-                    )}
+            {spendingData.length === 0 ? (
+              <p className="text-muted" style={{ marginTop: '1rem' }}>Harcama verisi bulunamadı.</p>
+            ) : (
+              <div className="spending-body">
+                <div className="donut-wrap">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={spendingData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={54}
+                        outerRadius={72}
+                        paddingAngle={2}
+                        stroke="none"
+                      >
+                        {spendingData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="donut-center">
+                    <span className="donut-center-label">Toplam</span>
+                    <span className="donut-center-value">{formatCurrency(totalGider)}</span>
                   </div>
-                </a>
-                <div
-                  className="document-card-info"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}
-                  onClick={() => handleRenameDocument(doc)}
-                  title="Adı değiştir"
-                >
-                  <div style={{ minWidth: 0 }}>
-                    <div className="document-card-title">{doc.name || 'Belge'}</div>
-                    <div className="document-card-subtitle">{formatDate(doc.uploaded_at)}</div>
-                  </div>
-                  <Pencil size={12} className="text-muted" style={{ flexShrink: 0 }} />
                 </div>
-                <button
-                  className="document-card-delete"
-                  onClick={() => setDocToDelete(doc)}
-                  title="Sil"
-                >
-                  <Trash2 size={14} />
-                </button>
+
+                <div className="spending-legend">
+                  {spendingData.map((item) => (
+                    <div className="spending-legend-row" key={item.name}>
+                      <span className="legend-dot" style={{ background: item.color }} />
+                      <span className="legend-name">{item.name}</span>
+                      <span className="legend-amount">{item.amount}</span>
+                      <span className="legend-pct">%{item.percentage.toFixed(1)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )
-          })}
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Sağ Kolon - Belgeler */}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="spending-card" style={{ marginTop: 0, height: '100%', marginBottom: 0 }}>
+            <div className="spending-head" style={{ marginBottom: '1.5rem' }}>
+              <h2 className="detail-section-title" style={{ margin: 0 }}>Belgeler</h2>
+              <label className="btn-inline-text" style={{ color: 'var(--color-primary)', cursor: uploadingDoc ? 'default' : 'pointer' }}>
+                {uploadingDoc ? <span className="loader" /> : <UploadCloud size={16} />}
+                {uploadingDoc ? 'Yükleniyor...' : 'Belge Ekle'}
+                <input type="file" hidden disabled={uploadingDoc} onChange={handleFileSelected} />
+              </label>
+            </div>
+
+            {documents.length === 0 ? (
+              <p className="text-muted" style={{ marginTop: '1rem' }}>Henüz belge eklenmedi.</p>
+            ) : (
+              <div className="document-grid">
+                {documents.map((doc) => {
+                  const isImage = isImageFile(doc.file)
+                  return (
+                    <div className="document-card" key={doc.id}>
+                      <a
+                        href={doc.file}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}
+                      >
+                        <div className="document-card-preview">
+                          {isImage ? (
+                            <img src={doc.file} alt={doc.name || 'Belge'} />
+                          ) : (
+                            <FileText size={40} className="text-primary" />
+                          )}
+                        </div>
+                      </a>
+                      <div
+                        className="document-card-info"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}
+                        onClick={() => handleRenameDocument(doc)}
+                        title="Adı değiştir"
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div className="document-card-title">{doc.name || 'Belge'}</div>
+                          <div className="document-card-subtitle">{formatDate(doc.uploaded_at)}</div>
+                        </div>
+                        <Pencil size={12} className="text-muted" style={{ flexShrink: 0 }} />
+                      </div>
+                      <button
+                        className="document-card-delete"
+                        onClick={() => setDocToDelete(doc)}
+                        title="Sil"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {isEditing && (
         <ProjectFormModal

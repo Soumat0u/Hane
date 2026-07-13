@@ -30,11 +30,14 @@ export default function Dashboard() {
     .filter((c) => (c.kind === 'supplier' || c.kind === 'subcontractor') && num(c.balance) > 0)
     .reduce((sum, c) => sum + num(c.balance), 0)
   const borclar = krediKalan + bchKartKullanilan + verilenCekler + ticariBorclar
+  const alinanCekler = (cheques || [])
+    .filter((c) => c.direction === 'received' && c.status !== 'cashed')
+    .reduce((sum, c) => sum + num(c.amount), 0)
   const alacaklar = (receivables || []).reduce((sum, r) => {
     const total = Number(r.total_amount) || 0
     const collected = Number(r.collected_amount) || 0
     return sum + (total - collected)
-  }, 0)
+  }, 0) + alinanCekler
   const finansmanGucu = (accounts || [])
     .filter((a) => a.type === 'BCH' || a.type === 'Kredi Kartı' || a.type === 'Esnek')
     .reduce((sum, a) => sum + (Number(a.credit_limit) || 0), 0)
