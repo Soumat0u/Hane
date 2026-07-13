@@ -58,7 +58,7 @@ export default function TodoPanel() {
   }
 
   return (
-    <div>
+    <div className="spending-card" style={{ marginBottom: 0 }}>
       <div className="section-header">
         <span className="section-title">YAPILACAKLAR</span>
       </div>

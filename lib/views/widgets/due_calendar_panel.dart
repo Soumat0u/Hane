@@ -49,7 +49,8 @@ class _DueCalendarPanelState extends State<DueCalendarPanel> {
           if (forDay.isNotEmpty) {
             displayedItems = forDay;
           } else {
-            displayedItems = items.where((p) => p.date != null && !p.date!.isBefore(todayOnly)).toList();
+            final nextWeek = todayOnly.add(const Duration(days: 7));
+            displayedItems = items.where((p) => p.date != null && !p.date!.isBefore(todayOnly) && !p.date!.isAfter(nextWeek)).toList();
           }
         }
 
