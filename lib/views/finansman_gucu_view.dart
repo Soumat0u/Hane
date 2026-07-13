@@ -44,14 +44,14 @@ class FinansmanGucuView extends StatelessWidget {
                 child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Top Total Finansman Gücü Card (Green)
+                  // Top Total Finansman Gücü Card (Purple)
                   Container(
                     decoration: BoxDecoration(
-                      color: Theme.of(context).extension<AppColors>()!.success,
+                      color: Theme.of(context).extension<AppColors>()!.purple,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Theme.of(context).extension<AppColors>()!.success.withValues(alpha: 0.3),
+                          color: Theme.of(context).extension<AppColors>()!.purple.withValues(alpha: 0.3),
                           blurRadius: 10,
                           offset: const Offset(0, 6),
                         ),
@@ -164,7 +164,7 @@ class FinansmanGucuView extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                color: Theme.of(context).extension<AppColors>()!.success,
+                                color: Theme.of(context).extension<AppColors>()!.purple,
                               ),
                             ),
                             Text(
@@ -172,7 +172,7 @@ class FinansmanGucuView extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Theme.of(context).extension<AppColors>()!.success,
+                                color: Theme.of(context).extension<AppColors>()!.purple,
                               ),
                             ),
                           ],
@@ -340,7 +340,7 @@ class FinansmanGucuView extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).extension<AppColors>()!.success,
+                    color: Theme.of(context).extension<AppColors>()!.purple,
                   ),
                 ),
               ],
@@ -427,7 +427,7 @@ class FinansmanGucuView extends StatelessWidget {
             children: [
               _buildLimitColumn(context, 'Toplam Limit', totalLimit, context.colors.textPrimary),
               _buildLimitColumn(context, 'Kullanılan', usedLimit, context.colors.textPrimary),
-              _buildLimitColumn(context, 'Kalan Limit', remainingLimit, Theme.of(context).extension<AppColors>()!.success),
+              _buildLimitColumn(context, 'Kalan Limit', remainingLimit, Theme.of(context).extension<AppColors>()!.purple),
             ],
           ),
           const SizedBox(height: 12),
@@ -446,7 +446,7 @@ class FinansmanGucuView extends StatelessWidget {
                       ? const SizedBox()
                       : Container(
                           decoration: BoxDecoration(
-                            color: Theme.of(context).extension<AppColors>()!.success,
+                            color: Theme.of(context).extension<AppColors>()!.purple,
                             borderRadius: BorderRadius.circular(3),
                           ),
                         ),

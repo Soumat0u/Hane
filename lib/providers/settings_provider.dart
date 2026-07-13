@@ -6,17 +6,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsProvider extends ChangeNotifier {
   static const _kThemeMode = 'pref_theme_mode';
   static const _kBiometric = 'pref_biometric';
+  static const _kPinEnabled = 'pref_pin_enabled';
   static const _kNotifications = 'pref_notifications';
   static const _kLocale = 'pref_locale';
 
   ThemeMode _themeMode = ThemeMode.light;
   bool _biometricEnabled = false;
+  bool _pinEnabled = false;
   bool _notificationsEnabled = true;
   Locale _locale = const Locale('tr');
 
   ThemeMode get themeMode => _themeMode;
   bool get isDark => _themeMode == ThemeMode.dark;
   bool get biometricEnabled => _biometricEnabled;
+  // Gerçek PIN değeri PinService'te (güvenli depo) tutulur; burada sadece
+  // kilit ekranının PIN modunu gösterip göstermeyeceği bilgisi tutulur.
+  bool get pinEnabled => _pinEnabled;
   bool get notificationsEnabled => _notificationsEnabled;
   Locale get locale => _locale;
 
@@ -36,6 +41,7 @@ class SettingsProvider extends ChangeNotifier {
             ? ThemeMode.system
             : ThemeMode.light;
     _biometricEnabled = prefs.getBool(_kBiometric) ?? false;
+    _pinEnabled = prefs.getBool(_kPinEnabled) ?? false;
     _notificationsEnabled = prefs.getBool(_kNotifications) ?? true;
     _locale = Locale(prefs.getString(_kLocale) ?? 'tr');
     _loaded = true;
@@ -54,6 +60,13 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kBiometric, value);
+  }
+
+  Future<void> setPinEnabled(bool value) async {
+    _pinEnabled = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kPinEnabled, value);
   }
 
   Future<void> setNotifications(bool value) async {

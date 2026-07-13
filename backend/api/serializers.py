@@ -97,6 +97,29 @@ class AccountSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'available_limit']
 
+    def create(self, validated_data):
+        # `balance` bir ledger cache alanıdır; oluşturma anında hiç işlem yokken
+        # doğru değeri (opening_balance) yansıtması için yeniden hesaplanır —
+        # aksi halde ilk işleme kadar 0 görünür.
+        account = super().create(validated_data)
+        account.recalculate_balance()
+        return account
+
+    def update(self, instance, validated_data):
+        # DİKKAT: recalculate_balance() burada KULLANILMAZ. Legacy işlemler hesaba
+        # isim eşleşmesiyle bağlıdır (source_name/dest_name); hesap adı
+        # değiştirilirse eski işlemler hâlâ ESKİ adı taşır ve yeniden hesaplama
+        # onları hesaba bağlayamaz, birikmiş bakiyeyi sessizce sıfırlar. Bunun
+        # yerine sadece opening_balance değiştiyse aradaki fark bakiyeye yansıtılır.
+        old_opening = instance.opening_balance
+        account = super().update(instance, validated_data)
+        if 'opening_balance' in validated_data:
+            delta = (account.opening_balance or 0) - (old_opening or 0)
+            if delta:
+                account.balance = (account.balance or 0) + delta
+                account.save(update_fields=['balance'])
+        return account
+
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
@@ -190,10 +213,20 @@ class FinancialTransactionSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user = instance.user
+        old_from_account = instance.from_account
+        old_to_account = instance.to_account
         # Eski işlemin isim-bazlı bakiye etkisini geri al, güncelle, yeni etkiyi uygula.
         apply_legacy_balance(user, instance, -1)
         instance = super().update(instance, validated_data)
         apply_legacy_balance(user, instance, +1)
+        # FK hesap değiştiyse ya da kaldırıldıysa eski hesabın bakiyesini de
+        # yeniden hesapla — post_save sinyali yalnızca YENİ from_account/to_account'ı
+        # günceller, artık bu işlemle ilişkisi kalmayan eski hesabı es geçer.
+        # `recalculate_balance()` hem FK'lı hem isim-bazlı işlemleri saydığı için
+        # (bkz. Account.recalculate_balance) bu güvenlidir, legacy katkıyı silmez.
+        for old_account in (old_from_account, old_to_account):
+            if old_account is not None and old_account.id not in (instance.from_account_id, instance.to_account_id):
+                old_account.recalculate_balance()
         return instance
 
 

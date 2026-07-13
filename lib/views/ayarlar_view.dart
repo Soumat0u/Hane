@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:hane/providers/settings_provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/services/notification_service.dart';
+import 'package:hane/services/pin_service.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:hane/theme/responsive.dart';
+import 'package:hane/views/auth/pin_setup_view.dart';
 
 class AyarlarView extends StatefulWidget {
   const AyarlarView({super.key});
@@ -15,6 +17,24 @@ class AyarlarView extends StatefulWidget {
 }
 
 class _AyarlarViewState extends State<AyarlarView> {
+  bool _hasPin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPinState();
+  }
+
+  Future<void> _loadPinState() async {
+    final hasPin = await PinService.instance.hasPin();
+    if (mounted) setState(() => _hasPin = hasPin);
+  }
+
+  Future<void> _openPinSetup() async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => const PinSetupView()));
+    if (mounted) _loadPinState();
+  }
+
   /// Bildirim ayarı değiştiğinde zamanlanmış hatırlatmaları senkronlar.
   Future<void> _onNotificationsChanged(bool value) async {
     final settings = context.read<SettingsProvider>();
@@ -80,6 +100,7 @@ class _AyarlarViewState extends State<AyarlarView> {
             settings.biometricEnabled,
             (val) => context.read<SettingsProvider>().setBiometric(val),
           ),
+          _buildPinTile(context),
 
           const SizedBox(height: 40),
           Center(
@@ -105,6 +126,34 @@ class _AyarlarViewState extends State<AyarlarView> {
           color: context.colors.textSecondary,
           letterSpacing: 0.5,
         ),
+      ),
+    );
+  }
+
+  Widget _buildPinTile(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.colors.border),
+      ),
+      child: ListTile(
+        onTap: _openPinSetup,
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: context.colors.surfaceVariant,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.pin_rounded, color: context.colors.brand, size: 20),
+        ),
+        title: Text('PIN Kodu', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: context.colors.textPrimary)),
+        subtitle: Text(
+          _hasPin ? 'Aktif • değiştirmek veya kaldırmak için dokunun' : 'Kurulu değil • eklemek için dokunun',
+          style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded),
       ),
     );
   }

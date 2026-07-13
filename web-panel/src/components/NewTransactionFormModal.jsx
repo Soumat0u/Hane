@@ -233,6 +233,17 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
     try {
       if (type === 'Ödeme') {
         if (num(odemeAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
+        if (!isIncome) {
+          const selectedAcc = accounts.find((a) => a.name === odemeAccount)
+          if (selectedAcc) {
+            const limit = ['Kredi Kartı', 'BCH', 'Esnek'].includes(selectedAcc.type)
+              ? num(selectedAcc.available_limit)
+              : num(selectedAcc.balance)
+            if (num(odemeAmount) > limit) {
+              throw new Error('Yetersiz bakiye veya limit! İşlem tutarı mevcut bakiyeden/limitten büyük olamaz.')
+            }
+          }
+        }
         const data = {
           project_id: projectIdByName(odemeProject),
           type: isIncome ? 'Gelir' : 'Gider',

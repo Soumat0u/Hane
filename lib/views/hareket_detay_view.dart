@@ -8,6 +8,7 @@ import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/views/hareketler_view.dart' show transactionVisuals;
 import 'package:hane/views/yeni_islem_view.dart';
+import 'package:hane/views/widgets/fullscreen_image_view.dart';
 
 
 
@@ -206,21 +207,36 @@ class _HareketDetayViewState extends State<HareketDetayView> {
                   const SizedBox(height: 24),
                   _sectionTitle(context, 'FİŞ / FATURA'),
                   const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      t.attachmentUrl!.startsWith('http://web-production') ? t.attachmentUrl!.replaceFirst('http://', 'https://') : t.attachmentUrl!,
-                      width: double.infinity,
-                      height: 220,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stack) => Container(
-                        height: 120,
-                        color: context.colors.surfaceVariant,
-                        alignment: Alignment.center,
-                        child: Text('Görsel yüklenemedi', style: TextStyle(color: context.colors.textSecondary)),
+                  Builder(builder: (context) {
+                    final url = t.attachmentUrl!.startsWith('http://web-production')
+                        ? t.attachmentUrl!.replaceFirst('http://', 'https://')
+                        : t.attachmentUrl!;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => FullscreenImageView(imageUrl: url, heroTag: url)),
                       ),
-                    ),
-                  ),
+                      child: Hero(
+                        tag: url,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.network(
+                            url,
+                            width: double.infinity,
+                            height: 220,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stack) => Container(
+                              height: 120,
+                              color: context.colors.surfaceVariant,
+                              alignment: Alignment.center,
+                              child: Text('Görsel yüklenemedi', style: TextStyle(color: context.colors.textSecondary)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
                 ],
               ],
             ),

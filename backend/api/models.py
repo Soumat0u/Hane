@@ -168,9 +168,28 @@ class Account(models.Model):
         return f'{self.name} ({self.type})'
 
     def recalculate_balance(self, save=True):
-        """Ledger'dan güncel bakiyeyi yeniden hesaplar (hibrit yaklaşım)."""
+        """Ledger'dan güncel bakiyeyi yeniden hesaplar (hibrit yaklaşım: FK'lı +
+        isim eşleşmeli/legacy işlemler birlikte). Hesap hem FK'lı hem isim-bazlı
+        işlemlere sahip olabildiği için (örn. tekrarlayan işlem onayı FK kullanır,
+        normal giriş ekranları isim kullanır), ikisi de dahil edilmezse biri
+        diğerini sessizce sıfırlar."""
         incoming = self.incoming_transactions.aggregate(s=Sum('amount'))['s'] or 0
         outgoing = self.outgoing_transactions.aggregate(s=Sum('amount'))['s'] or 0
+
+        legacy_qs = FinancialTransaction.objects.filter(
+            user=self.user, from_account__isnull=True, to_account__isnull=True,
+        ).filter(models.Q(source_name=self.name) | models.Q(dest_name=self.name))
+        for t in legacy_qs:
+            if t.type == 'Gider':
+                outgoing += t.amount
+            elif t.type in ('Gelir', 'Tahsilat', 'Kredi Kullanımı'):
+                incoming += t.amount
+            elif t.type == 'Transfer':
+                if t.source_name == self.name:
+                    outgoing += t.amount
+                if t.dest_name == self.name:
+                    incoming += t.amount
+
         self.balance = (self.opening_balance or 0) + incoming - outgoing
         if save:
             self.save(update_fields=['balance'])

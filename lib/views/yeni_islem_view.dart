@@ -30,6 +30,10 @@ class YeniIslemScreen extends StatefulWidget {
   State<YeniIslemScreen> createState() => _YeniIslemScreenState();
 }
 
+// Proje dropdown'ında "hiçbir proje seçilmedi" durumunu temsil eden sabit.
+// Genel şirket giderleri projesiz olabilir (bkz. FinancialTransaction.projectId).
+const String kNoProjectOption = 'Genel (Proje Yok)';
+
 class _YeniIslemScreenState extends State<YeniIslemScreen> {
   // General Selection State
   String _selectedType = 'Ödeme';
@@ -45,7 +49,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       final t = widget.initialTransaction!;
       if (t.projectId != null) {
         final fp = Provider.of<FinanceProvider>(context, listen: false);
-        _selectedProject = fp.projects.where((p) => p.id == t.projectId).firstOrNull?.name ?? '';
+        _selectedProject = fp.projects.where((p) => p.id == t.projectId).firstOrNull?.name ?? kNoProjectOption;
       }
       _dateController.text = _formatDate(DateTime.tryParse(t.date) ?? DateTime.now());
       _amountController.text = t.amount.toStringAsFixed(2).replaceAll('.00', '');
@@ -85,7 +89,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
 
   // --- Ödeme Form States ---
   bool _isIncome = false; // false = Gider, true = Gelir
-  String _selectedProject = '';
+  String _selectedProject = kNoProjectOption;
   Category? _selectedMainCategory;
   Category? _selectedSubCategory;
   String _selectedSource = '';
@@ -158,7 +162,9 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       _satisTarih = today;
 
       if (widget.initialTransaction == null) {
-        _selectedProject = widget.initialProject ?? first(projects);
+        // Varsayılan olarak proje seçili gelmesin — kullanıcı genel (projesiz)
+        // bir harcama girmek isteyebilir; proje seçimi isteğe bağlı bırakılır.
+        _selectedProject = widget.initialProject ?? kNoProjectOption;
       }
       _updateCategoriesForType(_isIncome);
       
@@ -382,7 +388,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     selectedProjectName = _selectedProject;
                   }
 
-                  if (selectedProjectName.isNotEmpty) {
+                  if (selectedProjectName.isNotEmpty && selectedProjectName != kNoProjectOption) {
                     final p = fp.projects.where((p) => p.name == selectedProjectName).firstOrNull ??
                         fp.projects
                             .where((p) => p.name.contains(selectedProjectName) || selectedProjectName.contains(p.name))
@@ -789,7 +795,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           label: 'PROJE',
           child: _buildSimpleDropdown(
             value: _selectedProject,
-            items: _projectNames,
+            items: [kNoProjectOption, ..._projectNames],
             emptyHint: 'Önce proje ekleyin',
             onChanged: (val) {
               setState(() {

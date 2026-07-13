@@ -14,7 +14,8 @@ class RootScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     return AppLockGate(
-      enabled: settings.biometricEnabled,
+      biometricEnabled: settings.biometricEnabled,
+      pinEnabled: settings.pinEnabled,
       child: const OnboardingGate(child: MainNavigationPage()),
     );
   }

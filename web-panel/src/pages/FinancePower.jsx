@@ -28,13 +28,13 @@ export default function FinancePower() {
 
   return (
     <div>
-      <div className="page-header-banner total-card-green" style={{ background: 'var(--color-success)', color: '#ffffff' }}>
+      <div className="page-header-banner total-card-green" style={{ background: 'var(--banner-finance)', color: 'var(--banner-text)' }}>
         <div>
-          <div className="total-card-label" style={{ color: 'rgba(255,255,255,0.8)' }}>TOPLAM FİNANSMAN GÜCÜ</div>
-          <div className="total-card-value" style={{ color: '#ffffff' }}>{formatCurrency(fTotal)}</div>
+          <div className="total-card-label" style={{ color: 'var(--banner-label)' }}>TOPLAM FİNANSMAN GÜCÜ</div>
+          <div className="total-card-value" style={{ color: 'var(--banner-text)' }}>{formatCurrency(fTotal)}</div>
         </div>
         <div className="total-card-icon">
-          <Shield size={36} color="#ffffff" />
+          <Shield size={36} color="var(--banner-text)" />
         </div>
       </div>
 
