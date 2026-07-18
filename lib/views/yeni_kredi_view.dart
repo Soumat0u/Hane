@@ -5,6 +5,7 @@ import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/finance_entities.dart';
+import 'package:hane/utils/thousands_formatter.dart';
 
 /// Yeni kredi / KGF ekleme formu.
 class YeniKrediView extends StatefulWidget {
@@ -94,9 +95,9 @@ class _YeniKrediViewState extends State<YeniKrediView> {
             _field(_nameCtrl, 'Kredi Adı', hint: 'Örn. Ziraat Konut Kredisi', required: true),
             _dropdown('Tür', _kind, _kinds, (v) => setState(() => _kind = v!)),
             _field(_bankCtrl, 'Banka', hint: 'Örn. Ziraat Bankası'),
-            _field(_principalCtrl, 'Ana Para', keyboard: true, required: true),
-            _field(_totalCtrl, 'Toplam Geri Ödeme (faiz dahil)', keyboard: true),
-            _field(_paidCtrl, 'Şu ana kadar ödenen', keyboard: true),
+            _field(_principalCtrl, 'Ana Para', keyboard: true, currency: true, required: true),
+            _field(_totalCtrl, 'Toplam Geri Ödeme (faiz dahil)', keyboard: true, currency: true),
+            _field(_paidCtrl, 'Şu ana kadar ödenen', keyboard: true, currency: true),
             Row(
               children: [
                 Expanded(child: _field(_rateCtrl, 'Faiz %', keyboard: true)),
@@ -114,7 +115,7 @@ class _YeniKrediViewState extends State<YeniKrediView> {
   }
 
   Widget _field(TextEditingController c, String label,
-      {String? hint, bool keyboard = false, bool required = false}) {
+      {String? hint, bool keyboard = false, bool currency = false, bool required = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -125,6 +126,7 @@ class _YeniKrediViewState extends State<YeniKrediView> {
           TextFormField(
             controller: c,
             keyboardType: keyboard ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+            inputFormatters: currency ? [ThousandsSeparatorInputFormatter()] : null,
             validator: required ? (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null : null,
             decoration: _dec(hint),
           ),

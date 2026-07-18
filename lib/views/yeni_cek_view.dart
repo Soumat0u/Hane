@@ -99,7 +99,7 @@ class _YeniCekViewState extends State<YeniCekView> {
           children: [
             AppDropdown<String>(
                 label: 'Çek Türü', value: _direction, options: _directions, onChanged: (v) => setState(() => _direction = v!)),
-            AppTextField(controller: _amountCtrl, label: 'Tutar', number: true, required: true),
+            AppTextField(controller: _amountCtrl, label: 'Tutar', currency: true, required: true),
             AppTextField(controller: _bankCtrl, label: 'Banka', hint: 'Örn. Garanti BBVA'),
             AppTextField(controller: _serialCtrl, label: 'Seri No', hint: 'Opsiyonel'),
             AppDropdown<String>(

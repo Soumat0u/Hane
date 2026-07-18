@@ -147,6 +147,19 @@ export function DataProvider({ children }) {
     }
   }, [])
 
+  const uploadCompanyLogo = useCallback(async (file) => {
+    try {
+      const formData = new FormData()
+      formData.append('logo', file)
+      const updated = await api.patchFile('/company-profile/', formData)
+      setCompanyProfile(updated)
+      return updated
+    } catch (e) {
+      console.error('Failed to upload company logo', e)
+      throw e
+    }
+  }, [])
+
   /**
    * Mobil "Borçlanma" akışının web karşılığı: kişiyi (tedarikçi) bul ya da oluştur,
    * ardından backend'in borç bakiyesini yükseltmesi için `type: 'Gider'`,
@@ -269,6 +282,17 @@ export function DataProvider({ children }) {
   const updateProject = useCallback(
     async (id, body) => {
       const updated = await api.put(`/projects/${id}/`, body)
+      await load()
+      return updated
+    },
+    [load],
+  )
+
+  const uploadProjectImage = useCallback(
+    async (id, file) => {
+      const formData = new FormData()
+      formData.append('image_path', file)
+      const updated = await api.patchFile(`/projects/${id}/`, formData)
       await load()
       return updated
     },
@@ -664,8 +688,10 @@ export function DataProvider({ children }) {
       todos,
       companyProfile,
       updateCompanyProfile,
+      uploadCompanyLogo,
       addProject,
       updateProject,
+      uploadProjectImage,
       deleteProject,
       addCategory,
       updateCategory,
@@ -733,8 +759,10 @@ export function DataProvider({ children }) {
       todos,
       companyProfile,
       updateCompanyProfile,
+      uploadCompanyLogo,
       addProject,
       updateProject,
+      uploadProjectImage,
       deleteProject,
       addCategory,
       updateCategory,

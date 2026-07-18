@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:hane/models/project.dart';
 import 'package:hane/providers/finance_provider.dart';
+import 'package:hane/services/api_service.dart';
+import 'package:hane/views/widgets/map_location_picker.dart';
 
 class YeniProjeView extends StatefulWidget {
   final Project? project; // If provided, we are in Edit Mode
@@ -16,6 +20,17 @@ class YeniProjeView extends StatefulWidget {
 class _YeniProjeViewState extends State<YeniProjeView> {
   int _currentStep = 0;
   final _formKey = GlobalKey<FormState>();
+  String? _imageFile;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = pickedFile.path;
+      });
+    }
+  }
 
   void _deleteProject(BuildContext context) {
     if (widget.project?.id == null) return;
@@ -203,8 +218,14 @@ class _YeniProjeViewState extends State<YeniProjeView> {
     try {
       if (widget.project != null) {
         await fp.updateProject(project);
+        if (_imageFile != null) {
+          await fp.uploadProjectImage(widget.project!.id!, _imageFile!);
+        }
       } else {
-        await fp.createProject(project);
+        final createdProject = await fp.createProject(project);
+        if (_imageFile != null && createdProject.id != null) {
+          await fp.uploadProjectImage(createdProject.id!, _imageFile!);
+        }
       }
       if (mounted) {
         Navigator.pop(context, true); // Return true indicating success
@@ -328,6 +349,47 @@ class _YeniProjeViewState extends State<YeniProjeView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Proje Görseli Ekleme
+          GestureDetector(
+            onTap: _pickImage,
+            child: Container(
+              height: 160,
+              decoration: BoxDecoration(
+                color: context.colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.colors.border, style: BorderStyle.solid),
+                image: _imageFile != null
+                    ? DecorationImage(image: FileImage(File(_imageFile!)), fit: BoxFit.cover)
+                    : (widget.project?.imagePath != null
+                        ? DecorationImage(
+                            image: NetworkImage(widget.project!.imagePath!.startsWith('/media') ? '${ApiService.baseUrl.replaceAll(RegExp(r'/api/?$'), '')}${widget.project!.imagePath}' : widget.project!.imagePath!),
+                            fit: BoxFit.cover)
+                        : null),
+              ),
+              child: _imageFile == null && widget.project?.imagePath == null
+                  ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_photo_alternate_outlined, size: 48, color: context.colors.border.withOpacity(0.8)),
+                        const SizedBox(height: 8),
+                        Text('Proje Görseli Ekle', style: TextStyle(color: context.colors.textSecondary, fontWeight: FontWeight.bold)),
+                      ],
+                    )
+                  : Align(
+                      alignment: Alignment.bottomRight,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: context.colors.surface,
+                          child: Icon(Icons.edit, size: 16, color: context.colors.textPrimary),
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
           Text('Temel Bilgiler', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
           const SizedBox(height: 16),
           
@@ -357,15 +419,27 @@ class _YeniProjeViewState extends State<YeniProjeView> {
                 child: _buildTextFieldOnly('İl / İlçe seçiniz', _locationController, icon: Icons.location_on_outlined),
               ),
               const SizedBox(width: 8),
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: context.colors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: context.colors.border),
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () async {
+                  final result = await Navigator.push<String>(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MapLocationPicker()),
+                  );
+                  if (result != null && result.isNotEmpty) {
+                    setState(() => _locationController.text = result);
+                  }
+                },
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: context.colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: context.colors.border),
+                  ),
+                  child: Icon(Icons.gps_fixed, color: Colors.grey[600]),
                 ),
-                child: Icon(Icons.gps_fixed, color: Colors.grey[600]),
               )
             ],
           ),
@@ -528,7 +602,12 @@ class _YeniProjeViewState extends State<YeniProjeView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: () => _selectDate(controller),
@@ -564,7 +643,12 @@ class _YeniProjeViewState extends State<YeniProjeView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         const SizedBox(height: 8),
         _buildTextFieldOnly(hint, controller, icon: icon, type: type, isRequired: isRequired),
       ],

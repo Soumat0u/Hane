@@ -7,6 +7,7 @@ import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/project.dart';
 import 'package:hane/models/financial_transaction.dart';
+import 'package:hane/services/api_service.dart';
 
 class GenelBakisScreen extends StatelessWidget {
   const GenelBakisScreen({super.key});
@@ -229,8 +230,12 @@ class GenelBakisScreen extends StatelessWidget {
   // Projenin kayıtlı görseli varsa onu, yoksa varsayılan asset'i döndürür.
   ImageProvider _projectImage(Project project) {
     final path = project.imagePath;
-    if (path != null && path.isNotEmpty && path.startsWith('http')) {
-      return NetworkImage(path);
+    if (path != null && path.isNotEmpty) {
+      if (path.startsWith('http')) {
+        return NetworkImage(path);
+      } else if (path.startsWith('/media')) {
+        return NetworkImage('${ApiService.baseUrl.replaceAll(RegExp(r'/api/?$'), '')}$path');
+      }
     }
     return const AssetImage('assets/images/modern_apartment_building.png');
   }

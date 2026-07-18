@@ -54,6 +54,9 @@ dependencies:
   path_provider: ^2.1.6
   file_picker: ^8.1.2
   url_launcher: ^6.3.2
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geocoding: ^3.0.0
 
 dev_dependencies:
   flutter_test:

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
-import { num } from '../utils'
+import { num, parseMoneyInput, formatAmountForDisplay } from '../utils'
+import MoneyInput from './MoneyInput'
 
 export const RECURRING_TYPE_LABELS = { Gider: 'Gider', Gelir: 'Gelir', Tahsilat: 'Tahsilat' }
 export const RECURRING_INTERVAL_LABELS = { monthly: 'Aylık', weekly: 'Haftalık' }
@@ -51,7 +52,7 @@ export default function RecurringFormModal({ existing, accounts, onClose, onSave
   const [type, setType] = useState(existing?.type || 'Gider')
   const [description, setDescription] = useState(existing?.description || '')
   const [category, setCategory] = useState(existing?.category || '')
-  const [amount, setAmount] = useState(existing ? String(existing.amount) : '')
+  const [amount, setAmount] = useState(existing ? formatAmountForDisplay(existing.amount) : '')
   const [accountId, setAccountId] = useState(
     existing ? (existing.type === 'Gider' ? existing.from_account : existing.to_account) || '' : '',
   )
@@ -67,7 +68,7 @@ export default function RecurringFormModal({ existing, accounts, onClose, onSave
       setErr('Açıklama zorunludur.')
       return
     }
-    if (num(amount) <= 0) {
+    if (parseMoneyInput(amount) <= 0) {
       setErr('Lütfen geçerli bir tutar girin.')
       return
     }
@@ -82,7 +83,7 @@ export default function RecurringFormModal({ existing, accounts, onClose, onSave
         type,
         description: description.trim(),
         category,
-        amount: num(amount),
+        amount: parseMoneyInput(amount),
         from_account: type === 'Gider' ? (accountId ? Number(accountId) : null) : null,
         to_account: type !== 'Gider' ? (accountId ? Number(accountId) : null) : null,
         interval,
@@ -126,7 +127,7 @@ export default function RecurringFormModal({ existing, accounts, onClose, onSave
             </div>
             <div className="form-group">
               <label className="form-label">Tutar (₺)</label>
-              <input className="form-input" type="number" min="0" step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <MoneyInput value={amount} onChange={setAmount} />
             </div>
             <div className="form-group">
               <label className="form-label">{type === 'Gider' ? 'Ödeme Kaynağı' : 'Hedef Hesap'}</label>

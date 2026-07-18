@@ -106,7 +106,7 @@ class _OnboardingWelcomeViewState extends State<OnboardingWelcomeView> {
                   ),
                   child: Text(
                     _isLastPage ? 'Başlayalım' : 'İleri',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -137,13 +137,13 @@ class _OnboardingWelcomeViewState extends State<OnboardingWelcomeView> {
           Text(
             page.title,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
+            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
             page.description,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 15, color: context.colors.textSecondary, height: 1.5),
+            style: TextStyle(fontSize: 17, color: context.colors.textSecondary, height: 1.5),
           ),
         ],
       ),

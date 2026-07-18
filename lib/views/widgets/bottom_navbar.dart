@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/providers/finance_provider.dart';
 
 class CustomBottomNavbar extends StatelessWidget {
   final int selectedIndex;
@@ -58,16 +60,18 @@ class CustomBottomNavbar extends StatelessWidget {
               ),
             ),
             _buildNavItem(context, 3, Icons.receipt_long_rounded, 'Hareketler'),
-            _buildNavItem(context, 4, Icons.person_rounded, 'Profil'),
+            _buildNavItem(context, 4, Icons.person_rounded, 'Profil', showWarningBadge: true),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(BuildContext context, int index, IconData icon, String label) {
+  Widget _buildNavItem(BuildContext context, int index, IconData icon, String label, {bool showWarningBadge = false}) {
     final bool isSelected = selectedIndex == index;
     final Color color = isSelected ? context.colors.brand : context.colors.textSecondary;
+    final bool showBadge = showWarningBadge &&
+        context.select<FinanceProvider, bool>((p) => p.companyProfile == null || !p.companyProfile!.isComplete);
 
     return GestureDetector(
       onTap: () => onTabSelected(index),
@@ -77,7 +81,26 @@ class CustomBottomNavbar extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 24),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(icon, color: color, size: 24),
+                if (showBadge)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: context.colors.warning,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: context.colors.surface, width: 1.5),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 4),
             Text(
               label,

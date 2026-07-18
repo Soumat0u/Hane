@@ -92,7 +92,7 @@ export default function ProjectDetail() {
   const navigate = useNavigate()
   const {
     projects, transactions, contacts, projectDocuments, loading, loaded, error,
-    updateProject, deleteProject,
+    updateProject, deleteProject, uploadProjectImage,
     addSale, addReceivable,
     addProjectDocument, deleteProjectDocument, renameProjectDocument,
   } = useData()
@@ -486,7 +486,12 @@ export default function ProjectDetail() {
         <ProjectFormModal
           project={project}
           onClose={() => setIsEditing(false)}
-          onSave={(body) => updateProject(project.id, body)}
+          onSave={async (body, imageFile) => {
+            const updated = await updateProject(project.id, body)
+            if (imageFile) {
+              await uploadProjectImage(project.id, imageFile)
+            }
+          }}
           onDelete={handleDelete}
         />
       )}

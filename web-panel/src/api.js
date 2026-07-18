@@ -1,4 +1,6 @@
-const API_BASE_URL = 'https://web-production-77031.up.railway.app/api';
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8000/api'
+  : 'https://web-production-77031.up.railway.app/api';
 
 const getHeaders = () => {
   const token = localStorage.getItem('auth_token');
@@ -88,6 +90,16 @@ export const api = {
   putFile: async (endpoint, formData) => {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'PUT',
+      headers: getFileHeaders(),
+      body: formData,
+    });
+    const responseData = await response.json().catch(() => null);
+    if (!response.ok) throw responseData || new Error('Güncelleme başarısız oldu');
+    return responseData;
+  },
+  patchFile: async (endpoint, formData) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PATCH',
       headers: getFileHeaders(),
       body: formData,
     });

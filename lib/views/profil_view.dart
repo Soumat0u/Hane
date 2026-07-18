@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:hane/theme/responsive.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/widgets/zeynep_logo.dart';
@@ -79,6 +80,23 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
     );
   }
 
+  Future<void> _pickAndUploadLogo() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null && mounted) {
+      try {
+        await context.read<FinanceProvider>().uploadCompanyLogo(pickedFile.path);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf başarıyla yüklendi.')));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fotoğraf yüklenirken bir hata oluştu.')));
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -103,6 +121,40 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (companyProfile == null || !companyProfile.isComplete) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: context.colors.warning.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: context.colors.warning.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: context.colors.warning, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Firma bilgileriniz eksik. Faturalar ve belgelerde doğru görünmesi için tamamlayın.',
+                        style: TextStyle(fontSize: 13, color: context.colors.textPrimary, height: 1.3),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const FirmaDuzenleView(isOnboarding: false)),
+                        );
+                      },
+                      style: TextButton.styleFrom(foregroundColor: context.colors.warning, padding: const EdgeInsets.symmetric(horizontal: 10)),
+                      child: const Text('Doldur', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             // Company Info Card
             Container(
               decoration: BoxDecoration(
@@ -115,17 +167,52 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Circular Logo Symbol Frame
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: context.colors.scaffold,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: context.colors.border),
-                    ),
-                    padding: const EdgeInsets.all(6.0),
-                    child: CustomPaint(
-                      painter: LogoPainter(brandColor: context.colors.brand),
+                  GestureDetector(
+                    onTap: _pickAndUploadLogo,
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: context.colors.scaffold,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: context.colors.border),
+                            image: companyProfile?.logo != null
+                                ? DecorationImage(
+                                    image: NetworkImage(companyProfile!.logo!.startsWith('/media') ? '${ApiService.baseUrl.replaceAll(RegExp(r'/api/?$'), '')}${companyProfile!.logo}' : companyProfile!.logo!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: companyProfile?.logo == null
+                              ? Padding(
+                                  padding: const EdgeInsets.all(10.0),
+                                  child: CustomPaint(
+                                    painter: LogoPainter(brandColor: context.colors.brand),
+                                  ),
+                                )
+                              : null,
+                        ),
+                        Positioned(
+                          right: -2,
+                          bottom: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: context.colors.surface,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 4,
+                                )
+                              ],
+                            ),
+                            child: Icon(Icons.camera_alt, size: 14, color: context.colors.textPrimary),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -194,7 +281,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                 child: InkWell(
                   borderRadius: BorderRadius.circular(6),
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Banka')));
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Banka', lockType: true)));
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -226,7 +313,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                 child: InkWell(
                   borderRadius: BorderRadius.circular(6),
                   onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Kredi Kartı')));
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const YeniHesapView(initialType: 'Kredi Kartı', lockType: true)));
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -574,7 +661,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                 var acc = entry.value;
                 return Column(
                   children: [
-                    _buildIbanRow(acc.name, acc.accountDetails),
+                    _buildAccountRow(acc),
                     if (idx < bankAccounts.length - 1)
                       Divider(height: 1, color: context.colors.surfaceVariant),
                   ],
@@ -586,7 +673,18 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
     );
   }
 
-  Widget _buildIbanRow(String bankName, String iban) {
+  Widget _buildAccountRow(Account acc) {
+    final isCard = acc.type == 'Kredi Kartı';
+    
+    // Mask details if it's a card
+    String displayDetails = acc.accountDetails;
+    if (isCard) {
+      final cleanDigits = acc.accountDetails.replaceAll(' ', '');
+      if (cleanDigits.length >= 4) {
+        displayDetails = '**** **** **** ${cleanDigits.substring(cleanDigits.length - 4)}';
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Row(
@@ -599,7 +697,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
               borderRadius: BorderRadius.circular(8),
             ),
             padding: const EdgeInsets.all(4.0),
-            child: BankLogoWidget(bankName: bankName, width: 85, height: 32),
+            child: BankLogoWidget(bankName: acc.bankLogoPainter, width: 85, height: 32),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -607,7 +705,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  bankName,
+                  acc.name,
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
@@ -616,7 +714,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  iban,
+                  displayDetails,
                   style: TextStyle(
                     fontSize: 11,
                     fontFamily: 'monospace',
@@ -627,8 +725,28 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
             ),
           ),
           IconButton(
+            icon: Icon(Icons.edit_rounded, color: context.colors.brand, size: 18),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => YeniHesapView(
+                    account: acc,
+                    lockType: true,
+                    initialType: acc.type,
+                  ),
+                ),
+              );
+            },
+            tooltip: 'Düzenle',
+          ),
+          IconButton(
             icon: Icon(Icons.content_copy_rounded, color: context.colors.textSecondary, size: 18),
-            onPressed: () => _copyToClipboard(context, '$bankName IBAN numarası', iban),
+            onPressed: () => _copyToClipboard(
+              context, 
+              isCard ? '${acc.name} kart numarası' : '${acc.name} IBAN numarası', 
+              acc.accountDetails
+            ),
             tooltip: 'Kopyala',
           ),
         ],
@@ -661,7 +779,7 @@ class _ProfilScreenState extends State<ProfilScreen> with AutomaticKeepAliveClie
                 var acc = entry.value;
                 return Column(
                   children: [
-                    _buildIbanRow(acc.name, acc.accountDetails),
+                    _buildAccountRow(acc),
                     if (idx < cardAccounts.length - 1)
                       Divider(height: 1, color: context.colors.surfaceVariant),
                   ],

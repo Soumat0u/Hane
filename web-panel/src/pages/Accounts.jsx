@@ -4,15 +4,21 @@ import { Plus, Wallet, Banknote, ArrowRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 import AccountFormModal from '../components/AccountFormModal'
+import AddCashModal from '../components/AddCashModal'
+import BankLogo from '../components/BankLogo'
 
-function AccountGroup({ title, accounts, iconClass, onItemClick, onNew }) {
+function AccountGroup({ title, accounts, iconClass, onItemClick, actions, showBankLogo }) {
   return (
     <div>
       <div className="section-header">
         <span className="section-title">{title}</span>
-        <button className="btn-inline-text" onClick={onNew}>
-          <Plus size={16} /> Hesap Ekle
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {actions.map(({ label, onClick, disabled }) => (
+            <button key={label} className="btn-inline-text" onClick={onClick} disabled={disabled}>
+              <Plus size={16} /> {label}
+            </button>
+          ))}
+        </div>
       </div>
       {accounts.length === 0 ? (
         <div className="summary-box">
@@ -25,7 +31,11 @@ function AccountGroup({ title, accounts, iconClass, onItemClick, onNew }) {
           {accounts.map((a) => (
             <div className="list-item" key={a.id} onClick={() => onItemClick(a)} style={{ cursor: 'pointer' }}>
               <div className="list-icon-box">
-                <Banknote size={20} className={iconClass} />
+                {showBankLogo ? (
+                  <BankLogo bankName={a.bank_logo_painter || a.name} width={36} height={36} />
+                ) : (
+                  <Banknote size={20} className={iconClass} />
+                )}
               </div>
               <div className="list-item-content">
                 <div className="list-item-title">{a.name}</div>
@@ -46,6 +56,8 @@ export default function Accounts() {
   const navigate = useNavigate()
   const { accounts, addAccount, loading, loaded, error } = useData()
   const [newType, setNewType] = useState(null)
+  const [lockNewType, setLockNewType] = useState(false)
+  const [addCashOpen, setAddCashOpen] = useState(false)
 
   const bankAccounts = useMemo(() => accounts.filter((a) => a.type === 'Banka'), [accounts])
   const cashAccounts = useMemo(() => accounts.filter((a) => a.type === 'Nakit'), [accounts])
@@ -91,8 +103,24 @@ export default function Accounts() {
 
         {/* SOL SÜTUN: Bankalar & Nakit */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <AccountGroup title="BANKALAR" accounts={bankAccounts} iconClass="text-info" onItemClick={goToAccount} onNew={() => setNewType('Banka')} />
-          <AccountGroup title="NAKİT" accounts={cashAccounts} iconClass="text-success" onItemClick={goToAccount} onNew={() => setNewType('Nakit')} />
+          <AccountGroup
+            title="BANKALAR"
+            accounts={bankAccounts}
+            iconClass="text-info"
+            onItemClick={goToAccount}
+            actions={[{ label: 'Hesap Ekle', onClick: () => { setLockNewType(false); setNewType('Banka') } }]}
+            showBankLogo
+          />
+          <AccountGroup
+            title="NAKİT"
+            accounts={cashAccounts}
+            iconClass="text-success"
+            onItemClick={goToAccount}
+            actions={[
+              { label: 'Nakit Ekle', onClick: () => setAddCashOpen(true), disabled: cashAccounts.length === 0 },
+              { label: 'Kasa Ekle', onClick: () => { setLockNewType(true); setNewType('Nakit') } },
+            ]}
+          />
         </div>
 
         {/* SAĞ SÜTUN: Özet */}
@@ -121,9 +149,14 @@ export default function Accounts() {
       {newType && (
         <AccountFormModal
           initialType={newType}
+          lockType={lockNewType}
           onClose={() => setNewType(null)}
           onSave={addAccount}
         />
+      )}
+
+      {addCashOpen && (
+        <AddCashModal cashAccounts={cashAccounts} onClose={() => setAddCashOpen(false)} />
       )}
     </div>
   )

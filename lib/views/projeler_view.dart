@@ -5,6 +5,7 @@ import 'package:hane/theme/app_theme.dart';
 import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
+import 'package:hane/services/api_service.dart';
 import 'package:hane/views/proje_detay_view.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/project.dart';
@@ -222,8 +223,10 @@ class _ProjelerScreenState extends State<ProjelerScreen> with AutomaticKeepAlive
                   height: 90,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/modern_apartment_building.png'),
+                    image: DecorationImage(
+                      image: project.imagePath != null
+                          ? NetworkImage(project.imagePath!.startsWith('/media') ? '${ApiService.baseUrl.replaceAll(RegExp(r'/api/?$'), '')}${project.imagePath}' : project.imagePath!)
+                          : const AssetImage('assets/images/modern_apartment_building.png') as ImageProvider,
                       fit: BoxFit.cover,
                     ),
                   ),

@@ -4,9 +4,10 @@ import {
   Receipt, Wallet, HardHat, Plus, ChevronRight, X, Trash2,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { formatCurrency, num } from '../utils'
+import { formatCurrency, num, parseMoneyInput, formatAmountForDisplay } from '../utils'
 import LoanFormModal from '../components/LoanFormModal'
 import ChequeFormModal from '../components/ChequeFormModal'
+import MoneyInput from '../components/MoneyInput'
 
 function NewDebtModal({ projects, onClose, onSave }) {
   const [amount, setAmount] = useState('')
@@ -19,7 +20,7 @@ function NewDebtModal({ projects, onClose, onSave }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (num(amount) <= 0) {
+    if (parseMoneyInput(amount) <= 0) {
       setErr('Lütfen geçerli bir tutar girin.')
       return
     }
@@ -27,7 +28,7 @@ function NewDebtModal({ projects, onClose, onSave }) {
     setErr('')
     try {
       await onSave({
-        amount: num(amount),
+        amount: parseMoneyInput(amount),
         contactName,
         dueDate,
         projectId: projectId ? Number(projectId) : null,
@@ -54,8 +55,7 @@ function NewDebtModal({ projects, onClose, onSave }) {
 
             <div className="input-group">
               <label className="input-label">Tutar (₺)</label>
-              <input className="input-field" type="number" min="0" step="0.01" inputMode="decimal"
-                value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" autoFocus />
+              <MoneyInput className="input-field" value={amount} onChange={setAmount} placeholder="0" autoFocus />
             </div>
 
             <div className="input-group">
@@ -99,21 +99,21 @@ function NewDebtModal({ projects, onClose, onSave }) {
 }
 
 function PayDebtModal({ kind, target, accounts, onClose, onPay }) {
-  const [amount, setAmount] = useState(target.amount > 0 ? target.amount.toFixed(0) : '')
+  const [amount, setAmount] = useState(target.amount > 0 ? formatAmountForDisplay(target.amount) : '')
   const [accountId, setAccountId] = useState(accounts[0]?.id || '')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (num(amount) <= 0) {
+    if (parseMoneyInput(amount) <= 0) {
       setErr('Lütfen geçerli bir tutar girin.')
       return
     }
     setSaving(true)
     setErr('')
     try {
-      await onPay({ kind, ref: target.ref, amount: num(amount), fromAccountId: accountId ? Number(accountId) : null })
+      await onPay({ kind, ref: target.ref, amount: parseMoneyInput(amount), fromAccountId: accountId ? Number(accountId) : null })
       onClose()
     } catch {
       setErr('Ödeme kaydedilemedi. Lütfen tekrar deneyin.')
@@ -137,8 +137,7 @@ function PayDebtModal({ kind, target, accounts, onClose, onPay }) {
             </div>
             <div className="input-group">
               <label className="input-label">Ödenen Tutar (₺)</label>
-              <input className="input-field" type="number" min="0" step="0.01" inputMode="decimal"
-                value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
+              <MoneyInput className="input-field" value={amount} onChange={setAmount} autoFocus />
             </div>
             <div className="input-group">
               <label className="input-label">Hesap</label>

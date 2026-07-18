@@ -13,7 +13,8 @@ class TodoPanel extends StatefulWidget {
 }
 
 class _TodoPanelState extends State<TodoPanel> {
-  String _scope = Todo.personal;
+  String _scope = Todo.project;
+  bool _showAll = false;
   final TextEditingController _titleController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   int? _selectedProjectId;
@@ -53,6 +54,7 @@ class _TodoPanelState extends State<TodoPanel> {
           if (_scope == Todo.project) return _selectedProjectId != null && t.projectId == _selectedProjectId;
           return true;
         }).toList();
+        final displayedList = _showAll ? list : list.take(5).toList();
         final projects = fp.projects;
         final canAdd = _scope == Todo.personal || _selectedProjectId != null;
 
@@ -60,12 +62,11 @@ class _TodoPanelState extends State<TodoPanel> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'YAPILACAKLAR',
+              'Yapılacaklar',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: context.colors.textSecondary,
-                letterSpacing: 0.5,
+                color: context.colors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -81,9 +82,9 @@ class _TodoPanelState extends State<TodoPanel> {
                 children: [
             Row(
               children: [
-                Expanded(child: _buildTab(context, 'Kişisel', Icons.person_outline_rounded, Todo.personal)),
-                const SizedBox(width: 8),
                 Expanded(child: _buildTab(context, 'Projeler', Icons.folder_open_rounded, Todo.project)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildTab(context, 'Kişisel', Icons.person_outline_rounded, Todo.personal)),
               ],
             ),
             if (_scope == Todo.project) ...[
@@ -102,7 +103,10 @@ class _TodoPanelState extends State<TodoPanel> {
                   for (final p in projects)
                     if (p.id != null) DropdownMenuItem(value: p.id, child: Text(p.name)),
                 ],
-                onChanged: (v) => setState(() => _selectedProjectId = v),
+                onChanged: (v) => setState(() {
+                  _selectedProjectId = v;
+                  _showAll = false;
+                }),
               ),
             ],
             if (canAdd) ...[
@@ -174,9 +178,29 @@ class _TodoPanelState extends State<TodoPanel> {
                 ),
                 child: Column(
                   children: [
-                    for (int i = 0; i < list.length; i++) ...[
-                      _buildTodoRow(context, fp, list[i]),
-                      if (i < list.length - 1) Divider(height: 1, indent: 16, color: context.colors.surfaceVariant),
+                    for (int i = 0; i < displayedList.length; i++) ...[
+                      _buildTodoRow(context, fp, displayedList[i]),
+                      if (i < displayedList.length - 1) Divider(height: 1, indent: 16, color: context.colors.surfaceVariant),
+                    ],
+                    if (list.length > 5) ...[
+                      if (displayedList.isNotEmpty) Divider(height: 1, indent: 16, color: context.colors.surfaceVariant),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton(
+                          onPressed: () => setState(() => _showAll = !_showAll),
+                          style: TextButton.styleFrom(
+                            foregroundColor: context.colors.brand,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                            ),
+                          ),
+                          child: Text(
+                            _showAll ? 'Daha az göster' : 'Daha fazla göster',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -193,7 +217,10 @@ class _TodoPanelState extends State<TodoPanel> {
   Widget _buildTab(BuildContext context, String label, IconData icon, String scope) {
     final active = _scope == scope;
     return InkWell(
-      onTap: () => setState(() => _scope = scope),
+      onTap: () => setState(() {
+        _scope = scope;
+        _showAll = false;
+      }),
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),

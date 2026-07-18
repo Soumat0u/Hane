@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'package:hane/theme/app_theme.dart';
@@ -478,11 +480,29 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
   }
 
   /// Y ekseninde her zaman sabit 4 aralık (5 etiket) gösterilir; aralık
-  /// büyüklüğü 5 milyonun katı olacak şekilde son 6 ayın en büyük değerine
-  /// göre hesaplanır. Böylece grafik hem 5M'lik adımlarla bölünür hem de
-  /// etiket sayısı sabit kalıp grafik boyu devasalaşmaz.
-  static const double _flowStepUnit = 5000000;
+  /// büyüklüğü sabit bir birime değil, son 6 ayın GERÇEK en yüksek değerine
+  /// göre (1/2/5 × 10^n biçiminde "nice" bir sayıya yuvarlanarak) hesaplanır.
+  /// Böylece küçük tutarlı hesaplarda grafik küçücük görünmez, büyük
+  /// tutarlarda da orantılı kalır.
   static const int _flowIntervals = 4;
+
+  /// Verilen kaba adımı 1, 2 veya 5'in bir kuvvetine (×10^n) yuvarlar.
+  double _niceStep(double roughStep) {
+    if (roughStep <= 0) return 1;
+    final magnitude = math.pow(10, (math.log(roughStep) / math.ln10).floor()).toDouble();
+    final residual = roughStep / magnitude;
+    double niceResidual;
+    if (residual <= 1) {
+      niceResidual = 1;
+    } else if (residual <= 2) {
+      niceResidual = 2;
+    } else if (residual <= 5) {
+      niceResidual = 5;
+    } else {
+      niceResidual = 10;
+    }
+    return niceResidual * magnitude;
+  }
 
   /// Grafik için üst ölçek: en yüksek gelir/gider değerine göre.
   double _niceMax(List<_MonthFlow> flows) {
@@ -491,9 +511,9 @@ class _DashboardScreenState extends State<DashboardScreen> with AutomaticKeepAli
       if (f.income > maxVal) maxVal = f.income;
       if (f.expense > maxVal) maxVal = f.expense;
     }
-    if (maxVal <= 0) return _flowStepUnit * _flowIntervals;
-    final step = ((maxVal / _flowIntervals) / _flowStepUnit).ceil() * _flowStepUnit;
-    return (step <= 0 ? _flowStepUnit : step) * _flowIntervals;
+    if (maxVal <= 0) return _niceStep(1) * _flowIntervals;
+    final step = _niceStep(maxVal / _flowIntervals);
+    return step * _flowIntervals;
   }
 
   double _flowStep(double flowMax) => flowMax / _flowIntervals;

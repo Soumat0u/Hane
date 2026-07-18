@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -27,10 +25,7 @@ class ApiService {
     if (host.isNotEmpty) return 'http://$host:8000/api';
 
     // 3) Geliştirme varsayılanları (Web paneliyle aynı veritabanını paylaşması için Railway'e yönlendirildi).
-    // Yerel Django sunucusunda test etmek isterseniz aşağıdaki localhost satırlarını aktifleştirebilirsiniz.
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'https://web-production-77031.up.railway.app/api';
-    }
+    // Yerel Django sunucusunda test etmek isterseniz --dart-define=API_HOST=<mac-ip> kullanın.
     return 'https://web-production-77031.up.railway.app/api';
   }
 
@@ -156,15 +151,37 @@ class ApiService {
 
   Future<Project> updateProject(Project project) async {
     final headers = await _getHeaders();
+    // image_path artık bir FileField; görsel değişikliği yalnızca
+    // uploadProjectImage() (multipart) ile yapılır. Bunu JSON gövdesinde
+    // (mevcut URL string'i olarak) geri göndermek DRF'in dosya bekleyen
+    // alanında doğrulama hatasına yol açar, bu yüzden burada çıkarıyoruz.
+    final body = project.toMap()..remove('image_path');
     final response = await _client.put(
       Uri.parse('$baseUrl/projects/${project.id}/'),
       headers: headers,
-      body: jsonEncode(project.toMap()),
+      body: jsonEncode(body),
     );
     if (response.statusCode == 200) {
       return Project.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
     } else {
       throw Exception('Proje güncellenemedi');
+    }
+  }
+
+  Future<Project> uploadProjectImage(int projectId, String filePath) async {
+    final token = await getToken();
+    final request = http.MultipartRequest('PATCH', Uri.parse('$baseUrl/projects/$projectId/'));
+    if (token != null) {
+      request.headers['Authorization'] = 'Token $token';
+    }
+    request.files.add(await http.MultipartFile.fromPath('image_path', filePath));
+
+    final streamedResponse = await _client.send(request);
+    final response = await http.Response.fromStream(streamedResponse);
+    if (response.statusCode == 200) {
+      return Project.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+    } else {
+      throw Exception('Proje görseli yüklenemedi');
     }
   }
 
@@ -371,6 +388,24 @@ class ApiService {
       );
     } else {
       throw Exception('Firma profili güncellenemedi');
+    }
+  }
+  Future<CompanyProfile> uploadCompanyLogo(String filePath) async {
+    final token = await getToken();
+    final request = http.MultipartRequest('PATCH', Uri.parse('$baseUrl/company-profile/'));
+    if (token != null) {
+      request.headers['Authorization'] = 'Token $token';
+    }
+    request.files.add(await http.MultipartFile.fromPath('logo', filePath));
+
+    final streamedResponse = await _client.send(request);
+    final response = await http.Response.fromStream(streamedResponse);
+    if (response.statusCode == 200) {
+      return CompanyProfile.fromMap(
+        jsonDecode(utf8.decode(response.bodyBytes)),
+      );
+    } else {
+      throw Exception('Logo yüklenemedi');
     }
   }
 

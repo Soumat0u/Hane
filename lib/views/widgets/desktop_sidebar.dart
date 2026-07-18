@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/ayarlar_view.dart';
 import 'package:hane/views/widgets/zeynep_drawer.dart' show DrawerItemData;
 import 'package:hane/views/widgets/zeynep_logo.dart';
@@ -95,6 +97,8 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
     final Color fg = isSelected
         ? context.colors.surface
         : (isHovered ? context.colors.brand : context.colors.textSecondary);
+    final bool showWarningBadge = item.tabIndex == 4 &&
+        context.select<FinanceProvider, bool>((p) => p.companyProfile == null || !p.companyProfile!.isComplete);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10.0),
@@ -121,7 +125,26 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
           padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
           child: Row(
             children: [
-              Icon(isSelected ? item.activeIcon : item.inactiveIcon, color: fg, size: 24),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(isSelected ? item.activeIcon : item.inactiveIcon, color: fg, size: 24),
+                  if (showWarningBadge)
+                    Positioned(
+                      right: -2,
+                      top: -2,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: context.colors.warning,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: context.colors.surface, width: 1.5),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               const SizedBox(width: 16),
               Text(
                 item.title,

@@ -1,16 +1,56 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { Plus, ArrowRight, ChevronRight, CheckCircle, Circle, Edit2, Trash2, X } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num, parseStatusColor, withAlpha15, projectImage } from '../utils'
 import ProjectFormModal from '../components/ProjectFormModal'
 
+function DeleteProjectsModal({ count, onClose, onConfirm }) {
+  const [deleting, setDeleting] = useState(false)
+  const [err, setErr] = useState('')
+  const handleDelete = async () => {
+    setDeleting(true)
+    setErr('')
+    try {
+      await onConfirm()
+    } catch {
+      setErr('Silinemedi. Lütfen tekrar deneyin.')
+      setDeleting(false)
+    }
+  }
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 340 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ padding: '1rem 1.25rem' }}>
+          <span className="modal-title">Projeleri Sil</span>
+          <button className="modal-close" onClick={onClose} title="Kapat"><X size={18} /></button>
+        </div>
+        <div className="modal-body" style={{ padding: '0.25rem 1.25rem 1.1rem' }}>
+          {err && <div className="error-message">{err}</div>}
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', margin: 0 }}>
+            Seçili {count} projeyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz ve projelere bağlı tüm veriler silinir.
+          </p>
+        </div>
+        <div className="modal-footer" style={{ padding: '0 1.25rem 1.1rem' }}>
+          <button type="button" className="btn-ghost" onClick={onClose} disabled={deleting}>Vazgeç</button>
+          <button type="button" className="btn-danger" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <><span className="loader" /> Siliniyor...</> : 'Sil'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 export default function Projects() {
   const navigate = useNavigate()
-  const { projects, transactions, addProject, deleteProject, loading, loaded, error } = useData()
+  const { projects, transactions, addProject, uploadProjectImage, deleteProject, loading, loaded, error } = useData()
   const [createOpen, setCreateOpen] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState([])
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   // İşlemleri proje bazında grupla (mobil provider mantığı).
   const txByProject = useMemo(() => {
@@ -36,19 +76,18 @@ export default function Projects() {
     )
   }
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     if (selectedIds.length === 0) return
-    const confirmed = window.confirm(`${selectedIds.length} projeyi silmek istediğinize emin misiniz?`)
-    if (!confirmed) return
-    try {
-      for (const id of selectedIds) {
-        await deleteProject(id)
-      }
-      setSelectedIds([])
-      setIsEditMode(false)
-    } catch (err) {
-      alert("Projeler silinirken bir hata oluştu.")
+    setDeleteOpen(true)
+  }
+
+  const confirmDeleteSelected = async () => {
+    for (const id of selectedIds) {
+      await deleteProject(id)
     }
+    setSelectedIds([])
+    setIsEditMode(false)
+    setDeleteOpen(false)
   }
 
   const computeCard = (project) => {
@@ -269,7 +308,20 @@ export default function Projects() {
       {createOpen && (
         <ProjectFormModal
           onClose={() => setCreateOpen(false)}
-          onSave={addProject}
+          onSave={async (projectData, imageFile) => {
+            const created = await addProject(projectData)
+            if (imageFile && created?.id) {
+              await uploadProjectImage(created.id, imageFile)
+            }
+          }}
+        />
+      )}
+
+      {deleteOpen && (
+        <DeleteProjectsModal
+          count={selectedIds.length}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={confirmDeleteSelected}
         />
       )}
     </div>

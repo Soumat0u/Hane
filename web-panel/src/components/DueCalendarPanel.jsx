@@ -169,22 +169,22 @@ export default function DueCalendarPanel() {
   }, [selectedDay])
 
   const displayedItems = useMemo(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    const targetDay = selectedDay ? new Date(selectedDay) : new Date()
+    targetDay.setHours(0, 0, 0, 0)
 
-    if (selectedDay && !isSameDay(selectedDay, today)) {
-      return items.filter((p) => p.date && isSameDay(p.date, selectedDay))
-    }
+    const endOfWeek = new Date(targetDay)
+    const day = endOfWeek.getDay()
+    const diff = endOfWeek.getDate() + (day === 0 ? 0 : 7 - day)
+    endOfWeek.setDate(diff)
+    endOfWeek.setHours(23, 59, 59, 999)
 
-    const nextWeek = new Date(today)
-    nextWeek.setDate(nextWeek.getDate() + 7)
-    return items.filter((p) => p.date && p.date >= today && p.date <= nextWeek)
+    return items.filter((p) => p.date && p.date >= targetDay && p.date <= endOfWeek)
   }, [items, selectedDay])
 
   return (
     <div>
       <div className="section-header">
-        <span className="section-title">VADESİ DOLAN VE YAKLAŞAN ÖDEME/ALACAKLAR</span>
+        <span className="section-title">Vadesi Dolan ve Yaklaşan Ödeme/Alacaklar</span>
       </div>
       <div className="calendar-card">
         <MiniCalendar selectedDay={selectedDay} onSelectDay={setSelectedDay} paymentDates={paymentDates} />

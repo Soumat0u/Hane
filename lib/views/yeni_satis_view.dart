@@ -118,7 +118,7 @@ class _YeniSatisViewState extends State<YeniSatisView> {
             ),
             AppDropdown<String>(label: 'Birim Türü', value: _unitType, options: _unitTypes, onChanged: (v) => setState(() => _unitType = v!)),
             AppTextField(controller: _unitNoCtrl, label: 'Birim No', hint: 'Örn. A-12'),
-            AppTextField(controller: _priceCtrl, label: 'Satış Fiyatı', number: true, required: true),
+            AppTextField(controller: _priceCtrl, label: 'Satış Fiyatı', currency: true, required: true),
             if (buyerOptions.length > 1)
               AppDropdown<int?>(label: 'Alıcı (Cari)', value: _buyerId, options: buyerOptions, onChanged: (v) => setState(() => _buyerId = v)),
             AppDateField(label: 'Satış Tarihi', value: _saleDate, onChanged: (d) => setState(() => _saleDate = d)),

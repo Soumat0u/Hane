@@ -17,6 +17,7 @@ class OnboardingGate extends StatefulWidget {
 
 class _OnboardingGateState extends State<OnboardingGate> {
   bool _welcomeSeen = false;
+  bool _skipped = false;
 
   @override
   Widget build(BuildContext context) {
@@ -26,11 +27,11 @@ class _OnboardingGateState extends State<OnboardingGate> {
           return const Scaffold(body: Center(child: CircularProgressIndicator()));
         }
         final name = fp.companyProfile?.companyName.trim() ?? '';
-        if (name.isEmpty) {
+        if (name.isEmpty && !_skipped) {
           if (!_welcomeSeen) {
             return OnboardingWelcomeView(onDone: () => setState(() => _welcomeSeen = true));
           }
-          return const FirmaDuzenleView(isOnboarding: true);
+          return FirmaDuzenleView(isOnboarding: true, onSkip: () => setState(() => _skipped = true));
         }
         return widget.child;
       },

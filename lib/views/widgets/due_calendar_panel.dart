@@ -39,24 +39,21 @@ class _DueCalendarPanelState extends State<DueCalendarPanel> {
             : null;
         final isPastSelected = selectedOnly != null && selectedOnly.isBefore(todayOnly);
 
-        List<DuePayment> displayedItems;
-        if (selectedOnly != null && !isSameDay(selectedOnly, todayOnly)) {
-          displayedItems = items.where((p) => p.date != null && isSameDay(p.date, selectedOnly)).toList();
-        } else {
-          final nextWeek = todayOnly.add(const Duration(days: 7));
-          displayedItems = items.where((p) => p.date != null && !p.date!.isBefore(todayOnly) && !p.date!.isAfter(nextWeek)).toList();
-        }
+        final targetDay = selectedOnly ?? todayOnly;
+        final daysToSunday = 7 - targetDay.weekday;
+        final endOfWeek = targetDay.add(Duration(days: daysToSunday, hours: 23, minutes: 59, seconds: 59));
+        
+        List<DuePayment> displayedItems = items.where((p) => p.date != null && !p.date!.isBefore(targetDay) && !p.date!.isAfter(endOfWeek)).toList();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'VADESİ DOLAN VE YAKLAŞAN ÖDEME/ALACAKLAR',
+              'Vadesi Dolan ve Yaklaşan Ödeme/Alacaklar',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: context.colors.textSecondary,
-                letterSpacing: 0.5,
+                color: context.colors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -73,6 +70,7 @@ class _DueCalendarPanelState extends State<DueCalendarPanel> {
                     firstDay: DateTime.utc(2020, 10, 16),
                     lastDay: DateTime.utc(2030, 3, 14),
                     focusedDay: _focusedDay,
+                    startingDayOfWeek: StartingDayOfWeek.monday,
                     selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                     onDaySelected: (selectedDay, focusedDay) {
                       setState(() {

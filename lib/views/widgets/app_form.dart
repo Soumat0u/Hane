@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 
 import 'package:hane/theme/app_theme.dart';
+import 'package:hane/utils/thousands_formatter.dart';
 /// Form ekranlarında ortak kullanılan stillenmiş alanlar.
 
 InputDecoration appInputDecoration(BuildContext context, [String? hint]) => InputDecoration(
@@ -21,6 +22,7 @@ class AppTextField extends StatelessWidget {
   final String label;
   final String? hint;
   final bool number;
+  final bool currency;
   final bool required;
   final int maxLines;
 
@@ -30,6 +32,7 @@ class AppTextField extends StatelessWidget {
     required this.label,
     this.hint,
     this.number = false,
+    this.currency = false,
     this.required = false,
     this.maxLines = 1,
   });
@@ -47,7 +50,8 @@ class AppTextField extends StatelessWidget {
           TextFormField(
             controller: controller,
             maxLines: maxLines,
-            keyboardType: number ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+            keyboardType: (number || currency) ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+            inputFormatters: currency ? [ThousandsSeparatorInputFormatter()] : null,
             validator: required ? (v) => (v == null || v.trim().isEmpty) ? 'Zorunlu alan' : null : null,
             decoration: appInputDecoration(context, hint),
           ),
@@ -61,14 +65,14 @@ class AppDropdown<T> extends StatelessWidget {
   final String label;
   final T value;
   final Map<T, String> options;
-  final ValueChanged<T?> onChanged;
+  final ValueChanged<T?>? onChanged;
 
   const AppDropdown({
     super.key,
     required this.label,
     required this.value,
     required this.options,
-    required this.onChanged,
+    this.onChanged,
   });
 
   @override
@@ -83,8 +87,17 @@ class AppDropdown<T> extends StatelessWidget {
           const SizedBox(height: 6),
           DropdownButtonFormField<T>(
             initialValue: value,
+            isExpanded: true,
             decoration: appInputDecoration(context),
-            items: options.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+            items: options.entries
+                .map((e) => DropdownMenuItem(
+                      value: e.key,
+                      child: Text(
+                        e.value,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ))
+                .toList(),
             onChanged: onChanged,
           ),
         ],

@@ -6,6 +6,20 @@ import { projectImage, num } from '../utils'
 import DueCalendarPanel from '../components/DueCalendarPanel'
 import TodoPanel from '../components/TodoPanel'
 
+// Verilen kaba adımı 1, 2 veya 5'in bir kuvvetine (×10^n) yuvarlar — grafik
+// ekseni sabit bir birime değil, veri setinin gerçek büyüklüğüne göre ölçeklenir.
+function niceStep(roughStep) {
+  if (roughStep <= 0) return 1
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)))
+  const residual = roughStep / magnitude
+  let niceResidual
+  if (residual <= 1) niceResidual = 1
+  else if (residual <= 2) niceResidual = 2
+  else if (residual <= 5) niceResidual = 5
+  else niceResidual = 10
+  return niceResidual * magnitude
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const { projects: allProjects, transactions: allTransactions, accounts, loans, cheques, contacts, receivables, loading, loaded } = useData()
@@ -56,9 +70,6 @@ export default function Dashboard() {
     { value: netPozisyon * 0.95 }, { value: netPozisyon * 0.92 }, { value: netPozisyon * 0.98 }, { value: netPozisyon }
   ]
 
-  // Y ekseni: her çizgi arası sabit 5 milyon
-  const CASH_FLOW_STEP = 5000000
-
   // Nakit Akışı (Aylık) — son 6 ayın GERÇEK işlemlerinden hesaplanır
   const cashFlowData = (() => {
     const now = new Date()
@@ -80,11 +91,11 @@ export default function Dashboard() {
     return months
   })()
 
-  // Sabit 4 aralık (5 etiket); aralık büyüklüğü 5 milyonun katı olacak
-  // şekilde son 6 ayın en büyük değerine göre ölçeklenir.
+  // Sabit 4 aralık (5 etiket); aralık büyüklüğü sabit bir birime değil, son 6
+  // ayın GERÇEK en yüksek değerine göre (nice number'a yuvarlanarak) ölçeklenir.
   const CASH_FLOW_INTERVALS = 4
   const cashFlowMax = Math.max(0, ...cashFlowData.flatMap((m) => [m.Gelir, m.Gider]))
-  const cashFlowStep = Math.max(CASH_FLOW_STEP, Math.ceil(cashFlowMax / CASH_FLOW_INTERVALS / CASH_FLOW_STEP) * CASH_FLOW_STEP)
+  const cashFlowStep = cashFlowMax > 0 ? niceStep(cashFlowMax / CASH_FLOW_INTERVALS) : niceStep(1)
   const cashFlowDomainMax = cashFlowStep * CASH_FLOW_INTERVALS
   const cashFlowTicks = Array.from({ length: CASH_FLOW_INTERVALS + 1 }, (_, i) => i * cashFlowStep)
 
@@ -163,7 +174,7 @@ export default function Dashboard() {
         {/* NAKİT AKIŞI GRAFİĞİ */}
         <div>
           <div className="section-header">
-            <span className="section-title">NAKİT AKIŞI (AYLIK)</span>
+            <span className="section-title">Nakit Akışı (Aylık)</span>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#10b981' }}></div>

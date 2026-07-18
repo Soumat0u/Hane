@@ -43,7 +43,7 @@ class _ProjeGiderFormState extends State<ProjeGiderForm> {
 
   bool _saving = false;
 
-  static const _birimler = ['Adet', 'm³', 'm²', 'ton', 'kg', 'paket', 'sefer', 'gün', 'Diğer'];
+  static const _birimler = ['Adet', 'm³', 'm²', 'ton', 'kg', 'saat', 'paket', 'sefer', 'gün', 'Diğer'];
   static const _aylar = [
     'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
     'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'

@@ -351,15 +351,25 @@ class FinanceProvider extends ChangeNotifier {
     ));
   }
 
-  Future<void> createProject(Project project) async {
+  Future<Project> createProject(Project project) async {
     final snapshot = List<Project>.from(_projects);
     _projects = [..._projects, project.withId(_nextTempId())];
     notifyListeners();
-    unawaited(_runSync(
-      () => ApiService.instance.createProject(project),
-      rollback: () => _projects = snapshot,
-      errorLabel: 'Proje oluşturulamadı',
-    ));
+    try {
+      final created = await ApiService.instance.createProject(project);
+      final idx = _projects.indexWhere((p) => p.name == project.name && p.id != null && p.id! < 0);
+      if (idx != -1) {
+        _projects[idx] = created;
+      } else {
+        _projects.add(created);
+      }
+      notifyListeners();
+      return created;
+    } catch (e) {
+      _projects = snapshot;
+      notifyListeners();
+      throw Exception('Proje oluşturulamadı');
+    }
   }
 
   Future<void> updateProject(Project project) async {
@@ -448,6 +458,21 @@ class FinanceProvider extends ChangeNotifier {
       rollback: () => _companyProfile = snapshot,
       errorLabel: 'Firma profili güncellenemedi',
     ));
+  }
+
+  Future<void> uploadCompanyLogo(String filePath) async {
+    final updated = await ApiService.instance.uploadCompanyLogo(filePath);
+    _companyProfile = updated;
+    notifyListeners();
+  }
+
+  Future<void> uploadProjectImage(int projectId, String filePath) async {
+    final updated = await ApiService.instance.uploadProjectImage(projectId, filePath);
+    final idx = _projects.indexWhere((p) => p.id == projectId);
+    if (idx != -1) {
+      _projects[idx] = updated;
+      notifyListeners();
+    }
   }
 
   // --- Bütçe ---

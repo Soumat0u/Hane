@@ -1,9 +1,47 @@
 import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, History, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, History, Pencil, Trash2, X } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 import AccountFormModal from '../components/AccountFormModal'
+import BankLogo from '../components/BankLogo'
+
+function DeleteAccountModal({ isCard, onClose, onConfirm }) {
+  const [deleting, setDeleting] = useState(false)
+  const [err, setErr] = useState('')
+  const handleDelete = async () => {
+    setDeleting(true)
+    setErr('')
+    try {
+      await onConfirm()
+    } catch {
+      setErr('Silinemedi. Lütfen tekrar deneyin.')
+      setDeleting(false)
+    }
+  }
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 340 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header" style={{ padding: '1rem 1.25rem' }}>
+          <span className="modal-title">{isCard ? 'Kartı Sil' : 'Hesabı Sil'}</span>
+          <button className="modal-close" onClick={onClose} title="Kapat"><X size={18} /></button>
+        </div>
+        <div className="modal-body" style={{ padding: '0.25rem 1.25rem 1.1rem' }}>
+          {err && <div className="error-message">{err}</div>}
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.88rem', margin: 0 }}>
+            Bu {isCard ? 'kartı' : 'hesabı'} silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+          </p>
+        </div>
+        <div className="modal-footer" style={{ padding: '0 1.25rem 1.1rem' }}>
+          <button type="button" className="btn-ghost" onClick={onClose} disabled={deleting}>Vazgeç</button>
+          <button type="button" className="btn-danger" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <><span className="loader" /> Siliniyor...</> : 'Sil'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const fmtDate = (raw) => {
   if (!raw) return '-'
@@ -29,7 +67,7 @@ export default function AccountDetail() {
   const navigate = useNavigate()
   const { accounts, transactions, projects, updateAccount, deleteAccount, loading, loaded } = useData()
   const [editOpen, setEditOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const account = useMemo(
     () => accounts.find((a) => String(a.id) === String(id)) || null,
@@ -74,15 +112,8 @@ export default function AccountDetail() {
   const isCard = account.type === 'Kredi Kartı'
 
   const handleDelete = async () => {
-    if (!window.confirm('Bu hesabı silmek istediğinize emin misiniz?')) return
-    setDeleting(true)
-    try {
-      await deleteAccount(account.id)
-      navigate('/dashboard/accounts')
-    } catch {
-      alert('Hesap silinemedi.')
-      setDeleting(false)
-    }
+    await deleteAccount(account.id)
+    navigate('/dashboard/accounts')
   }
 
   return (
@@ -91,10 +122,13 @@ export default function AccountDetail() {
         <button className="icon-btn" onClick={() => navigate(-1)} title="Geri">
           <ArrowLeft size={20} />
         </button>
+        {(account.type === 'Banka' || account.type === 'Kredi Kartı' || account.type === 'BCH' || account.type === 'Esnek') && (
+          <BankLogo bankName={account.bank_logo_painter || account.name} width={40} height={40} />
+        )}
         <h1 className="detail-title">{account.name}</h1>
         <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
           <button className="icon-btn" onClick={() => setEditOpen(true)} title="Düzenle"><Pencil size={18} /></button>
-          <button className="icon-btn" onClick={handleDelete} disabled={deleting} style={{ color: 'var(--color-danger)' }} title="Sil"><Trash2 size={18} /></button>
+          <button className="icon-btn" onClick={() => setDeleteOpen(true)} style={{ color: 'var(--color-danger)' }} title="Sil"><Trash2 size={18} /></button>
         </div>
       </div>
 
@@ -181,6 +215,14 @@ export default function AccountDetail() {
           account={account}
           onClose={() => setEditOpen(false)}
           onSave={(body) => updateAccount(account.id, body)}
+        />
+      )}
+
+      {deleteOpen && (
+        <DeleteAccountModal
+          isCard={isCard}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={handleDelete}
         />
       )}
     </div>

@@ -935,6 +935,14 @@ textarea {
   background-color: var(--color-surface-variant);
 }
 
+.btn-inline-text:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-inline-text:disabled:hover {
+  background-color: transparent;
+}
+
 .list-group {
   background: var(--color-surface);
   border: 1px solid var(--color-border);

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:hane/theme/app_theme.dart';
@@ -11,6 +12,7 @@ import 'package:hane/models/account.dart';
 import 'package:hane/models/financial_transaction.dart';
 import 'package:hane/models/finance_entities.dart';
 import 'package:hane/views/widgets/bank_logo.dart';
+import 'package:hane/utils/thousands_formatter.dart';
 
 class YeniIslemScreen extends StatefulWidget {
   final String initialType;
@@ -102,7 +104,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
-  final List<String> _units = ['Adet', 'Ton', 'Kg', 'Metre', 'm²', 'm³', 'Litre', 'Ay', 'Gün', 'Yıl', 'Paket', 'Kutu', 'Diğer'];
+  final List<String> _units = ['Adet', 'Ton', 'Kg', 'Metre', 'm²', 'm³', 'Litre', 'Saat', 'Ay', 'Gün', 'Yıl', 'Paket', 'Kutu', 'Diğer'];
   String? _selectedUnit;
 
   // --- Transfer Form States ---
@@ -805,73 +807,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
 
-        // ANA KATEGORİ Selection
-        _buildFormRow(
-          label: 'ANA KATEGORİ',
-          child: InkWell(
-            onTap: _pickAna,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: context.colors.border),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _selectedMainCategory?.name ?? 'Kategori Seçin',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: _selectedMainCategory == null ? context.colors.textSecondary : context.colors.textPrimary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Icon(Icons.folder_open_rounded, color: context.colors.textSecondary, size: 20),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // ALT KATEGORİ Selection
-        _buildFormRow(
-          label: 'ALT KATEGORİ',
-          child: InkWell(
-            onTap: _selectedMainCategory == null ? null : _pickAlt,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: context.colors.border),
-                color: _selectedMainCategory == null ? context.colors.surfaceVariant.withOpacity(0.5) : null,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _selectedSubCategory?.name ?? (_selectedMainCategory == null ? 'Önce ana kategori seçin' : 'Seçiniz (opsiyonel)'),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: _selectedSubCategory == null ? context.colors.textSecondary : context.colors.textPrimary,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Icon(Icons.subdirectory_arrow_right_rounded, color: context.colors.textSecondary, size: 20),
-                ],
-              ),
-            ),
-          ),
-        ),
-
         // ODEME KAYNAGI Custom Dropdown (hesap türüne göre gruplu)
         Consumer<FinanceProvider>(
           builder: (context, fp, child) {
@@ -969,6 +904,75 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           }
         ),
 
+        // ANA KATEGORİ Selection
+        _buildFormRow(
+          label: 'ANA KATEGORİ',
+          child: InkWell(
+            onTap: _pickAna,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: context.colors.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedMainCategory?.name ?? 'Kategori Seçin',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: _selectedMainCategory == null ? context.colors.textSecondary : context.colors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(Icons.folder_open_rounded, color: context.colors.textSecondary, size: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // ALT KATEGORİ Selection
+        _buildFormRow(
+          label: 'ALT KATEGORİ',
+          child: InkWell(
+            onTap: _selectedMainCategory == null ? null : _pickAlt,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: context.colors.border),
+                color: _selectedMainCategory == null ? context.colors.surfaceVariant.withOpacity(0.5) : null,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedSubCategory?.name ?? (_selectedMainCategory == null ? 'Önce ana kategori seçin' : 'Seçiniz (opsiyonel)'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: _selectedSubCategory == null ? context.colors.textSecondary : context.colors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(Icons.subdirectory_arrow_right_rounded, color: context.colors.textSecondary, size: 20),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+
+
         // ALICI / SATICI (Tahsilatta: MÜŞTERİ) Text Field
         _buildFormRow(
           label: _isIncome ? 'MÜŞTERİ' : 'ALICI / SATICI',
@@ -985,6 +989,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             controller: _amountController,
             prefixText: '₺  ',
             keyboardType: TextInputType.number,
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
           ),
         ),
 
@@ -1156,6 +1161,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             controller: _transferTutarController,
             prefixText: '₺  ',
             keyboardType: TextInputType.number,
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
           ),
         ),
         _buildFormRow(
@@ -1248,6 +1254,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             controller: _borclanmaTutarController,
             prefixText: '₺  ',
             keyboardType: TextInputType.number,
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
           ),
         ),
         _buildFormRow(
@@ -1375,6 +1382,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             controller: _krediTutarController,
             prefixText: '₺  ',
             keyboardType: TextInputType.number,
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
           ),
         ),
         _buildFormRow(
@@ -1478,6 +1486,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             controller: _satisBedeliController,
             prefixText: '₺  ',
             keyboardType: TextInputType.number,
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
           ),
         ),
         _buildFormRow(
@@ -1486,6 +1495,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             controller: _satisPesinatController,
             prefixText: '₺  ',
             keyboardType: TextInputType.number,
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
           ),
         ),
         _buildFormRow(
@@ -1530,12 +1540,14 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     String? hintText,
     String? prefixText,
     TextInputType keyboardType = TextInputType.text,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return SizedBox(
       height: 44,
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
+        inputFormatters: inputFormatters,
         style: TextStyle(fontSize: 14, color: context.colors.textPrimary, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: hintText,
@@ -1662,46 +1674,84 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     required String title,
     required Map<String, List<Category>> grouped,
   }) {
+    final Set<String> expandedGroups = {};
     return showModalBottomSheet<Category>(
       context: context,
       isScrollControlled: true,
       backgroundColor: context.colors.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SizedBox(
-        height: MediaQuery.of(ctx).size.height * 0.7,
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: context.colors.border, borderRadius: BorderRadius.circular(2))),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          return SizedBox(
+            height: MediaQuery.of(ctx).size.height * 0.7,
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: context.colors.border, borderRadius: BorderRadius.circular(2))),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
+                ),
+                Divider(height: 1, color: context.colors.surfaceVariant),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      for (final entry in grouped.entries) ...[
+                        InkWell(
+                          onTap: () {
+                            setSheetState(() {
+                              if (expandedGroups.contains(entry.key)) {
+                                expandedGroups.remove(entry.key);
+                              } else {
+                                expandedGroups.add(entry.key);
+                              }
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  entry.key.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: context.colors.textSecondary,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                Icon(
+                                  expandedGroups.contains(entry.key)
+                                      ? Icons.keyboard_arrow_down_rounded
+                                      : Icons.keyboard_arrow_right_rounded,
+                                  color: context.colors.textSecondary,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (expandedGroups.contains(entry.key))
+                          for (final c in entry.value)
+                            ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.fromLTRB(36, 0, 20, 0),
+                              title: Text(c.name, style: TextStyle(fontSize: 14, color: context.colors.textPrimary)),
+                              trailing: c.childCount > 0
+                                  ? Text('${c.childCount} alt', style: TextStyle(fontSize: 11, color: context.colors.textSecondary))
+                                  : null,
+                              onTap: () => Navigator.pop(ctx, c),
+                            ),
+                        Divider(height: 1, color: context.colors.surfaceVariant.withValues(alpha: 0.5)),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-            Divider(height: 1, color: context.colors.surfaceVariant),
-            Expanded(
-              child: ListView(
-                children: [
-                  for (final entry in grouped.entries) ...[
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
-                      child: Text(entry.key.toUpperCase(),
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.textSecondary, letterSpacing: 0.5)),
-                    ),
-                    for (final c in entry.value)
-                      ListTile(
-                        dense: true,
-                        title: Text(c.name, style: TextStyle(fontSize: 14, color: context.colors.textPrimary)),
-                        trailing: c.childCount > 0
-                            ? Text('${c.childCount} alt', style: TextStyle(fontSize: 11, color: context.colors.textSecondary))
-                            : null,
-                        onTap: () => Navigator.pop(ctx, c),
-                      ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        }
       ),
     );
   }

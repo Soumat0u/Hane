@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Link2, FileText } from 'lucide-react'
+import { X, Link2, FileText, ChevronDown, ChevronRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { num } from '../utils'
+import { num, parseMoneyInput, formatAmountForDisplay } from '../utils'
+import MoneyInput from './MoneyInput'
 
 const isImageFile = (url) => /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url || '')
 
@@ -33,7 +34,7 @@ function AccountOptions({ accounts, types }) {
   ))
 }
 
-const UNITS = ['Adet', 'Ton', 'Kg', 'Metre', 'm²', 'm³', 'Litre', 'Ay', 'Gün', 'Yıl', 'Paket', 'Kutu', 'Diğer']
+const UNITS = ['Adet', 'Ton', 'Kg', 'Metre', 'm²', 'm³', 'Litre', 'Saat', 'Ay', 'Gün', 'Yıl', 'Paket', 'Kutu', 'Diğer']
 
 /**
  * Mobildeki `YeniIslemScreen`'in web karşılığı: sol panelden seçilen türe göre
@@ -87,6 +88,29 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
 
   // Ana kategori seçiliyken listede olmayan yeni bir alt kategori eklenebilir.
   const [addingSubCategory, setAddingSubCategory] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState({})
+
+  const groupedCategories = useMemo(() => {
+    const groups = {}
+    for (const c of mainCategories) {
+      const g = c.group || 'Diğer'
+      if (!groups[g]) groups[g] = []
+      groups[g].push(c)
+    }
+    return groups
+  }, [mainCategories])
+
+  const toggleGroup = (groupName) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupName]: !prev[groupName],
+    }))
+  }
+
+  // Reset expanded groups and selection on type toggle
+  useEffect(() => {
+    setExpandedGroups({})
+  }, [isIncome])
   const [newSubCategoryName, setNewSubCategoryName] = useState('')
   const [subCategorySaving, setSubCategorySaving] = useState(false)
 
@@ -154,7 +178,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
       initializedRef.current = true
       const t = initialTransaction
       const dateStr = (t.date || '').slice(0, 10)
-      const amtStr = String(num(t.amount))
+      const amtStr = formatAmountForDisplay(t.amount)
       
       if (type === 'Ödeme') {
         setIsIncome(t.type === 'Gelir' || t.type === 'Tahsilat')
@@ -232,14 +256,14 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
     setSaving(true)
     try {
       if (type === 'Ödeme') {
-        if (num(odemeAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
+        if (parseMoneyInput(odemeAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
         if (!isIncome) {
           const selectedAcc = accounts.find((a) => a.name === odemeAccount)
           if (selectedAcc) {
             const limit = ['Kredi Kartı', 'BCH', 'Esnek'].includes(selectedAcc.type)
               ? num(selectedAcc.available_limit)
               : num(selectedAcc.balance)
-            if (num(odemeAmount) > limit) {
+            if (parseMoneyInput(odemeAmount) > limit) {
               throw new Error('Yetersiz bakiye veya limit! İşlem tutarı mevcut bakiyeden/limitten büyük olamaz.')
             }
           }
@@ -248,7 +272,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           project_id: projectIdByName(odemeProject),
           type: isIncome ? 'Gelir' : 'Gider',
           category: subCategory || mainCategory || '',
-          amount: num(odemeAmount),
+          amount: parseMoneyInput(odemeAmount),
           date: odemeDate,
           source_name: odemeAccount,
           dest_name: '',
@@ -271,11 +295,11 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           await addTransaction(data)
         }
       } else if (type === 'Transfer') {
-        if (num(transferAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
+        if (parseMoneyInput(transferAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
         const data = {
           type: 'Transfer',
           category: 'Transfer',
-          amount: num(transferAmount),
+          amount: parseMoneyInput(transferAmount),
           date: transferDate,
           source_name: fromAccount,
           dest_name: toAccount,
@@ -284,18 +308,18 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
         if (initialTransaction) await updateTransaction(initialTransaction.id, data)
         else await addTransaction(data)
       } else if (type === 'Borçlanma') {
-        if (num(debtAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
+        if (parseMoneyInput(debtAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
         if (initialTransaction) {
           await updateTransaction(initialTransaction.id, {
             project_id: projectIdByName(debtProject),
-            amount: num(debtAmount),
+            amount: parseMoneyInput(debtAmount),
             contact_name: debtContact,
             due_date: debtDueDate,
             description: debtDesc,
           })
         } else {
           await addDebt({
-            amount: num(debtAmount),
+            amount: parseMoneyInput(debtAmount),
             contactName: debtContact,
             dueDate: debtDueDate,
             projectId: projectIdByName(debtProject),
@@ -303,12 +327,12 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           })
         }
       } else if (type === 'Kredi Kullanımı') {
-        if (num(krediAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
+        if (parseMoneyInput(krediAmount) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
         const data = {
           project_id: projectIdByName(krediProject),
           type: 'Kredi Kullanımı',
           category: 'Kredi Kullanımı',
-          amount: num(krediAmount),
+          amount: parseMoneyInput(krediAmount),
           date: krediDate,
           source_name: krediBank,
           description: krediDesc,
@@ -321,20 +345,20 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
             name: `${krediBank} Kredisi`,
             kind: 'loan',
             bank_name: krediBank,
-            principal: num(krediAmount),
-            total_payable: num(krediAmount),
+            principal: parseMoneyInput(krediAmount),
+            total_payable: parseMoneyInput(krediAmount),
             term_months: krediTermMonths ? Number(krediTermMonths) : 0,
             start_date: krediDate,
           })
         }
       } else if (type === 'Satış') {
-        if (num(satisPrice) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
+        if (parseMoneyInput(satisPrice) <= 0) throw new Error('Lütfen geçerli bir tutar girin.')
         const extras = [satisUnit, satisDownPayment ? `Peşinat: ₺${satisDownPayment}` : ''].filter(Boolean).join(' • ')
         const data = {
           project_id: projectIdByName(satisProject),
           type: 'Satış',
           category: 'Satış',
-          amount: num(satisPrice),
+          amount: parseMoneyInput(satisPrice),
           date: satisDate,
           contact_name: satisCustomer,
           description: extras ? `${extras}${satisDesc ? ' • ' + satisDesc : ''}` : satisDesc,
@@ -389,15 +413,122 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
             </select>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Ana Kategori</label>
-              <select className="form-input" value={mainCategory} onChange={(e) => { setMainCategory(e.target.value); setSubCategory(''); setAddingSubCategory(false); setNewSubCategoryName('') }}>
-                <option value="">Seçiniz</option>
-                {mainCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-              </select>
+          <div className="form-group">
+            <label className="form-label">{isIncome ? 'Tahsilat Hesabı' : 'Ödeme Kaynağı'}</label>
+            <select className="form-input" value={odemeAccount} onChange={(e) => setOdemeAccount(e.target.value)}>
+              <option value="">Seçiniz</option>
+              <AccountOptions accounts={accounts} types={['Banka', 'Kredi Kartı', 'Nakit']} />
+            </select>
+          </div>
+
+          {/* Ana ve Alt Kategori Seçimi */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">Ana Kategori Seçimi</label>
+              
+              <div style={{
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                padding: '0.6rem',
+                backgroundColor: 'var(--color-surface-variant)',
+                maxHeight: '220px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.4rem'
+              }}>
+                {Object.keys(groupedCategories).length === 0 ? (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem' }}>
+                    Kategori bulunamadı.
+                  </div>
+                ) : (
+                  Object.entries(groupedCategories).map(([groupName, cats]) => {
+                    const isExpanded = !!expandedGroups[groupName]
+                    const hasSelected = cats.some((c) => c.name === mainCategory)
+                    
+                    return (
+                      <div key={groupName} style={{ display: 'flex', flexDirection: 'column' }}>
+                        {/* Grup Başlığı */}
+                        <div 
+                          onClick={() => toggleGroup(groupName)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0.5rem 0.75rem',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            backgroundColor: hasSelected ? 'var(--color-accent-light, #eff6ff)' : 'var(--color-surface)',
+                            border: `1px solid ${hasSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                            color: 'var(--color-text-main)',
+                            userSelect: 'none'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            <span>{groupName}</span>
+                          </div>
+                          {hasSelected && (
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: 700 }}>
+                              {mainCategory} Seçili
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Grup Elemanları */}
+                        {isExpanded && (
+                          <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '0.4rem',
+                            padding: '0.5rem',
+                            backgroundColor: 'var(--color-surface)',
+                            border: '1px solid var(--color-border)',
+                            borderTop: 'none',
+                            borderBottomLeftRadius: '6px',
+                            borderBottomRightRadius: '6px',
+                            animation: 'fadeIn 0.2s ease'
+                          }}>
+                            {cats.map((c) => {
+                              const isSelected = c.name === mainCategory
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setMainCategory(c.name)
+                                    setSubCategory('')
+                                    setAddingSubCategory(false)
+                                    setNewSubCategoryName('')
+                                  }}
+                                  style={{
+                                    padding: '0.3rem 0.7rem',
+                                    borderRadius: '20px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    backgroundColor: isSelected ? 'var(--color-accent)' : 'var(--color-surface-variant)',
+                                    color: isSelected ? '#ffffff' : 'var(--color-text-main)',
+                                    border: `1px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  {c.name}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
             </div>
-            <div className="form-group">
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Alt Kategori</label>
               {addingSubCategory ? (
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -455,13 +586,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">{isIncome ? 'Tahsilat Hesabı' : 'Ödeme Kaynağı'}</label>
-            <select className="form-input" value={odemeAccount} onChange={(e) => setOdemeAccount(e.target.value)}>
-              <option value="">Seçiniz</option>
-              <AccountOptions accounts={accounts} types={['Banka', 'Kredi Kartı', 'Nakit']} />
-            </select>
-          </div>
+
 
           <div className="form-group">
             <label className="form-label">{isIncome ? 'Müşteri' : 'Alıcı / Satıcı'}</label>
@@ -471,7 +596,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Tutar (₺)</label>
-              <input type="number" min="0" step="0.01" className="form-input" value={odemeAmount} onChange={(e) => setOdemeAmount(e.target.value)} />
+              <MoneyInput value={odemeAmount} onChange={setOdemeAmount} />
             </div>
             <div className="form-group">
               <label className="form-label">Miktar (opsiyonel)</label>
@@ -562,7 +687,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           </div>
           <div className="form-group">
             <label className="form-label">Tutar (₺)</label>
-            <input type="number" min="0" step="0.01" className="form-input" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} />
+            <MoneyInput value={transferAmount} onChange={setTransferAmount} />
           </div>
           <div className="form-group">
             <label className="form-label">Açıklama</label>
@@ -589,7 +714,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Tutar (₺)</label>
-              <input type="number" min="0" step="0.01" className="form-input" value={debtAmount} onChange={(e) => setDebtAmount(e.target.value)} />
+              <MoneyInput value={debtAmount} onChange={setDebtAmount} />
             </div>
             <div className="form-group">
               <label className="form-label">Vade Tarihi</label>
@@ -628,7 +753,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Tutar (₺)</label>
-              <input type="number" min="0" step="0.01" className="form-input" value={krediAmount} onChange={(e) => setKrediAmount(e.target.value)} />
+              <MoneyInput value={krediAmount} onChange={setKrediAmount} />
             </div>
             <div className="form-group">
               <label className="form-label">Vade (Ay)</label>
@@ -668,11 +793,11 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Satış Bedeli (₺)</label>
-              <input type="number" min="0" step="0.01" className="form-input" value={satisPrice} onChange={(e) => setSatisPrice(e.target.value)} />
+              <MoneyInput value={satisPrice} onChange={setSatisPrice} />
             </div>
             <div className="form-group">
               <label className="form-label">Peşinat (₺)</label>
-              <input type="number" min="0" step="0.01" className="form-input" value={satisDownPayment} onChange={(e) => setSatisDownPayment(e.target.value)} />
+              <MoneyInput value={satisDownPayment} onChange={setSatisDownPayment} />
             </div>
           </div>
           <div className="form-group">

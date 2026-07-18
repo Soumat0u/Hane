@@ -29,6 +29,36 @@ class BankLogoWidget extends StatelessWidget {
       return 'assets/images/logos/is_bankasi.png';
     } else if (lower.contains('vakıf') || lower.contains('vakif')) {
       return 'assets/images/logos/vakif.png';
+    } else if (lower.contains('deniz')) {
+      return 'assets/images/logos/denizbank.png';
+    } else if (lower.contains('enpara')) {
+      return 'assets/images/logos/enpara.png';
+    } else if (lower.contains('qnb') || lower.contains('finansbank')) {
+      return 'assets/images/logos/qnb.png';
+    } else if (lower.contains('teb') || lower.contains('türk ekonomi')) {
+      return 'assets/images/logos/teb.png';
+    } else if (lower.contains('ing')) {
+      return 'assets/images/logos/ing.png';
+    } else if (lower.contains('hsbc')) {
+      return 'assets/images/logos/hsbc.png';
+    } else if (lower.contains('şeker') || lower.contains('seker')) {
+      return 'assets/images/logos/sekerbank.png';
+    } else if (lower.contains('odea')) {
+      return 'assets/images/logos/odeabank.png';
+    } else if (lower.contains('fiba')) {
+      return 'assets/images/logos/fibabanka.png';
+    } else if (lower.contains('anadolubank') || lower.contains('anadolu bank')) {
+      return 'assets/images/logos/anadolubank.png';
+    } else if (lower.contains('alternatif')) {
+      return 'assets/images/logos/alternatifbank.png';
+    } else if (lower.contains('kuveyt')) {
+      return 'assets/images/logos/kuveytturk.png';
+    } else if (lower.contains('albaraka') || lower.contains('al baraka')) {
+      return 'assets/images/logos/albaraka.png';
+    } else if (lower.contains('türkiye finans') || lower.contains('turkiye finans')) {
+      return 'assets/images/logos/turkiyefinans.png';
+    } else if (lower.contains('amex') || lower.contains('american express')) {
+      return 'assets/images/logos/amex.png';
     } else if (lower.contains('visa')) {
       return 'assets/images/logos/visa.png';
     } else if (lower.contains('mastercard') || lower.contains('master card')) {

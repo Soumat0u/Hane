@@ -22,6 +22,7 @@ function TopbarActions({ theme, toggleTheme }) {
     accounts,
     updateRecurringTransaction,
     deleteRecurringTransaction,
+    companyProfile,
   } = useData()
 
   const navigate = useNavigate()
@@ -258,8 +259,19 @@ function TopbarActions({ theme, toggleTheme }) {
         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
         title="Profil"
       >
-        <div className="avatar">
-          <User size={20} />
+        <div className="avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {companyProfile?.logo ? (
+            <img 
+              src={companyProfile.logo.startsWith('/media/') 
+                ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : 'https://web-production-77031.up.railway.app') + companyProfile.logo
+                : companyProfile.logo
+              } 
+              alt="Logo" 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+            />
+          ) : (
+            <User size={20} />
+          )}
         </div>
       </button>
 

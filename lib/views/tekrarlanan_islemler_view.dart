@@ -274,7 +274,7 @@ class _RecurringFormState extends State<_RecurringForm> {
                     label: 'Tür', value: _type, options: kRecurringTypeLabels, onChanged: (v) => setState(() => _type = v!)),
                 AppTextField(controller: _descriptionCtrl, label: 'Açıklama', hint: 'Örn. Ofis kirası', required: true),
                 AppTextField(controller: _categoryCtrl, label: 'Kategori', hint: 'Örn. Genel Gider'),
-                AppTextField(controller: _amountCtrl, label: 'Tutar', number: true, required: true),
+                AppTextField(controller: _amountCtrl, label: 'Tutar', currency: true, required: true),
                 AppDropdown<int?>(
                     label: _type == 'Gider' ? 'Ödeme Kaynağı' : 'Hedef Hesap',
                     value: _accountId,

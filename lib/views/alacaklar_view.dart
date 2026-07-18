@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/finance_entities.dart';
 import 'package:hane/utils/formatters.dart';
+import 'package:hane/utils/thousands_formatter.dart';
 import 'package:hane/views/widgets/app_form.dart';
 
 /// Alacaklar ekranı — satış taksitleri, müşteri/devlet alacakları, hakedişler.
@@ -251,7 +252,7 @@ class AlacaklarView extends StatelessWidget {
 
   // --- Tahsilat diyaloğu ---
   void _showCollectDialog(BuildContext context, FinanceProvider fp, Receivable r) {
-    final amountCtrl = TextEditingController(text: r.remaining.toStringAsFixed(0));
+    final amountCtrl = TextEditingController(text: formatAmountForDisplay(r.remaining));
     final accounts = fp.accounts.where((a) => a.type == 'Banka' || a.type == 'Nakit').toList();
     int? selectedAccountId = accounts.isNotEmpty ? accounts.first.id : null;
     bool saving = false;
@@ -271,6 +272,7 @@ class AlacaklarView extends StatelessWidget {
               TextField(
                 controller: amountCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
                 decoration: appInputDecoration(context, 'Tahsil edilen tutar'),
               ),
               const SizedBox(height: 12),
@@ -422,7 +424,7 @@ class _AddReceivableFormState extends State<_AddReceivableForm> {
               const SizedBox(height: 20),
               AppDropdown<String>(label: 'Tür', value: _kind, options: _kinds, onChanged: (v) => setState(() => _kind = v!)),
               AppTextField(controller: _descCtrl, label: 'Açıklama', hint: 'Örn. A Blok 3. taksit', required: true),
-              AppTextField(controller: _totalCtrl, label: 'Toplam Tutar', number: true, required: true),
+              AppTextField(controller: _totalCtrl, label: 'Toplam Tutar', currency: true, required: true),
               if (projectOptions.length > 1)
                 AppDropdown<int?>(
                     label: 'Proje', value: _projectId, options: projectOptions, onChanged: (v) => setState(() => _projectId = v)),

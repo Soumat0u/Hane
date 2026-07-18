@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { ArrowDownToLine, Plus, X, Banknote, ChevronRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
-import { formatCurrency, num } from '../utils'
+import { formatCurrency, num, parseMoneyInput, formatAmountForDisplay } from '../utils'
+import MoneyInput from '../components/MoneyInput'
 
 const KIND_LABELS = {
   installment: 'Satış Taksiti',
@@ -20,21 +21,21 @@ const fmtDate = (raw) => {
 
 function CollectModal({ receivable, accounts, onClose, onCollect }) {
   const remaining = num(receivable.total_amount) - num(receivable.collected_amount)
-  const [amount, setAmount] = useState(remaining > 0 ? remaining.toFixed(0) : '')
+  const [amount, setAmount] = useState(remaining > 0 ? formatAmountForDisplay(remaining) : '')
   const [accountId, setAccountId] = useState(accounts[0]?.id || '')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (num(amount) <= 0) {
+    if (parseMoneyInput(amount) <= 0) {
       setErr('Lütfen geçerli bir tutar girin.')
       return
     }
     setSaving(true)
     setErr('')
     try {
-      await onCollect({ receivable, amount: num(amount), toAccountId: accountId ? Number(accountId) : null })
+      await onCollect({ receivable, amount: parseMoneyInput(amount), toAccountId: accountId ? Number(accountId) : null })
       onClose()
     } catch {
       setErr('Tahsilat kaydedilemedi. Lütfen tekrar deneyin.')
@@ -58,8 +59,7 @@ function CollectModal({ receivable, accounts, onClose, onCollect }) {
             </div>
             <div className="form-group">
               <label className="form-label">Tahsil Edilen Tutar (₺)</label>
-              <input className="form-input" type="number" min="0" step="0.01" inputMode="decimal"
-                value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
+              <MoneyInput value={amount} onChange={setAmount} autoFocus />
             </div>
             <div className="form-group">
               <label className="form-label">Hesap</label>
@@ -101,7 +101,7 @@ function NewReceivableModal({ projects, onClose, onSave }) {
       setErr('Açıklama zorunludur.')
       return
     }
-    if (num(totalAmount) <= 0) {
+    if (parseMoneyInput(totalAmount) <= 0) {
       setErr('Lütfen geçerli bir tutar girin.')
       return
     }
@@ -112,7 +112,7 @@ function NewReceivableModal({ projects, onClose, onSave }) {
         kind,
         status: 'pending',
         description: description.trim(),
-        total_amount: num(totalAmount),
+        total_amount: parseMoneyInput(totalAmount),
         collected_amount: 0,
         project: projectId ? Number(projectId) : null,
         due_date: dueDate,
@@ -149,7 +149,7 @@ function NewReceivableModal({ projects, onClose, onSave }) {
             </div>
             <div className="form-group">
               <label className="form-label">Toplam Tutar (₺)</label>
-              <input className="form-input" type="number" min="0" step="0.01" inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} />
+              <MoneyInput value={totalAmount} onChange={setTotalAmount} />
             </div>
             {projects.length > 0 && (
               <div className="form-group">

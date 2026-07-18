@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, Plus, Building, CreditCard, PiggyBank, ArrowRight } from 'lucide-react'
+import { Shield, Plus, PiggyBank, ArrowRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { num } from '../utils'
+import BankLogo from '../components/BankLogo'
 
 export default function FinancePower() {
   const navigate = useNavigate()
@@ -61,7 +62,7 @@ export default function FinancePower() {
               <div className="list-group">
                 {bchAccounts.map((a) => (
                   <div className="list-item" key={a.id} onClick={() => goToAccount(a)} style={{ cursor: 'pointer' }}>
-                    <div className="list-icon-box"><Building size={20} className="text-info" /></div>
+                    <div className="list-icon-box"><BankLogo bankName={a.bank_logo_painter || a.name} width={34} height={34} /></div>
                     <div className="list-item-content">
                       <div className="list-item-title">{a.name}</div>
                       <div className="list-item-subtitle">Kullanılabilir</div>
@@ -94,7 +95,7 @@ export default function FinancePower() {
               <div className="list-group">
                 {creditCardAccounts.map((a) => (
                   <div className="list-item" key={a.id} onClick={() => goToAccount(a)} style={{ cursor: 'pointer' }}>
-                    <div className="list-icon-box"><CreditCard size={20} className="text-danger" /></div>
+                    <div className="list-icon-box"><BankLogo bankName={a.bank_logo_painter || a.name} width={34} height={34} /></div>
                     <div className="list-item-content">
                       <div className="list-item-title">{a.name}</div>
                       <div className="list-item-subtitle">Kullanılabilir</div>

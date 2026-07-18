@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
+import MoneyInput from './MoneyInput'
+import { parseMoneyInput, formatAmountForDisplay } from '../utils'
 
 const DIRECTION_LABELS = { received: 'Alınan Çek', issued: 'Verilen Çek' }
 const STATUS_LABELS = {
@@ -13,7 +15,7 @@ const STATUS_LABELS = {
 export default function ChequeFormModal({ cheque, contacts, onClose, onSave }) {
   const [direction, setDirection] = useState(cheque?.direction || 'received')
   const [status, setStatus] = useState(cheque?.status || 'portfolio')
-  const [amount, setAmount] = useState(cheque ? String(cheque.amount ?? '') : '')
+  const [amount, setAmount] = useState(cheque ? formatAmountForDisplay(cheque.amount ?? 0) : '')
   const [bankName, setBankName] = useState(cheque?.bank_name || '')
   const [serialNo, setSerialNo] = useState(cheque?.serial_no || '')
   const [dueDate, setDueDate] = useState(cheque?.due_date || '')
@@ -23,7 +25,7 @@ export default function ChequeFormModal({ cheque, contacts, onClose, onSave }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!(parseFloat(amount) > 0)) {
+    if (!(parseMoneyInput(amount) > 0)) {
       setErr('Lütfen geçerli bir tutar girin.')
       return
     }
@@ -33,7 +35,7 @@ export default function ChequeFormModal({ cheque, contacts, onClose, onSave }) {
       await onSave({
         direction,
         status,
-        amount: parseFloat(amount) || 0,
+        amount: parseMoneyInput(amount),
         bank_name: bankName,
         serial_no: serialNo,
         due_date: dueDate,
@@ -67,7 +69,7 @@ export default function ChequeFormModal({ cheque, contacts, onClose, onSave }) {
             </div>
             <div className="form-group">
               <label className="form-label">Tutar</label>
-              <input className="form-input" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
+              <MoneyInput value={amount} onChange={setAmount} autoFocus />
             </div>
             <div className="form-group">
               <label className="form-label">Banka</label>

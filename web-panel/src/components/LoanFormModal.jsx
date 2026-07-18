@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
+import MoneyInput from './MoneyInput'
+import { parseMoneyInput, formatAmountForDisplay } from '../utils'
 
 const KIND_LABELS = { loan: 'Kredi', kgf: 'KGF', other: 'Diğer' }
 
@@ -7,9 +9,9 @@ export default function LoanFormModal({ loan, onClose, onSave }) {
   const [name, setName] = useState(loan?.name || '')
   const [kind, setKind] = useState(loan?.kind || 'loan')
   const [bankName, setBankName] = useState(loan?.bank_name || '')
-  const [principal, setPrincipal] = useState(loan ? String(loan.principal ?? '') : '')
-  const [totalPayable, setTotalPayable] = useState(loan ? String(loan.total_payable ?? '') : '')
-  const [paidAmount, setPaidAmount] = useState(loan ? String(loan.paid_amount ?? '') : '')
+  const [principal, setPrincipal] = useState(loan ? formatAmountForDisplay(loan.principal ?? 0) : '')
+  const [totalPayable, setTotalPayable] = useState(loan ? formatAmountForDisplay(loan.total_payable ?? 0) : '')
+  const [paidAmount, setPaidAmount] = useState(loan ? formatAmountForDisplay(loan.paid_amount ?? 0) : '')
   const [interestRate, setInterestRate] = useState(loan ? String(loan.interest_rate ?? '') : '')
   const [termMonths, setTermMonths] = useState(loan ? String(loan.term_months ?? '') : '')
   const [startDate, setStartDate] = useState(loan?.start_date || '')
@@ -22,7 +24,7 @@ export default function LoanFormModal({ loan, onClose, onSave }) {
       setErr('Kredi adı zorunludur.')
       return
     }
-    if (!(parseFloat(principal) > 0)) {
+    if (!(parseMoneyInput(principal) > 0)) {
       setErr('Lütfen geçerli bir ana para girin.')
       return
     }
@@ -33,9 +35,9 @@ export default function LoanFormModal({ loan, onClose, onSave }) {
         name: name.trim(),
         kind,
         bank_name: bankName,
-        principal: parseFloat(principal) || 0,
-        total_payable: parseFloat(totalPayable) || 0,
-        paid_amount: parseFloat(paidAmount) || 0,
+        principal: parseMoneyInput(principal),
+        total_payable: parseMoneyInput(totalPayable),
+        paid_amount: parseMoneyInput(paidAmount),
         interest_rate: parseFloat(interestRate) || 0,
         term_months: parseInt(termMonths, 10) || 0,
         start_date: startDate,
@@ -76,15 +78,15 @@ export default function LoanFormModal({ loan, onClose, onSave }) {
             </div>
             <div className="form-group">
               <label className="form-label">Ana Para</label>
-              <input className="form-input" type="number" step="0.01" value={principal} onChange={(e) => setPrincipal(e.target.value)} />
+              <MoneyInput value={principal} onChange={setPrincipal} />
             </div>
             <div className="form-group">
               <label className="form-label">Toplam Geri Ödeme (faiz dahil)</label>
-              <input className="form-input" type="number" step="0.01" value={totalPayable} onChange={(e) => setTotalPayable(e.target.value)} />
+              <MoneyInput value={totalPayable} onChange={setTotalPayable} />
             </div>
             <div className="form-group">
               <label className="form-label">Şu ana kadar ödenen</label>
-              <input className="form-input" type="number" step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(e.target.value)} />
+              <MoneyInput value={paidAmount} onChange={setPaidAmount} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">

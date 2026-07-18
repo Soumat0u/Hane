@@ -3,6 +3,7 @@ import 'package:hane/theme/app_theme.dart';
 import 'package:hane/theme/responsive.dart';
 import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
+import 'package:hane/utils/thousands_formatter.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/yeni_islem_view.dart';
 import 'package:hane/views/cari_hesap_detay_view.dart';
@@ -331,7 +332,7 @@ class _BorclarViewState extends State<BorclarView> {
 
   // --- Öde diyaloğu ---
   void _showPayDialog(BuildContext context, FinanceProvider fp, _ListItemData item) {
-    final amountCtrl = TextEditingController(text: item.value.toStringAsFixed(0));
+    final amountCtrl = TextEditingController(text: formatAmountForDisplay(item.value));
     final accounts = fp.accounts.where((a) => a.type == 'Banka' || a.type == 'Nakit').toList();
     int? selectedAccountId = accounts.isNotEmpty ? accounts.first.id : null;
     bool saving = false;
@@ -351,6 +352,7 @@ class _BorclarViewState extends State<BorclarView> {
               TextField(
                 controller: amountCtrl,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
                 decoration: appInputDecoration(context, 'Ödenen tutar'),
               ),
               const SizedBox(height: 12),

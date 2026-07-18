@@ -1,21 +1,40 @@
-import { useState } from 'react'
-import { 
-  User, Copy, Check, Phone, Mail, MapPin, 
-  CreditCard, Building, ChevronDown, ChevronUp, Globe 
+import { useState, useRef } from 'react'
+import {
+  User, Copy, Check, Phone, Mail, MapPin, Plus, Pencil, AlertTriangle,
+  CreditCard, Building, ChevronDown, ChevronUp, Globe, Camera
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
+import BankLogo from '../components/BankLogo'
+import AccountFormModal from '../components/AccountFormModal'
+import { isProfileComplete } from '../utils'
 
 export default function Profile() {
-  const { 
-    companyProfile, 
-    updateCompanyProfile, 
+  const {
+    companyProfile,
+    updateCompanyProfile,
+    uploadCompanyLogo,
     accounts,
-    loading 
+    addAccount,
+    updateAccount,
+    loading
   } = useData()
 
   const [copiedField, setCopiedField] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({})
+  const fileInputRef = useRef(null)
+  const [accountModal, setAccountModal] = useState(null) // { type, lockType, account? }
+  
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      try {
+        await uploadCompanyLogo(file)
+      } catch (err) {
+        alert('Fotoğraf yüklenirken bir hata oluştu.')
+      }
+    }
+  }
   
   // Collapse states (default true for web since we have more space)
   const [expandedSections, setExpandedSections] = useState({
@@ -91,6 +110,27 @@ export default function Profile() {
           <User size={34} color="#ffffff" />
         </div>
       </div>
+
+      {!isProfileComplete(companyProfile) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.9rem 1.1rem',
+          background: 'color-mix(in srgb, var(--color-warning) 12%, transparent)',
+          border: '1px solid color-mix(in srgb, var(--color-warning) 40%, transparent)',
+          borderRadius: 'var(--radius-md)', marginBottom: '1.5rem',
+        }}>
+          <AlertTriangle size={20} color="var(--color-warning)" style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--color-text-main)' }}>
+            Firma bilgileriniz eksik. Faturalar ve belgelerde doğru görünmesi için tamamlayın.
+          </span>
+          <button
+            className="btn-inline-text"
+            style={{ color: 'var(--color-warning)', fontWeight: 700 }}
+            onClick={startEdit}
+          >
+            Doldur
+          </button>
+        </div>
+      )}
 
       {/* GRID STRUCTURE */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem', alignItems: 'start' }}>
@@ -176,20 +216,54 @@ export default function Profile() {
               <div>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
                   {/* Logo Frame */}
-                  <div style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, var(--color-accent), var(--color-primary-light))',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    fontSize: '1.5rem',
-                    fontWeight: 900,
-                    flexShrink: 0
-                  }}>
-                    {companyProfile?.company_name ? companyProfile.company_name.charAt(0).toUpperCase() : 'H'}
+                  <div style={{ position: 'relative', width: '64px', height: '64px' }}>
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        width: '64px',
+                        height: '64px',
+                        borderRadius: '50%',
+                        background: companyProfile?.logo
+                          ? `url(${companyProfile.logo.startsWith('/media/') 
+                              ? (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : 'https://web-production-77031.up.railway.app') + companyProfile.logo
+                              : companyProfile.logo}) center/cover no-repeat`
+                          : 'linear-gradient(135deg, var(--color-accent), var(--color-primary-light))',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#ffffff',
+                        fontSize: '1.5rem',
+                        fontWeight: 900,
+                        flexShrink: 0,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      }}>
+                      {!companyProfile?.logo && (companyProfile?.company_name ? companyProfile.company_name.charAt(0).toUpperCase() : 'H')}
+                    </div>
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        position: 'absolute',
+                        bottom: '-4px',
+                        right: '-4px',
+                        background: 'var(--color-surface)',
+                        borderRadius: '50%',
+                        padding: '4px',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                      <Camera size={14} color="var(--color-text-main)" />
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      ref={fileInputRef} 
+                      style={{ display: 'none' }} 
+                      onChange={handleFileChange} 
+                    />
                   </div>
                   
                   <div style={{ flex: 1, minWidth: '200px' }}>
@@ -347,9 +421,17 @@ export default function Profile() {
                 <Building size={20} />
                 <span>Banka Hesapları ({bankAccounts.length})</span>
               </div>
-              {expandedSections.banks ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  className="btn-inline-text"
+                  onClick={(e) => { e.stopPropagation(); setAccountModal({ type: 'Banka', lockType: true }) }}
+                >
+                  <Plus size={14} /> Ekle
+                </button>
+                {expandedSections.banks ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </div>
             </div>
-            
+
             {expandedSections.banks && (
               <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {bankAccounts.length === 0 ? (
@@ -357,15 +439,23 @@ export default function Profile() {
                 ) : (
                   bankAccounts.map((acc, idx) => (
                     <div key={acc.id || idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: idx < bankAccounts.length - 1 ? '1px solid var(--color-surface-variant)' : 'none' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-main)' }}>{acc.name}</div>
-                        <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>{acc.account_details || acc.iban || 'IBAN Belirtilmemiş'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <BankLogo bankName={acc.bank_logo_painter || acc.name} width={40} height={28} />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-main)' }}>{acc.name}</div>
+                          <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>{acc.account_details || acc.iban || 'IBAN Belirtilmemiş'}</div>
+                        </div>
                       </div>
-                      {(acc.account_details || acc.iban) && (
-                        <button className="icon-btn" onClick={() => handleCopy(acc.account_details || acc.iban, `bank-${idx}`)} style={{ width: '32px', height: '32px', border: 'none' }}>
-                          {copiedField === `bank-${idx}` ? <Check size={16} color="var(--color-success)" /> : <Copy size={16} />}
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <button className="icon-btn" onClick={() => setAccountModal({ account: acc })} style={{ width: '32px', height: '32px', border: 'none' }}>
+                          <Pencil size={16} color="var(--color-accent)" />
                         </button>
-                      )}
+                        {(acc.account_details || acc.iban) && (
+                          <button className="icon-btn" onClick={() => handleCopy(acc.account_details || acc.iban, `bank-${idx}`)} style={{ width: '32px', height: '32px', border: 'none' }}>
+                            {copiedField === `bank-${idx}` ? <Check size={16} color="var(--color-success)" /> : <Copy size={16} />}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -386,9 +476,17 @@ export default function Profile() {
                 <CreditCard size={20} />
                 <span>Kredi Kartları ({cardAccounts.length})</span>
               </div>
-              {expandedSections.cards ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button
+                  className="btn-inline-text"
+                  onClick={(e) => { e.stopPropagation(); setAccountModal({ type: 'Kredi Kartı', lockType: true }) }}
+                >
+                  <Plus size={14} /> Ekle
+                </button>
+                {expandedSections.cards ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+              </div>
             </div>
-            
+
             {expandedSections.cards && (
               <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {cardAccounts.length === 0 ? (
@@ -396,15 +494,23 @@ export default function Profile() {
                 ) : (
                   cardAccounts.map((acc, idx) => (
                     <div key={acc.id || idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: idx < cardAccounts.length - 1 ? '1px solid var(--color-surface-variant)' : 'none' }}>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-main)' }}>{acc.name}</div>
-                        <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>{acc.account_details || 'Detay Belirtilmemiş'}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <BankLogo bankName={acc.bank_logo_painter || acc.name} width={40} height={28} />
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-main)' }}>{acc.name}</div>
+                          <div style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--color-text-muted)', marginTop: '0.2rem' }}>{acc.account_details || 'Detay Belirtilmemiş'}</div>
+                        </div>
                       </div>
-                      {acc.account_details && (
-                        <button className="icon-btn" onClick={() => handleCopy(acc.account_details, `card-${idx}`)} style={{ width: '32px', height: '32px', border: 'none' }}>
-                          {copiedField === `card-${idx}` ? <Check size={16} color="var(--color-success)" /> : <Copy size={16} />}
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <button className="icon-btn" onClick={() => setAccountModal({ account: acc })} style={{ width: '32px', height: '32px', border: 'none' }}>
+                          <Pencil size={16} color="var(--color-accent)" />
                         </button>
-                      )}
+                        {acc.account_details && (
+                          <button className="icon-btn" onClick={() => handleCopy(acc.account_details, `card-${idx}`)} style={{ width: '32px', height: '32px', border: 'none' }}>
+                            {copiedField === `card-${idx}` ? <Check size={16} color="var(--color-success)" /> : <Copy size={16} />}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -415,6 +521,16 @@ export default function Profile() {
         </div>
 
       </div>
+
+      {accountModal && (
+        <AccountFormModal
+          account={accountModal.account}
+          initialType={accountModal.type}
+          lockType={accountModal.lockType}
+          onClose={() => setAccountModal(null)}
+          onSave={(body) => (accountModal.account ? updateAccount(accountModal.account.id, body) : addAccount(body))}
+        />
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2, User, FolderKanban } from 'lucide-react'
 import { useData } from '../context/DataContext'
 
@@ -9,10 +9,15 @@ import { useData } from '../context/DataContext'
  */
 export default function TodoPanel() {
   const { todos, projects, addTodo, updateTodo, deleteTodo } = useData()
-  const [tab, setTab] = useState('personal') // 'personal' | 'project'
+  const [tab, setTab] = useState('project') // 'personal' | 'project'
   const [title, setTitle] = useState('')
   const [projectId, setProjectId] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showMore, setShowMore] = useState(false)
+
+  useEffect(() => {
+    setShowMore(false)
+  }, [tab, projectId])
 
   const list = todos.filter((t) => {
     if (t.scope !== tab) return false
@@ -60,19 +65,11 @@ export default function TodoPanel() {
   return (
     <div>
       <div className="section-header">
-        <span className="section-title">YAPILACAKLAR</span>
+        <span className="section-title">Yapılacaklar</span>
       </div>
       <div className="spending-card" style={{ marginBottom: 0 }}>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        <button
-          type="button"
-          className={`type-chip ${tab === 'personal' ? 'active' : ''}`}
-          style={{ flexDirection: 'row', gap: '0.4rem' }}
-          onClick={() => setTab('personal')}
-        >
-          <User size={14} /> Kişisel
-        </button>
         <button
           type="button"
           className={`type-chip ${tab === 'project' ? 'active' : ''}`}
@@ -80,6 +77,14 @@ export default function TodoPanel() {
           onClick={() => setTab('project')}
         >
           <FolderKanban size={14} /> Projeler
+        </button>
+        <button
+          type="button"
+          className={`type-chip ${tab === 'personal' ? 'active' : ''}`}
+          style={{ flexDirection: 'row', gap: '0.4rem' }}
+          onClick={() => setTab('personal')}
+        >
+          <User size={14} /> Kişisel
         </button>
       </div>
 
@@ -123,7 +128,7 @@ export default function TodoPanel() {
         </div>
       ) : (
         <div className="list-group">
-          {list.map((t) => (
+          {(showMore ? list : list.slice(0, 5)).map((t) => (
             <div className="list-item" key={t.id}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, cursor: 'pointer' }}>
                 <input type="checkbox" checked={!!t.is_done} onChange={() => handleToggle(t)} />
@@ -137,9 +142,34 @@ export default function TodoPanel() {
                 </div>
               </label>
               <button className="icon-btn" onClick={() => handleDelete(t.id)} title="Sil">
+                <Trash2 size={14} style={{ color: 'var(--color-text-muted)' }} />
               </button>
             </div>
           ))}
+          {list.length > 5 && (
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{
+                width: '100%',
+                marginTop: '0.5rem',
+                padding: '0.5rem',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.25rem',
+                border: '1px dashed var(--color-border)',
+                borderRadius: '8px',
+                background: 'transparent',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer'
+              }}
+              onClick={() => setShowMore(!showMore)}
+            >
+              {showMore ? 'Daha az göster' : 'Daha fazla göster'}
+            </button>
+          )}
         </div>
       )}
       </div>

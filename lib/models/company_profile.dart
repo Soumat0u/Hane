@@ -15,6 +15,7 @@ class CompanyProfile {
   final String email;
   final String website;
   final String readNotifications;
+  final String? logo;
 
   CompanyProfile({
     this.id,
@@ -33,7 +34,22 @@ class CompanyProfile {
     required this.email,
     required this.website,
     required this.readNotifications,
+    this.logo,
   });
+
+  /// Firma profilinin temel alanları doldurulmuş mu.
+  /// Navbar'daki Profil sekmesinde uyarı işareti göstermek için kullanılır.
+  bool get isComplete =>
+      companyName.trim().isNotEmpty &&
+      taxOffice.trim().isNotEmpty &&
+      taxNumber.trim().isNotEmpty &&
+      commercialRegistry.trim().isNotEmpty &&
+      mersisNo.trim().isNotEmpty &&
+      addressLine1.trim().isNotEmpty &&
+      city.trim().isNotEmpty &&
+      country.trim().isNotEmpty &&
+      phone1.trim().isNotEmpty &&
+      email.trim().isNotEmpty;
 
   Map<String, dynamic> toMap() {
     return {
@@ -74,6 +90,7 @@ class CompanyProfile {
       email: map['email'] ?? '',
       website: map['website'] ?? '',
       readNotifications: map['read_notifications'] ?? '',
+      logo: map['logo'],
     );
   }
 }

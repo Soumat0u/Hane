@@ -17,6 +17,7 @@ import 'package:hane/views/yeni_proje_view.dart';
 import 'package:hane/views/yeni_islem_view.dart';
 import 'package:hane/views/hareket_detay_view.dart';
 import 'package:hane/services/export_service.dart';
+import 'package:hane/services/api_service.dart';
 final dateFormat = DateFormat('dd.MM.yyyy');
 
 class ProjeDetayView extends StatefulWidget {
@@ -178,12 +179,19 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
           // Project Image
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: Image.asset(
-              'assets/images/modern_apartment_building.png',
-              width: 104,
-              height: 104,
-              fit: BoxFit.cover,
-            ),
+            child: project.imagePath != null
+                ? Image.network(
+                    project.imagePath!.startsWith('/media') ? '${ApiService.baseUrl.replaceAll(RegExp(r'/api/?$'), '')}${project.imagePath}' : project.imagePath!,
+                    width: 104,
+                    height: 104,
+                    fit: BoxFit.cover,
+                  )
+                : Image.asset(
+                    'assets/images/modern_apartment_building.png',
+                    width: 104,
+                    height: 104,
+                    fit: BoxFit.cover,
+                  ),
           ),
           const SizedBox(width: 18),
           // Details + Stats

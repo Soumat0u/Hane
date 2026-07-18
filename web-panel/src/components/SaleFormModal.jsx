@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import MoneyInput from './MoneyInput'
+import { parseMoneyInput } from '../utils'
 
 const UNIT_TYPES = { apartment: 'Daire', shop: 'Dükkan', land: 'Arsa', other: 'Diğer' }
 
@@ -16,7 +18,7 @@ export default function SaleFormModal({ projectId, projectName, contacts, onClos
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const price = parseFloat(salePrice) || 0
+    const price = parseMoneyInput(salePrice)
     if (price <= 0) {
       setErr('Lütfen geçerli bir satış fiyatı girin.')
       return
@@ -79,7 +81,7 @@ export default function SaleFormModal({ projectId, projectName, contacts, onClos
             </div>
             <div className="form-group">
               <label className="form-label">Satış Fiyatı</label>
-              <input className="form-input" type="number" step="0.01" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} autoFocus />
+              <MoneyInput value={salePrice} onChange={setSalePrice} autoFocus />
             </div>
             {contacts.length > 0 && (
               <div className="form-group">

@@ -1,6 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Home, Store, Landmark, MoreHorizontal } from 'lucide-react'
+import { X, Home, Store, Landmark, MoreHorizontal, Camera, LocateFixed } from 'lucide-react'
+import { projectImage, parseMoneyInput, formatAmountForDisplay } from '../utils'
+import MoneyInput from './MoneyInput'
+import MapLocationPicker from './MapLocationPicker'
 
 export const PROJECT_TYPES = [
   { value: 'Konut', icon: Home },
@@ -35,11 +38,28 @@ const EMPTY_FORM = {
   description: '',
 }
 
-/** Proje oluşturma/düzenleme modalı. `project` verilirse düzenleme, verilmezse yeni proje oluşturma modu. */
 export default function ProjectFormModal({ project, onClose, onSave, onDelete }) {
-  const [form, setForm] = useState(project ? { ...project } : EMPTY_FORM)
+  const [form, setForm] = useState(project ? {
+    ...project,
+    estimated_total_cost: formatAmountForDisplay(project.estimated_total_cost || 0),
+    estimated_total_revenue: formatAmountForDisplay(project.estimated_total_revenue || 0),
+  } : EMPTY_FORM)
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(project ? projectImage(project) : projectImage(null))
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
+  const fileInputRef = useRef(null)
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImageFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => setImagePreview(reader.result)
+      reader.readAsDataURL(file)
+    }
+  }
 
   const handleSave = async () => {
     if (!form.name || !form.name.trim()) {
@@ -49,11 +69,18 @@ export default function ProjectFormModal({ project, onClose, onSave, onDelete })
     try {
       setIsSaving(true)
       const selectedStatus = STATUS_OPTIONS.find((s) => s.status === form.status)
+      // image_path artık bir FileField; görsel değişikliği ayrı bir multipart
+      // istekle (imageFile parametresi) yapılıyor. Mevcut URL string'ini JSON
+      // gövdesinde geri göndermek DRF'te dosya bekleyen alanda doğrulama
+      // hatasına yol açtığı için burada çıkarıyoruz.
+      const { image_path, ...formWithoutImage } = form
       await onSave({
-        ...form,
+        ...formWithoutImage,
+        estimated_total_cost: parseMoneyInput(form.estimated_total_cost),
+        estimated_total_revenue: parseMoneyInput(form.estimated_total_revenue),
         status_color_hex: selectedStatus?.color ?? form.status_color_hex,
         status_bg_color_hex: selectedStatus?.bg ?? form.status_bg_color_hex,
-      })
+      }, imageFile)
       onClose()
     } catch {
       alert(project ? 'Proje güncellenemedi.' : 'Proje oluşturulamadı.')
@@ -84,7 +111,49 @@ export default function ProjectFormModal({ project, onClose, onSave, onDelete })
             <X size={20} />
           </button>
         </div>
-        <div className="modal-body" style={{ display: 'grid', gap: '0.25rem' }}>
+        <div className="modal-body" style={{ display: 'grid', gap: '1.25rem' }}>
+          
+          {/* Proje Görseli Yükleme */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: '100%',
+                height: '160px',
+                borderRadius: '12px',
+                background: `url(${imagePreview}) center/cover no-repeat`,
+                border: '2px dashed var(--color-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                position: 'relative',
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                bottom: 12,
+                right: 12,
+                background: 'var(--color-surface)',
+                borderRadius: '50%',
+                padding: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                display: 'flex'
+              }}>
+                <Camera size={18} color="var(--color-text-main)" />
+              </div>
+            </div>
+            <input 
+              type="file" 
+              accept="image/*" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              onChange={handleFileChange} 
+            />
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>Projeye ait görsel eklemek/değiştirmek için tıklayın</span>
+          </div>
+
           <div className="form-group">
             <label className="form-label">Proje Adı</label>
             <input
@@ -126,15 +195,27 @@ export default function ProjectFormModal({ project, onClose, onSave, onDelete })
 
           <div className="form-group">
             <label className="form-label">Lokasyon</label>
-            <input
-              type="text"
-              className="form-input"
-              value={form.location || ''}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-            />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                className="form-input"
+                style={{ flex: 1 }}
+                value={form.location || ''}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+              />
+              <button
+                type="button"
+                className="icon-btn"
+                title="Haritadan Seç"
+                onClick={() => setMapOpen(true)}
+                style={{ width: 44, height: 44, flexShrink: 0 }}
+              >
+                <LocateFixed size={18} />
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', alignItems: 'end' }}>
             <div className="form-group">
               <label className="form-label">Pafta</label>
               <input
@@ -164,7 +245,7 @@ export default function ProjectFormModal({ project, onClose, onSave, onDelete })
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', alignItems: 'end' }}>
             <div className="form-group">
               <label className="form-label">Toplam Bağımsız Bölüm</label>
               <input
@@ -197,7 +278,7 @@ export default function ProjectFormModal({ project, onClose, onSave, onDelete })
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'end' }}>
             <div className="form-group">
               <label className="form-label">Başlangıç Tarihi</label>
               <input
@@ -221,20 +302,16 @@ export default function ProjectFormModal({ project, onClose, onSave, onDelete })
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Öngörülen Toplam Maliyet (₺)</label>
-              <input
-                type="number"
-                className="form-input"
+              <MoneyInput
                 value={form.estimated_total_cost || ''}
-                onChange={(e) => setForm({ ...form, estimated_total_cost: e.target.value })}
+                onChange={(v) => setForm({ ...form, estimated_total_cost: v })}
               />
             </div>
             <div className="form-group">
               <label className="form-label">Öngörülen Toplam Gelir (₺)</label>
-              <input
-                type="number"
-                className="form-input"
+              <MoneyInput
                 value={form.estimated_total_revenue || ''}
-                onChange={(e) => setForm({ ...form, estimated_total_revenue: e.target.value })}
+                onChange={(v) => setForm({ ...form, estimated_total_revenue: v })}
               />
             </div>
           </div>
@@ -278,6 +355,13 @@ export default function ProjectFormModal({ project, onClose, onSave, onDelete })
           </button>
         </div>
       </div>
+
+      {mapOpen && (
+        <MapLocationPicker
+          onClose={() => setMapOpen(false)}
+          onSelect={(location) => { setForm((f) => ({ ...f, location })); setMapOpen(false) }}
+        />
+      )}
     </div>,
     document.body,
   )

@@ -124,7 +124,7 @@ class _ButceFormState extends State<_ButceForm> {
                   }).toList(),
                 ),
               const SizedBox(height: 16),
-              AppTextField(controller: _amountCtrl, label: 'Planlanan Bütçe', number: true, required: true),
+              AppTextField(controller: _amountCtrl, label: 'Planlanan Bütçe', currency: true, required: true),
               const SizedBox(height: 8),
               AppSaveButton(saving: _saving, onPressed: _save),
               const SizedBox(height: 12),
