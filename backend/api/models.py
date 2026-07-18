@@ -58,6 +58,7 @@ class CompanyProfile(models.Model):
     email = models.CharField(max_length=255, default='', blank=True)
     website = models.CharField(max_length=255, default='', blank=True)
     read_notifications = models.TextField(default='', blank=True)
+    logo = models.FileField(upload_to='company_logos/', null=True, blank=True)
 
     def __str__(self):
         return self.company_name or f'Profile of {self.user.email}'
@@ -222,7 +223,7 @@ class Project(models.Model):
     shop_count = models.IntegerField(default=0)
     estimated_total_cost = models.FloatField(default=0.0)
     estimated_total_revenue = models.FloatField(default=0.0)
-    image_path = models.CharField(max_length=500, blank=True, null=True)
+    image_path = models.FileField(upload_to='project_images/', max_length=500, blank=True, null=True)
     start_date = models.CharField(max_length=50, default='', blank=True)
     end_date = models.CharField(max_length=50, default='', blank=True)
     description = models.TextField(default='', blank=True)

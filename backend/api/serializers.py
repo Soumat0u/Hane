@@ -52,7 +52,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             'id', 'company_name', 'tax_office', 'tax_number',
             'commercial_registry', 'mersis_no', 'address_title',
             'address_line1', 'address_line2', 'city', 'country',
-            'phone1', 'phone2', 'email', 'website', 'read_notifications',
+            'phone1', 'phone2', 'email', 'website', 'read_notifications', 'logo',
         ]
         read_only_fields = ['id']
 
@@ -87,6 +87,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class AccountSerializer(serializers.ModelSerializer):
     available_limit = serializers.FloatField(read_only=True)
+    bank_logo_painter = serializers.CharField(required=False, allow_blank=True, default='')
+    account_details = serializers.CharField(required=False, allow_blank=True, default='')
 
     class Meta:
         model = Account

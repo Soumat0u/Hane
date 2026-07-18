@@ -71,7 +71,7 @@ def me_view(request):
 
 # ── Company Profile ─────────────────────────────────────────────────────────
 
-@api_view(['GET', 'PUT'])
+@api_view(['GET', 'PUT', 'PATCH'])
 def company_profile_view(request):
     """Get or update the company profile for the authenticated user."""
     profile, _ = CompanyProfile.objects.get_or_create(user=request.user)
@@ -238,3 +238,12 @@ class ProjectDocumentViewSet(_UserOwnedViewSet):
 class TodoViewSet(_UserOwnedViewSet):
     model = Todo
     serializer_class = TodoSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+        # Sadece son 10 görevi tutacağız, yeni eklendikçe eskiler silinecek
+        todos_qs = Todo.objects.filter(user=self.request.user).order_by('-created_at')
+        if todos_qs.count() > 10:
+            keep_ids = list(todos_qs.values_list('id', flat=True)[:10])
+            Todo.objects.filter(user=self.request.user).exclude(id__in=keep_ids).delete()
+
