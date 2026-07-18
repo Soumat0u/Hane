@@ -517,14 +517,14 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
               
               <div style={{
                 border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                padding: '0.6rem',
-                backgroundColor: 'var(--color-surface-variant)',
+                borderRadius: '10px',
+                padding: '0.5rem',
+                backgroundColor: 'var(--color-surface)',
                 maxHeight: '220px',
                 overflowY: 'auto',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '0.4rem'
+                gap: '0.25rem'
               }}>
                 {Object.keys(filteredGroupedCategories).length === 0 ? (
                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem' }}>
@@ -533,7 +533,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
                 ) : (
                   Object.entries(filteredGroupedCategories).map(([groupName, cats]) => {
                     const isExpanded = catSearch.trim().length > 0 || !!expandedGroups[groupName]
-                    const hasSelected = cats.some((c) => c.name === mainCategory)
+                    const selectedCat = cats.find((c) => c.name === mainCategory)
                     
                     return (
                       <div key={groupName} style={{ display: 'flex', flexDirection: 'column' }}>
@@ -544,24 +544,36 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '0.5rem 0.75rem',
+                            padding: '0.45rem 0.65rem',
                             borderRadius: '6px',
                             cursor: 'pointer',
-                            backgroundColor: hasSelected ? 'var(--color-accent-light, #eff6ff)' : 'var(--color-surface)',
-                            border: `1px solid ${hasSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                            backgroundColor: selectedCat ? 'rgba(59,130,246,0.08)' : 'transparent',
+                            border: selectedCat ? '1px solid rgba(59,130,246,0.25)' : '1px solid transparent',
                             fontWeight: 600,
-                            fontSize: '0.85rem',
-                            color: 'var(--color-text-main)',
-                            userSelect: 'none'
+                            fontSize: '0.82rem',
+                            color: selectedCat ? 'var(--color-accent)' : 'var(--color-text-main)',
+                            userSelect: 'none',
+                            transition: 'all 0.15s ease'
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                             <span>{groupName}</span>
                           </div>
-                          {hasSelected && (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: 700 }}>
-                              {mainCategory} Seçili
+                          {selectedCat && !isExpanded && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              color: 'white',
+                              fontWeight: 600,
+                              backgroundColor: 'var(--color-accent)',
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '20px',
+                              maxWidth: '110px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              ✓ {selectedCat.name}
                             </span>
                           )}
                         </div>
@@ -571,14 +583,9 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
                           <div style={{
                             display: 'flex',
                             flexWrap: 'wrap',
-                            gap: '0.4rem',
-                            padding: '0.5rem',
-                            backgroundColor: 'var(--color-surface)',
-                            border: '1px solid var(--color-border)',
-                            borderTop: 'none',
-                            borderBottomLeftRadius: '6px',
-                            borderBottomRightRadius: '6px',
-                            animation: 'fadeIn 0.2s ease'
+                            gap: '0.35rem',
+                            padding: '0.4rem 0.4rem 0.4rem 1.2rem',
+                            animation: 'fadeIn 0.15s ease'
                           }}>
                             {cats.map((c) => {
                               const isSelected = c.name === mainCategory
@@ -593,17 +600,22 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
                                     setNewSubCategoryName('')
                                   }}
                                   style={{
-                                    padding: '0.3rem 0.7rem',
+                                    padding: '0.3rem 0.75rem',
                                     borderRadius: '20px',
                                     fontSize: '0.8rem',
-                                    fontWeight: 500,
+                                    fontWeight: isSelected ? 700 : 400,
                                     cursor: 'pointer',
                                     backgroundColor: isSelected ? 'var(--color-accent)' : 'var(--color-surface-variant)',
-                                    color: isSelected ? '#ffffff' : 'var(--color-text-main)',
-                                    border: `1px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
-                                    transition: 'all 0.15s ease'
+                                    color: isSelected ? '#fff' : 'var(--color-text-main)',
+                                    border: `1.5px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                                    boxShadow: isSelected ? '0 2px 8px rgba(59,130,246,0.3)' : 'none',
+                                    transition: 'all 0.15s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem'
                                   }}
                                 >
+                                  {isSelected && <span style={{ fontSize: '0.75rem' }}>✓</span>}
                                   {c.name}
                                 </button>
                               )
