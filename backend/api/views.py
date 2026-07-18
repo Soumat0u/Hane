@@ -1,3 +1,5 @@
+from django.db import transaction as db_transaction
+from django.utils import timezone
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
@@ -167,10 +169,67 @@ class LoanViewSet(_UserOwnedViewSet):
     model = Loan
     serializer_class = LoanSerializer
 
+    @action(detail=True, methods=['post'])
+    def pay(self, request, pk=None):
+        """Krediye ödeme işler: paid_amount artışı ve karşılık gelen hesap çıkışı
+        tek bir atomik işlemde yapılır (istemcinin iki ayrı isteği sırasında
+        oluşabilecek tutarsızlığı önler)."""
+        loan = self.get_object()
+        amount = float(request.data.get('amount') or 0)
+        if amount <= 0:
+            return Response({'detail': 'Geçersiz tutar.'}, status=status.HTTP_400_BAD_REQUEST)
+        from_account_id = request.data.get('from_account')
+        date = request.data.get('date') or None
+        with db_transaction.atomic():
+            loan.paid_amount = (loan.paid_amount or 0) + amount
+            loan.save(update_fields=['paid_amount'])
+            transaction = FinancialTransaction.objects.create(
+                user=request.user,
+                type='Gider',
+                amount=amount,
+                date=date or timezone.now().date().isoformat(),
+                category='Kredi Ödemesi',
+                description=f'{loan.name} kredi ödemesi',
+                from_account_id=from_account_id,
+                loan=loan,
+            )
+        return Response({
+            'loan': LoanSerializer(loan).data,
+            'transaction': FinancialTransactionSerializer(transaction).data,
+        }, status=status.HTTP_200_OK)
+
 
 class ChequeViewSet(_UserOwnedViewSet):
     model = Cheque
     serializer_class = ChequeSerializer
+
+    @action(detail=True, methods=['post'])
+    def pay(self, request, pk=None):
+        """Verilen çeki öder: status='given' ve karşılık gelen hesap çıkışı
+        tek bir atomik işlemde yapılır."""
+        cheque = self.get_object()
+        amount = float(request.data.get('amount') or cheque.amount or 0)
+        if amount <= 0:
+            return Response({'detail': 'Geçersiz tutar.'}, status=status.HTTP_400_BAD_REQUEST)
+        from_account_id = request.data.get('from_account')
+        date = request.data.get('date') or None
+        with db_transaction.atomic():
+            cheque.status = Cheque.GIVEN
+            cheque.save(update_fields=['status'])
+            transaction = FinancialTransaction.objects.create(
+                user=request.user,
+                type='Gider',
+                amount=amount,
+                date=date or timezone.now().date().isoformat(),
+                category='Çek Ödemesi',
+                description=f'{cheque.bank_name} çeki ödemesi' if cheque.bank_name else 'Çek ödemesi',
+                from_account_id=from_account_id,
+                cheque=cheque,
+            )
+        return Response({
+            'cheque': ChequeSerializer(cheque).data,
+            'transaction': FinancialTransactionSerializer(transaction).data,
+        }, status=status.HTTP_200_OK)
 
 
 class SaleViewSet(_UserOwnedViewSet):

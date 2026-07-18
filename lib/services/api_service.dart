@@ -534,6 +534,31 @@ class ApiService {
       _update('loans/', l.id!, l.toMap(), Loan.fromMap);
   Future<void> deleteLoan(int id) => _delete('loans/', id);
 
+  /// Krediye ödeme işler: sunucuda paid_amount artışı ve karşılık gelen gider
+  /// işlemi tek atomik istekte oluşturulur, güncel `remaining` ile döner.
+  Future<Loan> payLoan({
+    required int loanId,
+    required double amount,
+    int? fromAccountId,
+    String? date,
+  }) async {
+    final headers = await _getHeaders();
+    final response = await _client.post(
+      Uri.parse('$baseUrl/loans/$loanId/pay/'),
+      headers: headers,
+      body: jsonEncode({
+        'amount': amount,
+        if (fromAccountId != null) 'from_account': fromAccountId,
+        if (date != null) 'date': date,
+      }),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      return Loan.fromMap(data['loan'] as Map<String, dynamic>);
+    }
+    throw Exception('Kredi ödemesi kaydedilemedi: ${utf8.decode(response.bodyBytes)}');
+  }
+
   // Cheques
   Future<List<Cheque>> readAllCheques() =>
       _readList('cheques/', Cheque.fromMap);
@@ -542,6 +567,31 @@ class ApiService {
   Future<Cheque> updateCheque(Cheque c) =>
       _update('cheques/', c.id!, c.toMap(), Cheque.fromMap);
   Future<void> deleteCheque(int id) => _delete('cheques/', id);
+
+  /// Verilen bir çeki öder: sunucuda status='given' ve karşılık gelen gider
+  /// işlemi tek atomik istekte oluşturulur.
+  Future<Cheque> payCheque({
+    required int chequeId,
+    required double amount,
+    int? fromAccountId,
+    String? date,
+  }) async {
+    final headers = await _getHeaders();
+    final response = await _client.post(
+      Uri.parse('$baseUrl/cheques/$chequeId/pay/'),
+      headers: headers,
+      body: jsonEncode({
+        'amount': amount,
+        if (fromAccountId != null) 'from_account': fromAccountId,
+        if (date != null) 'date': date,
+      }),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      return Cheque.fromMap(data['cheque'] as Map<String, dynamic>);
+    }
+    throw Exception('Çek ödemesi kaydedilemedi: ${utf8.decode(response.bodyBytes)}');
+  }
 
   // Sales
   Future<List<Sale>> readAllSales() => _readList('sales/', Sale.fromMap);

@@ -181,6 +181,8 @@ def apply_legacy_balance(user, transaction, sign):
 
 class FinancialTransactionSerializer(serializers.ModelSerializer):
     project_id = serializers.IntegerField(source='project.id', read_only=True, allow_null=True)
+    loan = serializers.PrimaryKeyRelatedField(read_only=True)
+    cheque = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = FinancialTransaction
@@ -188,11 +190,11 @@ class FinancialTransactionSerializer(serializers.ModelSerializer):
             'id', 'project_id', 'type', 'amount',
             'date', 'category', 'description',
             'quantity', 'unit',
-            'from_account', 'to_account', 'contact',
+            'from_account', 'to_account', 'contact', 'loan', 'cheque',
             'source_name', 'dest_name', 'contact_name', 'document_no', 'due_date',
             'attachment', 'source',
         ]
-        read_only_fields = ['id', 'source']
+        read_only_fields = ['id', 'source', 'loan', 'cheque']
 
     def create(self, validated_data):
         request = self.context.get('request')

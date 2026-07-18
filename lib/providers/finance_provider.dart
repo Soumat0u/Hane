@@ -172,7 +172,10 @@ class FinanceProvider extends ChangeNotifier {
   int _nextTempId() => _tempIdCounter--;
 
   // _silentRefresh çağrılarını çakışmasız hale getirir (coalescing).
-  bool _refreshing = false;
+  // `_pendingRefresh` sürmekte olan (veya kuyruklanmış) yenilemenin ortak
+  // Future'ıdır; sürerken gelen her çağıran AYNI Future'ı bekler — böylece
+  // "zaten sürüyor" durumunda erken dönüp güncel veriyi kaçırma riski olmaz.
+  Future<void>? _pendingRefresh;
   bool _refreshQueued = false;
 
   // Okunmuş bildirimlerin içerik tabanlı anahtarları (SharedPreferences ile kalıcı).
@@ -262,20 +265,27 @@ class FinanceProvider extends ChangeNotifier {
 
   /// Sunucuyla sessizce (spinner göstermeden) eşitler. Eşzamanlı çağrılar
   /// birleştirilir: bir eşitleme sürerken gelenler tek bir tekrara indirgenir.
-  Future<void> _silentRefresh() async {
-    if (_refreshing) {
+  Future<void> _silentRefresh() {
+    if (_pendingRefresh != null) {
+      // Zaten süren bir yenileme var: onu tekrarlatacak şekilde kuyruğa al ve
+      // O YENİLEMENİN bitişini bekle (erken dönüp güncel veriyi kaçırmak yerine).
       _refreshQueued = true;
-      return;
+      return _pendingRefresh!;
     }
-    _refreshing = true;
-    try {
-      do {
-        _refreshQueued = false;
-        await _fetchAll();
-      } while (_refreshQueued);
-    } finally {
-      _refreshing = false;
-    }
+    final completer = Completer<void>();
+    _pendingRefresh = completer.future;
+    () async {
+      try {
+        do {
+          _refreshQueued = false;
+          await _fetchAll();
+        } while (_refreshQueued);
+      } finally {
+        _pendingRefresh = null;
+        completer.complete();
+      }
+    }();
+    return completer.future;
   }
 
   /// Optimistic mutasyonun sunucu tarafını arkaplanda yürütür: başarılıysa
@@ -752,51 +762,33 @@ class FinanceProvider extends ChangeNotifier {
         ));
       } else if (kind == 'loan') {
         final loan = ref as Loan;
-        final updated = Loan(
-          id: loan.id,
-          name: loan.name,
-          kind: loan.kind,
-          creditorId: loan.creditorId,
-          bankName: loan.bankName,
-          principal: loan.principal,
-          totalPayable: loan.totalPayable,
-          paidAmount: loan.paidAmount + amount,
-          interestRate: loan.interestRate,
-          termMonths: loan.termMonths,
-          startDate: loan.startDate,
-          isActive: loan.isActive,
-        );
-        await ApiService.instance.updateLoan(updated);
-        await ApiService.instance.createTransaction(FinancialTransaction(
-          type: 'Gider',
+        // Kredi güncellemesi ile karşılık gelen gider işlemi sunucuda tek
+        // atomik istekte yapılır (iki ayrı çağrı arasında oluşabilecek
+        // tutarsızlığı önler); dönen güncel `remaining` anında listeye yansıtılır.
+        final updated = await ApiService.instance.payLoan(
+          loanId: loan.id!,
           amount: amount,
-          date: txDate,
-          category: 'Kredi Ödemesi',
-          description: '${loan.name} kredi ödemesi',
           fromAccountId: fromAccountId,
-        ));
+          date: txDate,
+        );
+        final idx = _loans.indexWhere((l) => l.id == updated.id);
+        if (idx != -1) {
+          _loans = List.of(_loans)..[idx] = updated;
+          notifyListeners();
+        }
       } else if (kind == 'cheque') {
         final cheque = ref as Cheque;
-        final updated = Cheque(
-          id: cheque.id,
-          direction: cheque.direction,
-          status: 'given',
-          amount: cheque.amount,
-          dueDate: cheque.dueDate,
-          bankName: cheque.bankName,
-          serialNo: cheque.serialNo,
-          contactId: cheque.contactId,
-          projectId: cheque.projectId,
-        );
-        await ApiService.instance.updateCheque(updated);
-        await ApiService.instance.createTransaction(FinancialTransaction(
-          type: 'Gider',
+        final updated = await ApiService.instance.payCheque(
+          chequeId: cheque.id!,
           amount: amount,
-          date: txDate,
-          category: 'Çek Ödemesi',
-          description: cheque.bankName.isNotEmpty ? '${cheque.bankName} çeki ödemesi' : 'Çek ödemesi',
           fromAccountId: fromAccountId,
-        ));
+          date: txDate,
+        );
+        final idx = _cheques.indexWhere((c) => c.id == updated.id);
+        if (idx != -1) {
+          _cheques = List.of(_cheques)..[idx] = updated;
+          notifyListeners();
+        }
       }
       await _silentRefresh();
     } catch (e) {

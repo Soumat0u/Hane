@@ -423,8 +423,8 @@ export function DataProvider({ children }) {
    * `from_account` FK alanı kullanılır (source_name değil) böylece bakiye
    * backend'in sinyal tabanlı yeniden hesaplama yolundan güncellenir.
    * - contact: type='Gelir' + contact FK + from_account FK -> Contact.balance düşer, hesap bakiyesi düşer.
-   * - loan: paid_amount artırılır (remaining düşer) + type='Gider' + from_account FK -> hesap bakiyesi düşer.
-   * - cheque: status='given' yapılır + type='Gider' + from_account FK -> hesap bakiyesi düşer.
+   * - loan/cheque: sunucudaki /pay/ endpoint'i kayıt güncellemesi ile gider
+   *   işlemini tek atomik istekte yapar (bkz. LoanViewSet.pay / ChequeViewSet.pay).
    */
   const payDebt = useCallback(
     async ({ kind, ref, amount, fromAccountId, date = '' }) => {
@@ -440,25 +440,19 @@ export function DataProvider({ children }) {
           description: `${ref.name} borç ödemesi`,
         })
       } else if (kind === 'loan') {
-        const newPaid = (parseFloat(ref.paid_amount) || 0) + amount
-        await api.put(`/loans/${ref.id}/`, { ...ref, paid_amount: newPaid })
-        await api.post('/transactions/', {
-          type: 'Gider',
-          category: 'Kredi Ödemesi',
+        // Kredi güncellemesi ile karşılık gelen gider işlemi sunucuda tek
+        // atomik istekte yapılır (iki ayrı çağrı arasında oluşabilecek
+        // tutarsızlığı önler).
+        await api.post(`/loans/${ref.id}/pay/`, {
           amount,
           date: txDate,
           from_account: fromAccountId ?? null,
-          description: `${ref.name} kredi ödemesi`,
         })
       } else if (kind === 'cheque') {
-        await api.put(`/cheques/${ref.id}/`, { ...ref, status: 'given' })
-        await api.post('/transactions/', {
-          type: 'Gider',
-          category: 'Çek Ödemesi',
+        await api.post(`/cheques/${ref.id}/pay/`, {
           amount,
           date: txDate,
           from_account: fromAccountId ?? null,
-          description: ref.bank_name ? `${ref.bank_name} çeki ödemesi` : 'Çek ödemesi',
         })
       }
       await load()
