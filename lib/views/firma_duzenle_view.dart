@@ -7,6 +7,7 @@ import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/company_profile.dart';
 import 'package:hane/views/widgets/app_form.dart';
 import 'package:hane/constants/tr_locations.dart';
+import 'package:hane/services/notification_service.dart';
 
 /// Firma profili düzenleme formu. Profil ekranından "Düzenle" ile veya
 /// ilk kurulumda (onboarding) kullanılır.
@@ -92,6 +93,8 @@ class _FirmaDuzenleViewState extends State<FirmaDuzenleView> {
       if (!mounted) return;
       if (widget.isOnboarding) {
         // Onboarding kapısı (OnboardingGate) profil dolunca otomatik ana ekrana geçer.
+        // Gerekli izinler (bildirim vb.) burada, onboarding'in sonunda istenir.
+        NotificationService.instance.requestPermission();
         setState(() => _saving = false);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Firma bilgileri güncellendi')));

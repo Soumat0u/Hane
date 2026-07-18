@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/firma_duzenle_view.dart';
 import 'package:hane/views/onboarding/onboarding_welcome_view.dart';
+import 'package:hane/services/notification_service.dart';
 
 /// Giriş yapıldıktan sonra, firma profili boşsa önce kaydırmalı tanıtım
 /// ekranını, ardından kurulum (onboarding) formunu; profil doluysa
@@ -31,7 +32,15 @@ class _OnboardingGateState extends State<OnboardingGate> {
           if (!_welcomeSeen) {
             return OnboardingWelcomeView(onDone: () => setState(() => _welcomeSeen = true));
           }
-          return FirmaDuzenleView(isOnboarding: true, onSkip: () => setState(() => _skipped = true));
+          return FirmaDuzenleView(
+            isOnboarding: true,
+            onSkip: () {
+              // Formu doldurmadan atlansa da onboarding sona eriyor demektir;
+              // gerekli izinler (bildirim vb.) burada istenir.
+              NotificationService.instance.requestPermission();
+              setState(() => _skipped = true);
+            },
+          );
         }
         return widget.child;
       },

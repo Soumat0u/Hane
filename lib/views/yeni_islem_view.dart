@@ -1647,10 +1647,9 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   }
 
   Future<void> _pickAna() async {
-    final fp = context.read<FinanceProvider>();
     final selected = await _showCategorySheet(
       title: 'Ana Kategori Seçin',
-      grouped: fp.mainCategoriesByGroup(income: _isIncome),
+      isIncome: _isIncome,
     );
     if (selected != null) {
       setState(() {
@@ -1672,7 +1671,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
 
   Future<Category?> _showCategorySheet({
     required String title,
-    required Map<String, List<Category>> grouped,
+    required bool isIncome,
   }) {
     final Set<String> expandedGroups = {};
     final searchController = TextEditingController();
@@ -1684,7 +1683,9 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
-          final fp = ctx.read<FinanceProvider>();
+          final fp = ctx.watch<FinanceProvider>();
+          // Her rebuild'de canlı olarak kategorileri alıyoruz
+          final grouped = fp.mainCategoriesByGroup(income: isIncome);
           final query = searchController.text.trim().toLowerCase();
           
           final filteredGrouped = <String, List<Category>>{};

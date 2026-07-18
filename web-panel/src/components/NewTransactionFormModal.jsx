@@ -91,6 +91,34 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
   const [expandedGroups, setExpandedGroups] = useState({})
   const [catSearch, setCatSearch] = useState('')
 
+  // Yeni ana kategori ekleme
+  const [addingMainCategory, setAddingMainCategory] = useState(false)
+  const [newMainCategoryName, setNewMainCategoryName] = useState('')
+  const [newMainCategoryGroup, setNewMainCategoryGroup] = useState('')
+  const [mainCategorySaving, setMainCategorySaving] = useState(false)
+
+  const handleAddMainCategory = async () => {
+    const name = newMainCategoryName.trim()
+    if (!name) return
+    setMainCategorySaving(true)
+    try {
+      await addCategory({
+        name,
+        type: isIncome ? 'income' : 'cost',
+        group: newMainCategoryGroup.trim() || 'Diğer',
+        parent: null,
+      })
+      setMainCategory(name)
+      setNewMainCategoryName('')
+      setNewMainCategoryGroup('')
+      setAddingMainCategory(false)
+    } catch {
+      setErr('Ana kategori eklenemedi.')
+    } finally {
+      setMainCategorySaving(false)
+    }
+  }
+
   const filteredGroupedCategories = useMemo(() => {
     const groups = {}
     const query = catSearch.trim().toLowerCase()
@@ -435,14 +463,57 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Ana Kategori Seçimi</label>
               
-              <input
-                type="text"
-                className="form-input"
-                style={{ marginBottom: '0.5rem', height: '36px', fontSize: '0.85rem' }}
-                placeholder="Kategori ara..."
-                value={catSearch}
-                onChange={(e) => setCatSearch(e.target.value)}
-              />
+              {addingMainCategory ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem', border: '1px solid var(--color-accent)', borderRadius: '8px', marginBottom: '0.5rem', backgroundColor: 'var(--color-surface-variant)' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-accent)' }}>Yeni Ana Kategori</div>
+                  <input
+                    type="text"
+                    className="form-input"
+                    autoFocus
+                    placeholder="Kategori adı (örn. Taşımacılık)"
+                    style={{ height: '36px', fontSize: '0.85rem' }}
+                    value={newMainCategoryName}
+                    onChange={(e) => setNewMainCategoryName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddMainCategory() } }}
+                  />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Grup adı (opsiyonel, örn. Hane)"
+                    style={{ height: '36px', fontSize: '0.85rem' }}
+                    value={newMainCategoryGroup}
+                    onChange={(e) => setNewMainCategoryGroup(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddMainCategory() } }}
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" className="btn-secondary" style={{ flex: 1, marginTop: 0, padding: '0.4rem' }}
+                      onClick={() => { setAddingMainCategory(false); setNewMainCategoryName(''); setNewMainCategoryGroup('') }}>
+                      İptal
+                    </button>
+                    <button type="button" className="btn-primary" style={{ flex: 1, marginTop: 0, padding: '0.4rem' }}
+                      disabled={mainCategorySaving || !newMainCategoryName.trim()}
+                      onClick={handleAddMainCategory}>
+                      {mainCategorySaving ? <span className="loader" /> : 'Ekle'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ flex: 1, height: '36px', fontSize: '0.85rem', marginBottom: 0 }}
+                    placeholder="Kategori ara..."
+                    value={catSearch}
+                    onChange={(e) => setCatSearch(e.target.value)}
+                  />
+                  <button type="button" className="btn-secondary"
+                    style={{ width: 'auto', marginTop: 0, padding: '0 0.75rem', height: '36px', whiteSpace: 'nowrap', fontSize: '0.82rem' }}
+                    onClick={() => setAddingMainCategory(true)}>
+                    + Ana Kategori
+                  </button>
+                </div>
+              )}
               
               <div style={{
                 border: '1px solid var(--color-border)',
