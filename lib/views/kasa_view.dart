@@ -257,7 +257,18 @@ class _AddCashSheetState extends State<_AddCashSheet> {
     setState(() { _saving = true; _err = ''; });
     try {
       final fp = context.read<FinanceProvider>();
-      final updated = _selected.copyWith(openingBalance: _selected.openingBalance + amount);
+      final updated = Account(
+        id: _selected.id,
+        name: _selected.name,
+        type: _selected.type,
+        openingBalance: _selected.openingBalance + amount,
+        balance: _selected.balance + amount,
+        creditLimit: _selected.creditLimit,
+        availableLimit: _selected.availableLimit,
+        bankLogoPainter: _selected.bankLogoPainter,
+        accountDetails: _selected.accountDetails,
+        isActive: _selected.isActive,
+      );
       await fp.updateAccount(updated);
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -309,7 +320,7 @@ class _AddCashSheetState extends State<_AddCashSheet> {
             controller: _amountController,
             autofocus: true,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [ThousandsFormatter()],
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
             decoration: InputDecoration(
               prefixText: '₺ ',
               hintText: '0',
