@@ -1712,21 +1712,47 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: TextField(
-                    controller: searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Kategori ara...',
-                      prefixIcon: Icon(Icons.search, size: 20, color: context.colors.textSecondary),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.border)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.border)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.accent)),
-                      filled: true,
-                      fillColor: context.colors.scaffold,
-                    ),
-                    onChanged: (val) {
-                      setSheetState(() {});
-                    },
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Kategori ara...',
+                            prefixIcon: Icon(Icons.search, size: 20, color: context.colors.textSecondary),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.border)),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.border)),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.accent)),
+                            filled: true,
+                            fillColor: context.colors.scaffold,
+                          ),
+                          onChanged: (val) {
+                            setSheetState(() {});
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => _showAddMainCategoryDialog(ctx, _isIncome, () {
+                          setSheetState(() {
+                            // fp.mainCategoriesByGroup returns the updated categories map from state
+                            // But wait, the map passed as parameter "grouped" was built on the outer build.
+                            // If we read it dynamically in filteredGrouped from fp, it will update!
+                          });
+                        }),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: context.colors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.add, color: context.colors.accent, size: 22),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Divider(height: 1, color: context.colors.surfaceVariant),
@@ -1792,6 +1818,78 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             ),
           );
         }
+      ),
+    );
+  }
+
+  void _showAddMainCategoryDialog(BuildContext ctx, bool isIncome, VoidCallback onCreated) {
+    final nameController = TextEditingController();
+    final groupController = TextEditingController();
+    
+    showDialog(
+      context: ctx,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: context.colors.surface,
+        title: Text('Yeni Ana Kategori Ekle', style: TextStyle(color: context.colors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Kategori Adı',
+                labelStyle: TextStyle(color: context.colors.textSecondary),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: context.colors.accent)),
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: groupController,
+              decoration: InputDecoration(
+                labelText: 'Grup Adı (Örn: Hane, Opsiyonel)',
+                labelStyle: TextStyle(color: context.colors.textSecondary),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: context.colors.accent)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: Text('İptal', style: TextStyle(color: context.colors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              final group = groupController.text.trim();
+              
+              try {
+                final fp = ctx.read<FinanceProvider>();
+                final created = await fp.createCategory(
+                  name: name,
+                  type: isIncome ? 'income' : 'cost',
+                  group: group.isEmpty ? 'Diğer' : group,
+                );
+                if (dialogCtx.mounted) {
+                  Navigator.pop(dialogCtx);
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(content: Text('"${created.name}" ana kategorisi eklendi.'), backgroundColor: Colors.green),
+                  );
+                  onCreated();
+                }
+              } catch (e) {
+                if (dialogCtx.mounted) {
+                  ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                    SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: Text('Ekle', style: TextStyle(color: context.colors.accent, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

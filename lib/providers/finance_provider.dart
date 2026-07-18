@@ -130,6 +130,36 @@ class FinanceProvider extends ChangeNotifier {
     return temp;
   }
 
+  /// Yeni bir ana veya alt kategori kaydeder.
+  Future<Category> createCategory({
+    required String name,
+    required String type,
+    int? parentId,
+    String group = '',
+  }) async {
+    final temp = Category(
+      id: _nextTempId(),
+      name: name,
+      type: type,
+      parentId: parentId,
+      group: group,
+    );
+    final snapshot = List<Category>.from(_categories);
+    _categories = [..._categories, temp];
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.createCategory(
+        name: name,
+        type: type,
+        parentId: parentId,
+        group: group,
+      ),
+      rollback: () => _categories = snapshot,
+      errorLabel: 'Kategori eklenemedi',
+    ));
+    return temp;
+  }
+
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
