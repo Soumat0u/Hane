@@ -89,16 +89,25 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
   // Ana kategori seçiliyken listede olmayan yeni bir alt kategori eklenebilir.
   const [addingSubCategory, setAddingSubCategory] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState({})
+  const [catSearch, setCatSearch] = useState('')
 
-  const groupedCategories = useMemo(() => {
+  const filteredGroupedCategories = useMemo(() => {
     const groups = {}
+    const query = catSearch.trim().toLowerCase()
     for (const c of mainCategories) {
-      const g = c.group || 'Diğer'
-      if (!groups[g]) groups[g] = []
-      groups[g].push(c)
+      const subCats = categories.filter((sc) => sc.parent === c.id)
+      const matchesMain = c.name.toLowerCase().includes(query)
+      const matchesGroup = (c.group || 'Diğer').toLowerCase().includes(query)
+      const matchesSub = subCats.some((sc) => sc.name.toLowerCase().includes(query))
+      
+      if (!query || matchesMain || matchesGroup || matchesSub) {
+        const g = c.group || 'Diğer'
+        if (!groups[g]) groups[g] = []
+        groups[g].push(c)
+      }
     }
     return groups
-  }, [mainCategories])
+  }, [mainCategories, categories, catSearch])
 
   const toggleGroup = (groupName) => {
     setExpandedGroups((prev) => ({
@@ -426,6 +435,15 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">Ana Kategori Seçimi</label>
               
+              <input
+                type="text"
+                className="form-input"
+                style={{ marginBottom: '0.5rem', height: '36px', fontSize: '0.85rem' }}
+                placeholder="Kategori ara..."
+                value={catSearch}
+                onChange={(e) => setCatSearch(e.target.value)}
+              />
+              
               <div style={{
                 border: '1px solid var(--color-border)',
                 borderRadius: '8px',
@@ -437,13 +455,13 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
                 flexDirection: 'column',
                 gap: '0.4rem'
               }}>
-                {Object.keys(groupedCategories).length === 0 ? (
+                {Object.keys(filteredGroupedCategories).length === 0 ? (
                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem' }}>
                     Kategori bulunamadı.
                   </div>
                 ) : (
-                  Object.entries(groupedCategories).map(([groupName, cats]) => {
-                    const isExpanded = !!expandedGroups[groupName]
+                  Object.entries(filteredGroupedCategories).map(([groupName, cats]) => {
+                    const isExpanded = catSearch.trim().length > 0 || !!expandedGroups[groupName]
                     const hasSelected = cats.some((c) => c.name === mainCategory)
                     
                     return (

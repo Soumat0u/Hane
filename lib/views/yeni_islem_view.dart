@@ -1675,6 +1675,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     required Map<String, List<Category>> grouped,
   }) {
     final Set<String> expandedGroups = {};
+    final searchController = TextEditingController();
+    
     return showModalBottomSheet<Category>(
       context: context,
       isScrollControlled: true,
@@ -1682,6 +1684,22 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
+          final fp = ctx.read<FinanceProvider>();
+          final query = searchController.text.trim().toLowerCase();
+          
+          final filteredGrouped = <String, List<Category>>{};
+          for (final entry in grouped.entries) {
+            final list = entry.value.where((c) {
+              final matchesMain = c.name.toLowerCase().contains(query);
+              final subCats = fp.categories.where((sc) => sc.parentId == c.id);
+              final matchesSub = subCats.any((sc) => sc.name.toLowerCase().contains(query));
+              return matchesMain || matchesSub;
+            }).toList();
+            if (list.isNotEmpty) {
+              filteredGrouped[entry.key] = list;
+            }
+          }
+
           return SizedBox(
             height: MediaQuery.of(ctx).size.height * 0.7,
             child: Column(
@@ -1692,11 +1710,30 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                   padding: const EdgeInsets.all(16),
                   child: Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Kategori ara...',
+                      prefixIcon: Icon(Icons.search, size: 20, color: context.colors.textSecondary),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.border)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.border)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: context.colors.accent)),
+                      filled: true,
+                      fillColor: context.colors.scaffold,
+                    ),
+                    onChanged: (val) {
+                      setSheetState(() {});
+                    },
+                  ),
+                ),
                 Divider(height: 1, color: context.colors.surfaceVariant),
                 Expanded(
                   child: ListView(
                     children: [
-                      for (final entry in grouped.entries) ...[
+                      for (final entry in filteredGrouped.entries) ...[
                         InkWell(
                           onTap: () {
                             setSheetState(() {
@@ -1722,7 +1759,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                                   ),
                                 ),
                                 Icon(
-                                  expandedGroups.contains(entry.key)
+                                  (query.isNotEmpty || expandedGroups.contains(entry.key))
                                       ? Icons.keyboard_arrow_down_rounded
                                       : Icons.keyboard_arrow_right_rounded,
                                   color: context.colors.textSecondary,
@@ -1732,7 +1769,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                             ),
                           ),
                         ),
-                        if (expandedGroups.contains(entry.key))
+                        if (query.isNotEmpty || expandedGroups.contains(entry.key))
                           for (final c in entry.value)
                             ListTile(
                               dense: true,
@@ -1741,7 +1778,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                               trailing: c.childCount > 0
                                   ? Text('${c.childCount} alt', style: TextStyle(fontSize: 11, color: context.colors.textSecondary))
                                   : null,
-                              onTap: () => Navigator.pop(ctx, c),
+                              onTap: () {
+                                searchController.dispose();
+                                Navigator.pop(ctx, c);
+                              },
                             ),
                         Divider(height: 1, color: context.colors.surfaceVariant.withValues(alpha: 0.5)),
                       ],
