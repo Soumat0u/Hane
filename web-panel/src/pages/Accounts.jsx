@@ -108,7 +108,7 @@ export default function Accounts() {
             accounts={bankAccounts}
             iconClass="text-info"
             onItemClick={goToAccount}
-            actions={[{ label: 'Hesap Ekle', onClick: () => { setLockNewType(false); setNewType('Banka') } }]}
+            actions={[{ label: 'Hesap Ekle', onClick: () => { setLockNewType(true); setNewType('Banka') } }]}
             showBankLogo
           />
           <AccountGroup
