@@ -1676,7 +1676,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     final Set<String> expandedGroups = {};
     final searchController = TextEditingController();
     
-    return showModalBottomSheet<Category>(
+    final result = showModalBottomSheet<Category>(
       context: context,
       isScrollControlled: true,
       backgroundColor: context.colors.surface,
@@ -1806,7 +1806,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                                   ? Text('${c.childCount} alt', style: TextStyle(fontSize: 11, color: context.colors.textSecondary))
                                   : null,
                               onTap: () {
-                                searchController.dispose();
                                 Navigator.pop(ctx, c);
                               },
                             ),
@@ -1821,6 +1820,8 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
         }
       ),
     );
+    // Sheet kapandıktan sonra controller'ı güvenle dispose ediyoruz
+    return result.whenComplete(() => searchController.dispose());
   }
 
   void _showAddMainCategoryDialog(BuildContext ctx, bool isIncome, VoidCallback onCreated) {

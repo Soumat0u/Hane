@@ -25,6 +25,10 @@ class MainNavigationPage extends StatefulWidget {
 class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBindingObserver {
   int _currentTabIndex = 0;
   String _selectedTransactionType = 'Ödeme';
+  // Her yeni işlem açılışında artırılır; YeniIslemScreen'e key olarak verilip
+  // formun tamamen taze bir örnekle açılmasını (önceki girilen bilgilerin
+  // kalmamasını) sağlar — aksi halde widget hep aynı State'i koruyup gizleniyor.
+  int _transactionFormKey = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late PageController _pageController;
 
@@ -106,6 +110,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
         onTypeSelected: (type) {
           setState(() {
             _selectedTransactionType = type == 'Borç' ? 'Borçlanma' : type;
+            _transactionFormKey++;
           });
           _selectTab(2);
         },
@@ -238,6 +243,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
             child: IgnorePointer(
               ignoring: _currentTabIndex != 2,
               child: YeniIslemScreen(
+                key: ValueKey(_transactionFormKey),
                 initialType: _selectedTransactionType,
                 onBack: () => _selectTab(0),
               ),
@@ -358,6 +364,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
                           child: IgnorePointer(
                             ignoring: _currentTabIndex != 2,
                             child: YeniIslemScreen(
+                              key: ValueKey(_transactionFormKey),
                               initialType: _selectedTransactionType,
                               onBack: () => _selectTab(0),
                             ),
