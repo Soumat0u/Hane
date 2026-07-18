@@ -214,12 +214,28 @@ class FinancialTransactionSerializer(serializers.ModelSerializer):
         return transaction
 
     def update(self, instance, validated_data):
+        request = self.context.get('request')
         user = instance.user
         old_from_account = instance.from_account
         old_to_account = instance.to_account
         # Eski işlemin isim-bazlı bakiye etkisini geri al, güncelle, yeni etkiyi uygula.
         apply_legacy_balance(user, instance, -1)
         instance = super().update(instance, validated_data)
+
+        # `project_id` read_only olduğu için validated_data'ya hiç girmiyor;
+        # create()'deki gibi burada da request.data'dan elle işleniyor —
+        # aksi halde bir işlemin proje ataması düzenlemede hiç güncellenmiyordu.
+        if request is not None and 'project_id' in request.data:
+            project_id = request.data.get('project_id')
+            if project_id:
+                try:
+                    instance.project = Project.objects.get(id=project_id, user=user)
+                except Project.DoesNotExist:
+                    instance.project = None
+            else:
+                instance.project = None
+            instance.save(update_fields=['project'])
+
         apply_legacy_balance(user, instance, +1)
         # FK hesap değiştiyse ya da kaldırıldıysa eski hesabın bakiyesini de
         # yeniden hesapla — post_save sinyali yalnızca YENİ from_account/to_account'ı
