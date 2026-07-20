@@ -16,6 +16,7 @@ export function DataProvider({ children }) {
   const [transactions, setTransactions] = useState([])
   const [cheques, setCheques] = useState([])
   const [receivables, setReceivables] = useState([])
+  const [sales, setSales] = useState([])
   const [accounts, setAccounts] = useState([])
   const [budgetLines, setBudgetLines] = useState([])
   const [loans, setLoans] = useState([])
@@ -62,6 +63,7 @@ export function DataProvider({ children }) {
         api.get('/transactions/'),
         api.get('/cheques/'),
         api.get('/receivables/'),
+        api.get('/sales/'),
         api.get('/accounts/'),
         api.get('/company-profile/'),
         api.get('/loans/'),
@@ -76,19 +78,21 @@ export function DataProvider({ children }) {
       const txns = results[1].status === 'fulfilled' ? results[1].value : []
       const chqs = results[2].status === 'fulfilled' ? results[2].value : []
       const recs = results[3].status === 'fulfilled' ? results[3].value : []
-      const accs = results[4].status === 'fulfilled' ? results[4].value : []
-      const profile = results[5].status === 'fulfilled' ? results[5].value : null
-      const lns = results[6].status === 'fulfilled' ? results[6].value : []
-      const cnts = results[7].status === 'fulfilled' ? results[7].value : []
-      const cats = results[8].status === 'fulfilled' ? results[8].value : []
-      const bls = results[9].status === 'fulfilled' ? results[9].value : []
-      const docs = results[10].status === 'fulfilled' ? results[10].value : []
-      const tds = results[11].status === 'fulfilled' ? results[11].value : []
+      const sls = results[4].status === 'fulfilled' ? results[4].value : []
+      const accs = results[5].status === 'fulfilled' ? results[5].value : []
+      const profile = results[6].status === 'fulfilled' ? results[6].value : null
+      const lns = results[7].status === 'fulfilled' ? results[7].value : []
+      const cnts = results[8].status === 'fulfilled' ? results[8].value : []
+      const cats = results[9].status === 'fulfilled' ? results[9].value : []
+      const bls = results[10].status === 'fulfilled' ? results[10].value : []
+      const docs = results[11].status === 'fulfilled' ? results[11].value : []
+      const tds = results[12].status === 'fulfilled' ? results[12].value : []
 
       setProjects(Array.isArray(projs) ? projs : [])
       setTransactions(Array.isArray(txns) ? txns : [])
       setCheques(Array.isArray(chqs) ? chqs : [])
       setReceivables(Array.isArray(recs) ? recs : [])
+      setSales(Array.isArray(sls) ? sls : [])
       setAccounts(Array.isArray(accs) ? accs : [])
       setLoans(Array.isArray(lns) ? lns : [])
       setContacts(Array.isArray(cnts) ? cnts : [])
@@ -166,7 +170,7 @@ export function DataProvider({ children }) {
    * `category: 'Borçlanma'` bir işlem kaydı oluştur. Sonra veriyi tazele.
    */
   const addDebt = useCallback(
-    async ({ amount, contactName, dueDate = '', projectId = null, description = '', invoiceNo = '', invoiceFile = null }) => {
+    async ({ amount, contactName, dueDate = '', projectId = null, category = 'Borçlanma', description = '', invoiceNo = '', invoiceFile = null }) => {
       const name = (contactName || '').trim()
 
       let contact = contacts.find(
@@ -186,7 +190,7 @@ export function DataProvider({ children }) {
         amount,
         date: today,
         due_date: dueDate,
-        category: 'Borçlanma',
+        category: category || 'Borçlanma',
         contact: contact?.id ?? null,
         source_name: name,
         description,
@@ -683,6 +687,7 @@ export function DataProvider({ children }) {
       transactions,
       cheques,
       receivables,
+      sales,
       accounts,
       loans,
       contacts,
@@ -754,6 +759,7 @@ export function DataProvider({ children }) {
       transactions,
       cheques,
       receivables,
+      sales,
       accounts,
       loans,
       contacts,

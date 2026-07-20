@@ -87,13 +87,15 @@ function formatDate(raw) {
   return d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+const SALE_UNIT_TYPES = { apartment: 'Daire', shop: 'Dükkan', land: 'Arsa', other: 'Diğer' }
+
 export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const {
-    projects, transactions, contacts, projectDocuments, loading, loaded, error,
+    projects, transactions, contacts, projectDocuments, sales, loading, loaded, error,
     updateProject, deleteProject, uploadProjectImage,
-    addSale, addReceivable,
+    addSale,
     addProjectDocument, deleteProjectDocument, renameProjectDocument,
   } = useData()
   const [selectedCategory, setSelectedCategory] = useState('Tümü')
@@ -130,6 +132,11 @@ export default function ProjectDetail() {
   const documents = useMemo(
     () => projectDocuments.filter((d) => String(d.project) === String(id)),
     [projectDocuments, id],
+  )
+
+  const projectSales = useMemo(
+    () => [...sales.filter((s) => String(s.project) === String(id))].sort((a, b) => new Date(b.sale_date) - new Date(a.sale_date)),
+    [sales, id],
   )
 
   const handleFileSelected = async (e) => {
@@ -331,9 +338,6 @@ export default function ProjectDetail() {
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className="btn-dark" onClick={() => setExpenseModalOpen(true)}>
             <Plus size={16} /> Yeni Harcama Ekle
-          </button>
-          <button className="btn-dark" onClick={() => setSaleModalOpen(true)}>
-            <Plus size={16} /> Yeni Satış
           </button>
         </div>
       </div>
@@ -540,6 +544,47 @@ export default function ProjectDetail() {
         </div>
       </div>
 
+      {/* Satışlar başlığı */}
+      <div className="detail-section-head" style={{ marginTop: '2rem' }}>
+        <h2 className="detail-section-title">SATIŞLAR</h2>
+        <button className="btn-dark" onClick={() => setSaleModalOpen(true)}>
+          <Plus size={16} /> Yeni Satış Ekle
+        </button>
+      </div>
+
+      {projectSales.length === 0 ? (
+        <div className="summary-box">
+          <div className="empty-state" style={{ padding: '1.5rem 0' }}>
+            <span>Bu projeye ait satış bulunamadı.</span>
+          </div>
+        </div>
+      ) : (
+        <div className="list-group">
+          {projectSales.map((s) => {
+            const buyer = s.buyer ? contacts.find((c) => String(c.id) === String(s.buyer)) : null
+            const title = `${SALE_UNIT_TYPES[s.unit_type] || s.unit_type}${s.unit_no ? ` ${s.unit_no}` : ''}`
+            const remaining = num(s.remaining)
+            return (
+              <div className="list-item" key={s.id}>
+                <div className="list-item-content">
+                  <div className="list-item-title">{title}</div>
+                  <div className="list-item-subtitle">
+                    {buyer ? buyer.name : 'Alıcı belirtilmedi'}
+                    {s.installment_count > 0 ? ` · ${s.installment_count} Taksit` : ''}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="list-item-value">{formatCurrency(num(s.sale_price))}</div>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: remaining > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
+                    {remaining > 0 ? `Kalan: ${formatCurrency(remaining)}` : 'Tahsil Edildi'}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {isEditing && (
         <ProjectFormModal
           project={project}
@@ -560,7 +605,6 @@ export default function ProjectDetail() {
           contacts={contacts}
           onClose={() => setSaleModalOpen(false)}
           onSaveSale={addSale}
-          onSaveReceivable={addReceivable}
         />
       )}
 

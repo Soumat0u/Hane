@@ -1,3 +1,6 @@
+import calendar
+from datetime import datetime
+
 from django.db import transaction as db_transaction
 from django.utils import timezone
 from rest_framework import viewsets, status, permissions
@@ -232,9 +235,74 @@ class ChequeViewSet(_UserOwnedViewSet):
         }, status=status.HTTP_200_OK)
 
 
+def _add_months(base_date, months):
+    month = base_date.month - 1 + months
+    year = base_date.year + month // 12
+    month = month % 12 + 1
+    day = min(base_date.day, calendar.monthrange(year, month)[1])
+    return base_date.replace(year=year, month=month, day=day)
+
+
 class SaleViewSet(_UserOwnedViewSet):
     model = Sale
     serializer_class = SaleSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Satışı ve varsa taksit/vade planını (Receivable satırları) tek atomik
+        istekte oluşturur. Önceden istemci iki ayrı istek atıyordu (satış + alacak)
+        ve oluşan alacağı hiçbir zaman `sale` FK'sıyla satışa bağlamıyordu — bu da
+        Sale.collected()/remaining'in her zaman yanlış (sıfır tahsilat) görünmesine
+        yol açıyordu. Artık sunucu tarafında, tek seferde ve doğru bağlantıyla yapılır.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with db_transaction.atomic():
+            sale = serializer.save(user=request.user)
+            self._generate_installments(sale, request.data)
+        sale.refresh_from_db()
+        return Response(self.get_serializer(sale).data, status=status.HTTP_201_CREATED)
+
+    def _generate_installments(self, sale, data):
+        create_receivable = data.get('create_receivable', True)
+        if isinstance(create_receivable, str):
+            create_receivable = create_receivable.lower() not in ('false', '0', '')
+        if not create_receivable:
+            return
+        down_payment = max(float(data.get('down_payment') or 0), 0)
+        installment_count = int(data.get('installment_count') or 0)
+        first_due_date = data.get('first_due_date') or sale.sale_date
+        remaining = max((sale.sale_price or 0) - down_payment, 0)
+        if remaining <= 0:
+            return
+
+        unit_label = f'{sale.get_unit_type_display()} {sale.unit_no}'.strip()
+
+        if installment_count <= 0:
+            Receivable.objects.create(
+                user=sale.user, kind=Receivable.SALE_INSTALLMENT, status=Receivable.PENDING,
+                contact=sale.buyer, project=sale.project, sale=sale,
+                total_amount=remaining, due_date=first_due_date,
+                description=f'{unit_label} satış bedeli'.strip(),
+            )
+            return
+
+        try:
+            base_date = datetime.strptime(first_due_date, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            base_date = timezone.now().date()
+
+        per_installment = round(remaining / installment_count, 2)
+        allocated = 0.0
+        for i in range(installment_count):
+            amount = per_installment if i < installment_count - 1 else round(remaining - allocated, 2)
+            due = _add_months(base_date, i)
+            Receivable.objects.create(
+                user=sale.user, kind=Receivable.SALE_INSTALLMENT, status=Receivable.PENDING,
+                contact=sale.buyer, project=sale.project, sale=sale,
+                total_amount=amount, due_date=due.isoformat(),
+                description=f'{unit_label} - {i + 1}. Taksit'.strip(),
+            )
+            allocated += amount
 
 
 class ReceivableViewSet(_UserOwnedViewSet):

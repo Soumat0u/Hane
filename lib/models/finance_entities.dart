@@ -282,6 +282,10 @@ class Sale {
   final double collected;
   final double remaining;
   final String saleDate;
+  final double downPayment;
+  final int installmentCount;
+  final String firstDueDate; // yalnızca oluşturma isteğinde gönderilir, saklanmaz
+  final bool createReceivable; // yalnızca oluşturma isteğinde gönderilir, saklanmaz
   final bool isCompleted;
 
   Sale({
@@ -294,6 +298,10 @@ class Sale {
     this.collected = 0.0,
     this.remaining = 0.0,
     this.saleDate = '',
+    this.downPayment = 0.0,
+    this.installmentCount = 0,
+    this.firstDueDate = '',
+    this.createReceivable = true,
     this.isCompleted = false,
   });
 
@@ -307,10 +315,14 @@ class Sale {
         collected: _toDouble(m['collected']),
         remaining: _toDouble(m['remaining']),
         saleDate: m['sale_date'] ?? '',
+        downPayment: _toDouble(m['down_payment']),
+        installmentCount: m['installment_count'] ?? 0,
         isCompleted: m['is_completed'] ?? false,
       );
 
-  // collected / remaining backend'de türetilir; yazarken gönderilmez.
+  // collected / remaining / is_completed backend'de türetilir; yazarken gönderilmez.
+  // first_due_date yalnızca oluşturma anında taksit planı üretmek için kullanılır,
+  // sunucuda ayrı bir alan olarak saklanmaz.
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'project': projectId,
@@ -319,7 +331,10 @@ class Sale {
         'unit_no': unitNo,
         'sale_price': salePrice,
         'sale_date': saleDate,
-        'is_completed': isCompleted,
+        'down_payment': downPayment,
+        'installment_count': installmentCount,
+        if (firstDueDate.isNotEmpty) 'first_due_date': firstDueDate,
+        'create_receivable': createReceivable,
       };
 
   Sale withId(int? newId) => Sale(
@@ -332,6 +347,8 @@ class Sale {
         collected: collected,
         remaining: remaining,
         saleDate: saleDate,
+        downPayment: downPayment,
+        installmentCount: installmentCount,
         isCompleted: isCompleted,
       );
 }

@@ -15,6 +15,7 @@ import 'package:hane/models/finance_entities.dart';
 import 'package:hane/models/project_document.dart';
 import 'package:hane/views/yeni_proje_view.dart';
 import 'package:hane/views/yeni_islem_view.dart';
+import 'package:hane/views/yeni_satis_view.dart';
 import 'package:hane/views/hareket_detay_view.dart';
 import 'package:hane/services/export_service.dart';
 import 'package:hane/services/api_service.dart';
@@ -148,6 +149,8 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                 _buildSummaryCards(context, totalGider, buAyHarcama, kalanButce),
                 const SizedBox(height: 32),
                 _buildSpendingDistribution(context, project, fp, totalGider),
+                const SizedBox(height: 32),
+                _buildSalesSection(context, fp, project),
                 const SizedBox(height: 32),
                 _buildDocumentsSection(context, fp, project),
                 const SizedBox(height: 40),
@@ -789,6 +792,133 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                 ),
               ],
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSalesSection(BuildContext context, FinanceProvider fp, Project project) {
+    final sales = fp.sales.where((s) => s.projectId == project.id).toList()
+      ..sort((a, b) => b.saleDate.compareTo(a.saleDate));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'SATIŞLAR',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: context.colors.textPrimary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => YeniSatisView(projectId: project.id!, projectName: project.name),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add, size: 16, color: Colors.white),
+              label: const Text('Yeni Satış Ekle', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: context.colors.brand,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (sales.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Center(
+              child: Text('Bu projeye ait satış bulunamadı.', style: TextStyle(color: context.colors.textSecondary)),
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.colors.border),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (var i = 0; i < sales.length; i++) ...[
+                  if (i > 0) Divider(height: 1, color: context.colors.border),
+                  _buildSaleRow(context, fp, sales[i]),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSaleRow(BuildContext context, FinanceProvider fp, Sale sale) {
+    const unitTypeLabels = {'apartment': 'Daire', 'shop': 'Dükkan', 'land': 'Arsa', 'other': 'Diğer'};
+    final buyer = sale.buyerId == null
+        ? null
+        : fp.contacts.where((c) => c.id == sale.buyerId).firstOrNull;
+    final title = '${unitTypeLabels[sale.unitType] ?? sale.unitType}${sale.unitNo.isNotEmpty ? ' ${sale.unitNo}' : ''}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary)),
+                if (buyer != null)
+                  Text(buyer.name, style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
+                if (sale.installmentCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: context.colors.accentBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${sale.installmentCount} Taksit',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: context.colors.accent),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(currencyFormat.format(sale.salePrice),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary)),
+                Text(
+                  sale.remaining > 0 ? 'Kalan: ${currencyFormat.format(sale.remaining)}' : 'Tahsil Edildi',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: sale.remaining > 0 ? context.colors.danger : context.colors.success,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

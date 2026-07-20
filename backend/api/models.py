@@ -400,6 +400,8 @@ class Sale(models.Model):
     unit_no = models.CharField(max_length=50, default='', blank=True)
     sale_price = models.FloatField(default=0.0)
     sale_date = models.CharField(max_length=50, default='', blank=True)
+    down_payment = models.FloatField(default=0.0)  # peşinat
+    installment_count = models.IntegerField(default=0)  # 0 = taksitsiz (tek kalem alacak)
     is_completed = models.BooleanField(default=False)
 
     def __str__(self):
@@ -411,6 +413,13 @@ class Sale(models.Model):
     @property
     def remaining(self):
         return max((self.sale_price or 0) - self.collected(), 0)
+
+    def refresh_completion_status(self):
+        """Alacakları tahsil edildikçe satışın tamamlanma durumunu senkron tutar."""
+        is_completed = self.remaining <= 0 and (self.sale_price or 0) > 0
+        if is_completed != self.is_completed:
+            self.is_completed = is_completed
+            self.save(update_fields=['is_completed'])
 
 
 class Receivable(models.Model):
@@ -562,3 +571,13 @@ def _sync_account_balances(sender, instance, **kwargs):
     for account in (instance.from_account, instance.to_account):
         if account is not None:
             account.recalculate_balance()
+
+
+@receiver(post_save, sender=Receivable)
+@receiver(post_delete, sender=Receivable)
+def _sync_sale_completion(sender, instance, **kwargs):
+    if instance.sale_id is not None:
+        try:
+            instance.sale.refresh_completion_status()
+        except Sale.DoesNotExist:
+            pass

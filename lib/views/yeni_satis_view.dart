@@ -22,8 +22,11 @@ class _YeniSatisViewState extends State<YeniSatisView> {
   final _formKey = GlobalKey<FormState>();
   final _unitNoCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
+  final _downPaymentCtrl = TextEditingController();
+  final _installmentCountCtrl = TextEditingController();
   String _unitType = 'apartment';
   DateTime? _saleDate;
+  DateTime? _firstDueDate;
   int? _buyerId;
   bool _createReceivable = true;
   bool _saving = false;
@@ -34,6 +37,8 @@ class _YeniSatisViewState extends State<YeniSatisView> {
   void dispose() {
     _unitNoCtrl.dispose();
     _priceCtrl.dispose();
+    _downPaymentCtrl.dispose();
+    _installmentCountCtrl.dispose();
     super.dispose();
   }
 
@@ -41,6 +46,9 @@ class _YeniSatisViewState extends State<YeniSatisView> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final price = double.tryParse(_priceCtrl.text.replaceAll('.', '').replaceAll(',', '.')) ?? 0;
+    final downPayment = double.tryParse(_downPaymentCtrl.text.replaceAll('.', '').replaceAll(',', '.')) ?? 0;
+    final installmentCount = int.tryParse(_installmentCountCtrl.text) ?? 0;
+    final saleDateStr = _saleDate?.toIso8601String().split('T').first ?? '';
     final fp = context.read<FinanceProvider>();
     final sale = Sale(
       projectId: widget.projectId,
@@ -48,22 +56,14 @@ class _YeniSatisViewState extends State<YeniSatisView> {
       unitType: _unitType,
       unitNo: _unitNoCtrl.text.trim(),
       salePrice: price,
-      saleDate: _saleDate?.toIso8601String().split('T').first ?? '',
+      saleDate: saleDateStr,
+      downPayment: downPayment,
+      installmentCount: installmentCount,
+      firstDueDate: (_firstDueDate ?? _saleDate)?.toIso8601String().split('T').first ?? saleDateStr,
+      createReceivable: _createReceivable,
     );
     try {
       await fp.addSale(sale);
-      if (_createReceivable && price > 0) {
-        await fp.addReceivable(Receivable(
-          kind: 'installment',
-          status: 'pending',
-          projectId: widget.projectId,
-          contactId: _buyerId,
-          totalAmount: price,
-          collectedAmount: 0,
-          dueDate: _saleDate?.toIso8601String().split('T').first ?? '',
-          description: '${_unitTypes[_unitType]} ${_unitNoCtrl.text.trim()} satış bedeli',
-        ));
-      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Satış kaydedildi')));
         Navigator.pop(context);
@@ -131,6 +131,28 @@ class _YeniSatisViewState extends State<YeniSatisView> {
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.colors.textPrimary)),
               subtitle: Text('Tahsilat takibi için önerilir', style: TextStyle(fontSize: 12, color: context.colors.textSecondary)),
             ),
+            if (_createReceivable) ...[
+              const SizedBox(height: 4),
+              AppTextField(controller: _downPaymentCtrl, label: 'Peşinat (opsiyonel)', currency: true, hint: '0'),
+              AppTextField(
+                controller: _installmentCountCtrl,
+                label: 'Taksit Sayısı (opsiyonel)',
+                number: true,
+                hint: 'Boş bırakılırsa tek kalemde alacak oluşur',
+              ),
+              AppDateField(
+                label: 'İlk Taksit Vadesi (opsiyonel)',
+                value: _firstDueDate,
+                onChanged: (d) => setState(() => _firstDueDate = d),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  'Sonraki taksitler ilk vadeden başlayarak birer ay arayla otomatik planlanır.',
+                  style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             AppSaveButton(saving: _saving, onPressed: _save),
           ],

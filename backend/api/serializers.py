@@ -281,9 +281,10 @@ class SaleSerializer(serializers.ModelSerializer):
         model = Sale
         fields = [
             'id', 'project', 'buyer', 'unit_type', 'unit_no', 'sale_price',
-            'sale_date', 'is_completed', 'remaining', 'collected',
+            'sale_date', 'down_payment', 'installment_count',
+            'is_completed', 'remaining', 'collected',
         ]
-        read_only_fields = ['id', 'remaining', 'collected']
+        read_only_fields = ['id', 'remaining', 'collected', 'is_completed']
 
     def get_collected(self, obj):
         return obj.collected()
