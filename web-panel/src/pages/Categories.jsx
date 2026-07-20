@@ -11,10 +11,12 @@ export default function Categories() {
   const [filterType, setFilterType] = useState('all') // 'all' | 'cost' | 'income'
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [err, setErr] = useState('')
 
   const [form, setForm] = useState({ id: null, name: '', type: 'cost', group: '', parent: '' })
+  const [groupForm, setGroupForm] = useState({ originalName: '', newName: '', type: 'cost' })
 
   const handleOpen = (cat = null, defaultParentId = null) => {
     setErr('')
@@ -79,13 +81,59 @@ export default function Categories() {
     const subcats = categories.filter((c) => c.parent && Number(c.parent) === Number(cat.id))
     let message = `"${cat.name}" kategorisini silmek istediğinize emin misiniz?`
     if (subcats.length > 0) {
-      message += `\n\nUyarı: Bu kategorinin ${subcats.length} adet alt kategorisi bulunmaktadır.`
+      message += `\n\nUyarı: Bu kategorinin ${subcats.length} adet alt kategorisi bulunmaktadır. Silerseniz onlar da silinir.`
     }
     if (!window.confirm(message)) return
     try {
       await deleteCategory(cat.id)
     } catch {
       alert('Kategori silinemedi. Lütfen tekrar deneyin.')
+    }
+  }
+
+  const handleOpenGroup = (groupName, type) => {
+    setErr('')
+    setGroupForm({ originalName: groupName, newName: groupName, type })
+    setIsGroupModalOpen(true)
+  }
+
+  const handleSaveGroup = async (e) => {
+    e.preventDefault()
+    setErr('')
+    const { originalName, newName, type } = groupForm
+    if (!newName.trim()) {
+      setErr('Grup adı boş olamaz.')
+      return
+    }
+    setIsSaving(true)
+    try {
+      // Find all categories in this group and type
+      const catsInGroup = categories.filter(c => (c.group || 'Diğer') === originalName && c.type === type)
+      // Update each
+      for (const cat of catsInGroup) {
+        await updateCategory(cat.id, { ...cat, group: newName.trim() })
+      }
+      setIsGroupModalOpen(false)
+    } catch {
+      setErr('Grup güncellenemedi.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeleteGroup = async (groupName, type) => {
+    const catsInGroup = categories.filter(c => (c.group || 'Diğer') === groupName && c.type === type && !c.parent)
+    const allCatsCount = categories.filter(c => (c.group || 'Diğer') === groupName && c.type === type).length
+    
+    let message = `"${groupName}" grubunu ve altındaki TÜM kategorileri (${allCatsCount} adet) silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!`
+    if (!window.confirm(message)) return
+    
+    try {
+      for (const cat of catsInGroup) {
+        await deleteCategory(cat.id)
+      }
+    } catch {
+      alert('Grup silinirken bir hata oluştu.')
     }
   }
 
@@ -99,10 +147,10 @@ export default function Categories() {
     )
   }, [categories, form.type, form.id])
 
-  // Filter root categories for view
-  const filteredRootCategories = useMemo(() => {
+  // Filter root categories for view and group them
+  const groupedRootCategories = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
-    return categories.filter((c) => {
+    const roots = categories.filter((c) => {
       if (c.parent) return false // Only root categories
       if (filterType !== 'all' && c.type !== filterType) return false
 
@@ -115,6 +163,17 @@ export default function Categories() {
 
       return matchesName || matchesGroup || matchesSub
     })
+
+    const groups = {}
+    for (const c of roots) {
+      const g = c.group || 'Diğer'
+      const key = `${c.type}_${g}` // Group by type and group name
+      if (!groups[key]) {
+        groups[key] = { groupName: g, type: c.type, cats: [] }
+      }
+      groups[key].cats.push(c)
+    }
+    return Object.values(groups).sort((a, b) => a.groupName.localeCompare(b.groupName))
   }, [categories, filterType, searchTerm])
 
   return (
@@ -185,119 +244,135 @@ export default function Categories() {
           </button>
         </div>
 
-        {/* Category Tree List */}
+        {/* Category Tree List Grouped */}
         <div className="list-group">
-          {filteredRootCategories.length === 0 ? (
+          {groupedRootCategories.length === 0 ? (
             <div style={{ padding: '3rem 1.5rem', textAlign: 'center', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
               Kategori bulunamadı.
             </div>
           ) : (
-            filteredRootCategories.map((root) => {
-              const subcats = categories.filter((c) => c.parent && Number(c.parent) === Number(root.id))
-              const isIncome = root.type === 'income'
-
+            groupedRootCategories.map((group) => {
+              const isGroupIncome = group.type === 'income'
+              
               return (
-                <div
-                  key={root.id}
-                  style={{
-                    background: 'var(--color-surface)',
-                    borderRadius: 'var(--radius-lg)',
-                    border: '1px solid var(--color-border)',
-                    overflow: 'hidden',
-                    marginBottom: '1rem',
-                  }}
-                >
-                  {/* Root Category Row */}
-                  <div
-                    style={{
-                      padding: '1rem 1.25rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      borderBottom: subcats.length > 0 ? '1px solid var(--color-border)' : 'none',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                      <div
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: '10px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: isIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                          color: isIncome ? 'var(--color-success)' : 'var(--color-danger)',
-                        }}
-                      >
-                        <Folder size={18} />
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text-main)' }}>
-                          {root.name}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                          <span
-                            style={{
-                              padding: '0.1rem 0.5rem',
-                              borderRadius: '4px',
-                              fontWeight: 600,
-                              fontSize: '0.72rem',
-                              backgroundColor: isIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                              color: isIncome ? 'var(--color-success)' : 'var(--color-danger)',
-                            }}
-                          >
-                            {isIncome ? 'Gelir' : 'Gider'}
-                          </span>
-                          {root.group && <span>• {root.group}</span>}
-                          <span>• {subcats.length} Alt Kategori</span>
-                        </div>
-                      </div>
+                <div key={`${group.type}_${group.groupName}`} style={{ marginBottom: '2rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', padding: '0 0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ 
+                        padding: '0.15rem 0.6rem', 
+                        borderRadius: '20px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700, 
+                        backgroundColor: isGroupIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)', 
+                        color: isGroupIncome ? 'var(--color-success)' : 'var(--color-danger)' 
+                      }}>
+                        {isGroupIncome ? 'GELİR GRUBU' : 'GİDER GRUBU'}
+                      </span>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)' }}>{group.groupName}</h3>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <button
-                        type="button"
-                        className="btn-inline-text"
-                        style={{ fontSize: '0.8rem', marginRight: '0.5rem' }}
-                        onClick={() => handleOpen(null, root.id)}
-                        title="Alt kategori ekle"
-                      >
-                        <Plus size={14} /> Alt Kategori
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button type="button" className="icon-btn" onClick={() => handleOpenGroup(group.groupName, group.type)} title="Grubu Düzenle">
+                        <Pencil size={15} />
                       </button>
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={() => handleOpen(root)}
-                        title="Düzenle"
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={() => handleDelete(root)}
-                        style={{ color: 'var(--color-danger)' }}
-                        title="Sil"
-                      >
-                        <Trash2 size={16} />
+                      <button type="button" className="icon-btn" style={{ color: 'var(--color-danger)' }} onClick={() => handleDeleteGroup(group.groupName, group.type)} title="Grubu Sil">
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Subcategories List */}
-                  {subcats.length > 0 && (
-                    <div
-                      style={{
-                        padding: '0.75rem 1.25rem 0.85rem 3rem',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.5rem',
-                        background: 'var(--color-surface-variant)',
-                      }}
-                    >
-                      {subcats.map((sub) => (
+                  {group.cats.map((root) => {
+                    const subcats = categories.filter((c) => c.parent && Number(c.parent) === Number(root.id))
+                    const isIncome = root.type === 'income'
+
+                    return (
+                      <div
+                        key={root.id}
+                        style={{
+                          background: 'var(--color-surface)',
+                          borderRadius: 'var(--radius-lg)',
+                          border: '1px solid var(--color-border)',
+                          overflow: 'hidden',
+                          marginBottom: '0.75rem',
+                        }}
+                      >
+                        {/* Root Category Row */}
                         <div
+                          style={{
+                            padding: '1rem 1.25rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            borderBottom: subcats.length > 0 ? '1px solid var(--color-border)' : 'none',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                            <div
+                              style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: isIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                color: isIncome ? 'var(--color-success)' : 'var(--color-danger)',
+                              }}
+                            >
+                              <Folder size={18} />
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text-main)' }}>
+                                {root.name}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                                <span>• {subcats.length} Alt Kategori</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <button
+                              type="button"
+                              className="btn-inline-text"
+                              style={{ fontSize: '0.8rem', marginRight: '0.5rem' }}
+                              onClick={() => handleOpen(null, root.id)}
+                              title="Alt kategori ekle"
+                            >
+                              <Plus size={14} /> Alt Kategori
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              onClick={() => handleOpen(root)}
+                              title="Düzenle"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              onClick={() => handleDelete(root)}
+                              style={{ color: 'var(--color-danger)' }}
+                              title="Sil"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Subcategories List */}
+                        {subcats.length > 0 && (
+                          <div
+                            style={{
+                              padding: '0.75rem 1.25rem 0.85rem 3rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.5rem',
+                              background: 'var(--color-surface-variant)',
+                            }}
+                          >
+                            {subcats.map((sub) => (
+                              <div
                           key={sub.id}
                           style={{
                             display: 'flex',
@@ -439,7 +514,41 @@ export default function Categories() {
             </form>
           </div>
         </div>,
-        document.body,
+        document.body
+      )}
+
+      {/* Group Modal */}
+      {isGroupModalOpen && createPortal(
+        <div className="modal-overlay" onClick={() => setIsGroupModalOpen(false)}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">Grup Düzenle</span>
+              <button className="modal-close" onClick={() => setIsGroupModalOpen(false)}><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSaveGroup}>
+              <div className="modal-body">
+                {err && <div className="error-message">{err}</div>}
+                <div className="form-group">
+                  <label className="form-label">Grup Adı</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={groupForm.newName}
+                    onChange={(e) => setGroupForm({ ...groupForm, newName: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn-ghost" onClick={() => setIsGroupModalOpen(false)} disabled={isSaving}>İptal</button>
+                <button type="submit" className="btn-primary" disabled={isSaving}>
+                  {isSaving ? <><span className="loader" /> Kaydediliyor...</> : 'Kaydet'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )
