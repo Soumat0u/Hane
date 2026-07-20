@@ -31,6 +31,8 @@ class ProjeDetayView extends StatefulWidget {
 
 class _ProjeDetayViewState extends State<ProjeDetayView> {
   String _selectedCategory = 'Tümü';
+  bool _showAllExpenses = false;
+  static const int _expenseDisplayLimit = 10;
 
   @override
   Widget build(BuildContext context) {
@@ -45,8 +47,16 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
         }
 
         final projectTransactions = fp.getTransactionsForProject(project.id!);
-        final harcamalar = projectTransactions.where((t) => t.type == 'Gider').toList();
-        
+        final harcamalar = projectTransactions.where((t) => t.type == 'Gider').toList()
+          ..sort((a, b) {
+            final da = DateTime.tryParse(a.date);
+            final db = DateTime.tryParse(b.date);
+            if (da == null && db == null) return 0;
+            if (da == null) return 1;
+            if (db == null) return -1;
+            return db.compareTo(da); // en yeni üstte
+          });
+
         final totalGider = harcamalar.fold(0.0, (sum, t) => sum + t.amount);
         final kalanButce = project.estimatedTotalCost - totalGider;
 
@@ -69,9 +79,12 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
         }
 
         // Filter transactions by selected category
-        final filteredHarcamalar = _selectedCategory == 'Tümü' 
-            ? harcamalar 
+        final filteredHarcamalar = _selectedCategory == 'Tümü'
+            ? harcamalar
             : harcamalar.where((t) => t.category == _selectedCategory).toList();
+        final displayedHarcamalar = _showAllExpenses
+            ? filteredHarcamalar
+            : filteredHarcamalar.take(_expenseDisplayLimit).toList();
 
         return Scaffold(
           backgroundColor: context.colors.surface,
@@ -121,12 +134,16 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeroCard(context, project),
+                const SizedBox(height: 16),
+                _buildProjectDetailsCard(context, project),
                 const SizedBox(height: 24),
                 _buildHarcamalarHeader(context, project.name),
                 const SizedBox(height: 16),
                 _buildFilterChips(context, categories),
                 const SizedBox(height: 16),
-                _buildExpenditureList(context, filteredHarcamalar),
+                _buildExpenditureList(context, displayedHarcamalar),
+                if (filteredHarcamalar.length > _expenseDisplayLimit)
+                  _buildShowMoreButton(context),
                 const SizedBox(height: 24),
                 _buildSummaryCards(context, totalGider, buAyHarcama, kalanButce),
                 const SizedBox(height: 32),
@@ -206,37 +223,31 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              project.name,
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: context.colors.textPrimary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
+                      Text(
+                        project.name,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: context.colors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: context.colors.surfaceVariant,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          project.projectCode.isNotEmpty ? project.projectCode : '—',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: context.colors.textSecondary,
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                            decoration: BoxDecoration(
-                              color: context.colors.surfaceVariant,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              project.projectCode.isNotEmpty ? project.projectCode : '—',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: context.colors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -292,6 +303,64 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
     );
   }
 
+  Widget _buildProjectDetailsCard(BuildContext context, Project project) {
+    final hasDescription = project.description.trim().isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'PROJE DETAYLARI',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: context.colors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 24,
+            runSpacing: 16,
+            children: [
+              _buildProjectStatItem(context, 'Bağımsız Bölüm', project.totalIndependentSections > 0 ? '${project.totalIndependentSections}' : '-'),
+              _buildProjectStatItem(context, 'Konut Sayısı', project.unitCount > 0 ? '${project.unitCount}' : '-'),
+              _buildProjectStatItem(context, 'İşyeri Sayısı', project.shopCount > 0 ? '${project.shopCount}' : '-'),
+              _buildProjectStatItem(context, 'Başlangıç Tarihi', project.startDate.isNotEmpty ? project.startDate : '-'),
+              _buildProjectStatItem(context, 'Tahmini Bitiş', project.endDate.isNotEmpty ? project.endDate : '-'),
+              _buildProjectStatItem(context, 'Öngörülen Gelir', currencyFormat.format(project.estimatedTotalRevenue)),
+            ],
+          ),
+          if (hasDescription) ...[
+            const SizedBox(height: 16),
+            Divider(height: 1, color: context.colors.border),
+            const SizedBox(height: 16),
+            Text(
+              'AÇIKLAMA',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: context.colors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              project.description,
+              style: TextStyle(fontSize: 13, color: context.colors.textPrimary, height: 1.4),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildProjectStatItem(BuildContext context, String label, String value) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -337,6 +406,7 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
                 builder: (context) => YeniIslemScreen(
                   initialType: 'Gider',
                   initialProject: projectName,
+                  onBack: () => Navigator.pop(context),
                 ),
               ),
             );
@@ -394,6 +464,55 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
     );
   }
 
+  /// Harcama listesinin hemen altına yapışık, yuvarlak "daha fazla/az göster" butonu.
+  Widget _buildShowMoreButton(BuildContext context) {
+    return Transform.translate(
+      offset: const Offset(0, -18),
+      child: Center(
+        child: Material(
+          color: context.colors.surface,
+          shape: CircleBorder(side: BorderSide(color: context.colors.border)),
+          elevation: 1,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => setState(() => _showAllExpenses = !_showAllExpenses),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: AnimatedRotation(
+                turns: _showAllExpenses ? 0.5 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(Icons.keyboard_arrow_down_rounded, color: context.colors.brand, size: 22),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Web panelindeki `categoryIcon()` ile aynı eşleme.
+  IconData _categoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'beton':
+      case 'nakliye':
+        return Icons.local_shipping_outlined;
+      case 'demir':
+        return Icons.grid_4x4_outlined;
+      case 'duvar':
+        return Icons.view_column_outlined;
+      case 'elektrik':
+        return Icons.bolt_outlined;
+      case 'sıhhi tesisat':
+        return Icons.water_drop_outlined;
+      case 'işçilik':
+        return Icons.engineering_outlined;
+      case 'kalıp':
+        return Icons.construction_outlined;
+      default:
+        return Icons.build_outlined;
+    }
+  }
+
   Widget _buildExpenditureList(BuildContext context, List<FinancialTransaction> transactions) {
     if (transactions.isEmpty) {
       return const Padding(
@@ -402,134 +521,122 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
       );
     }
 
-    return Column(
-      children: [
-        // Table Header
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            children: [
-              Expanded(flex: 3, child: Text('KATEGORİ', style: _headerStyle(context))),
-              Expanded(flex: 4, child: Text('AÇIKLAMA / MİKTAR', style: _headerStyle(context))),
-              Expanded(flex: 3, child: Text('TEDARİKÇİ', style: _headerStyle(context))),
-              Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('TUTAR', style: _headerStyle(context)))),
-              Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('TARİH', style: _headerStyle(context)))),
-              const SizedBox(width: 24), // For arrow icon
-            ],
+    // Web panelindeki `.expense-table` ile aynı: tek bir çerçeve içinde,
+    // satırlar arası ince ayraçlarla ayrılan birleşik liste (kart-içinde-kart değil).
+    return Container(
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.colors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // Table Header
+          Container(
+            color: context.colors.surfaceVariant,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+            child: Row(
+              children: [
+                Expanded(flex: 4, child: Text('KATEGORİ', style: _headerStyle(context))),
+                Expanded(flex: 3, child: Text('AÇIKLAMA', style: _headerStyle(context))),
+                Expanded(flex: 3, child: Align(alignment: Alignment.centerRight, child: Text('TUTAR', style: _headerStyle(context)))),
+                Expanded(flex: 2, child: Align(alignment: Alignment.centerRight, child: Text('TARİH', style: _headerStyle(context)))),
+                const SizedBox(width: 20), // Ok ikonu için
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        // Rows
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: transactions.length,
-          itemBuilder: (context, index) {
-            final t = transactions[index];
-            DateTime? date = DateTime.tryParse(t.date);
-            final dateStr = date != null ? dateFormat.format(date) : t.date;
+          for (var index = 0; index < transactions.length; index++) ...[
+            if (index > 0) Divider(height: 1, color: context.colors.border),
+            Builder(builder: (context) {
+              final t = transactions[index];
+              DateTime? date = DateTime.tryParse(t.date);
+              final dateStr = date != null ? dateFormat.format(date) : t.date;
 
-            // Extract description and quantity
-            String desc = t.description;
-            String qty = '';
-            if (desc.contains(' • ')) {
-              final parts = desc.split(' • ');
-              if (parts.length >= 3) {
-                qty = parts[1];
-                desc = parts.sublist(2).join(' • ');
-              } else if (parts.length == 2) {
-                desc = parts[1];
+              // Extract description and quantity
+              String desc = t.description;
+              if (desc.contains(' • ')) {
+                final parts = desc.split(' • ');
+                desc = parts.length >= 3 ? parts.sublist(2).join(' • ') : (parts.length == 2 ? parts[1] : desc);
               }
-            }
 
-            return InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => HareketDetayView(transaction: t),
-                  ),
-                );
-              },
-              child: Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: context.colors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.colors.border),
-              ),
-              child: Row(
-                children: [
-                  // KATEGORI
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      t.category,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary),
-                      overflow: TextOverflow.ellipsis,
+              return InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HareketDetayView(transaction: t),
                     ),
-                  ),
-                  // AÇIKLAMA / MİKTAR
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      // KATEGORİ
+                      Expanded(
+                        flex: 4,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: context.colors.surfaceVariant,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(_categoryIcon(t.category), size: 16, color: context.colors.textPrimary),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                t.category,
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // AÇIKLAMA
+                      Expanded(
+                        flex: 3,
+                        child: Text(
                           desc.isNotEmpty ? desc : '-',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: context.colors.textPrimary),
+                          style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (qty.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            qty.toUpperCase(),
-                            style: TextStyle(fontSize: 10, color: context.colors.textSecondary, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // TEDARİKÇİ
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      t.contactName.isNotEmpty ? t.contactName : '-',
-                      style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  // TUTAR / TARİH
-                  Expanded(
-                    flex: 4, // combined flex of TUTAR and TARİH
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
+                      ),
+                      // TUTAR
+                      Expanded(
+                        flex: 3,
+                        child: Text(
                           currencyFormat.format(t.amount),
+                          textAlign: TextAlign.right,
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: context.colors.textPrimary),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
+                      ),
+                      // TARİH
+                      Expanded(
+                        flex: 2,
+                        child: Text(
                           dateStr,
-                          style: TextStyle(fontSize: 10, color: context.colors.textSecondary),
+                          textAlign: TextAlign.right,
+                          style: TextStyle(fontSize: 11, color: context.colors.textSecondary),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.chevron_right, size: 16, color: context.colors.textSecondary),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Icon(Icons.chevron_right, size: 16, color: context.colors.textSecondary),
-                ],
-              ),
-              ),
-            );
-          },
-        ),
-      ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
     );
   }
 
@@ -586,21 +693,35 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
   Widget _buildSpendingDistribution(BuildContext context, Project project, FinanceProvider fp, double totalGider) {
     final categorySpending = fp.getProjectCategorySpending(project.id!);
     
+    // Web panelindeki (ProjectDetail.jsx) ile aynı palet: bilinen kategoriler sabit
+    // renkte, tanınmayanlar (örn. serbest metin girilmiş kategoriler) birbirinden
+    // ayırt edilebilsin diye sırayla bu yedek paletten renk alır.
     final categoryColors = {
       'Beton': const Color(0xFF0F172A),
       'Demir': const Color(0xFF3B82F6),
       'Duvar': const Color(0xFF10B981),
       'Kalıp & İskele': const Color(0xFF8B5CF6),
-      'Hafriyat': context.colors.success,
+      'Hafriyat': const Color(0xFF10B981),
       'Elektrik': const Color(0xFFF59E0B),
       'Sıhhi Tesisat': const Color(0xFFF43F5E),
       'İşçilik': const Color(0xFFCBD5E1),
-      'Genel Gider': context.colors.textSecondary,
+      'Genel Gider': const Color(0xFF64748B),
     };
+    const fallbackColors = [
+      Color(0xFF032B5E),
+      Color(0xFF6366F1),
+      Color(0xFF0EA5E9),
+      Color(0xFF14B8A6),
+      Color(0xFFF97316),
+      Color(0xFFEC4899),
+      Color(0xFF84CC16),
+    ];
 
+    var fallbackIndex = 0;
     final List<SpendingData> data = categorySpending.entries.map((e) {
       double pct = totalGider > 0 ? (e.value / totalGider) * 100 : 0;
-      return SpendingData(e.key, currencyFormat.format(e.value), pct, categoryColors[e.key] ?? context.colors.brand);
+      final color = categoryColors[e.key] ?? fallbackColors[fallbackIndex++ % fallbackColors.length];
+      return SpendingData(e.key, currencyFormat.format(e.value), pct, color);
     }).toList();
 
     // En yüksek harcamadan en düşüğe sırala.
@@ -616,20 +737,9 @@ class _ProjeDetayViewState extends State<ProjeDetayView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Harcama Dağılımı',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
-              ),
-              Row(
-                children: [
-                  Text('Tümünü Gör', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: context.colors.brand)),
-                  Icon(Icons.chevron_right, size: 16, color: context.colors.brand),
-                ],
-              ),
-            ],
+          Text(
+            'Harcama Dağılımı',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: context.colors.textPrimary),
           ),
           const SizedBox(height: 24),
           if (data.isEmpty)
@@ -899,25 +1009,30 @@ class DonutChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = min(size.width / 2, size.height / 2);
-    final strokeWidth = radius * 0.4;
+    // Web panelindeki (recharts innerRadius=54/outerRadius=72) ile aynı oranda
+    // ince bir halka; segmentler arasında web'deki `paddingAngle` gibi
+    // küçük bir boşluk bırakılır (düz uçlu segmentler, yuvarlak uç yok).
+    final strokeWidth = radius * 0.25;
     final rect = Rect.fromCircle(center: center, radius: radius - strokeWidth / 2);
+    final visibleCount = data.where((d) => d.percentage > 0).length;
+    final gap = visibleCount > 1 ? (2 * pi / 180) : 0.0; // ~2 derece
 
     double startAngle = -pi / 2;
 
     for (var item in data) {
       if (item.percentage == 0) continue;
-      
-      final sweepAngle = (item.percentage / 100) * 2 * pi;
-      
+
+      final sweepAngle = (item.percentage / 100) * 2 * pi - gap;
+
       final paint = Paint()
         ..color = item.color
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round;
+        ..strokeCap = StrokeCap.butt;
 
       canvas.drawArc(rect, startAngle, sweepAngle, false, paint);
-      
-      startAngle += sweepAngle;
+
+      startAngle += sweepAngle + gap;
     }
   }
 

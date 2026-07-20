@@ -691,7 +691,7 @@ textarea {
 
 @keyframes pageFade {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to { opacity: 1; transform: none; }
 }
 
 /* ============================================================
@@ -2667,7 +2667,7 @@ textarea {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  z-index: 100;
+  z-index: 1000;
   animation: fadeIn 0.18s ease;
 }
 
@@ -2684,6 +2684,7 @@ textarea {
   width: 100%;
   max-width: 460px;
   max-height: 90vh;
+  margin: auto;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;

@@ -14,6 +14,7 @@ class FinancialTransaction {
   final String destName; // legacy: transfer hedefi
   final String contactName; // alıcı, satıcı, alacaklı
   final String dueDate;
+  final String documentNo; // fatura/belge no
   final String? attachmentUrl; // sunucudan gelen fiş/fatura görseli (salt okunur)
   final double? quantity;
   final String? unit;
@@ -36,6 +37,7 @@ class FinancialTransaction {
     this.destName = '',
     this.contactName = '',
     this.dueDate = '',
+    this.documentNo = '',
     this.attachmentUrl,
     this.quantity,
     this.unit,
@@ -57,6 +59,7 @@ class FinancialTransaction {
     String? destName,
     String? contactName,
     String? dueDate,
+    String? documentNo,
     String? attachmentUrl,
     double? quantity,
     String? unit,
@@ -77,6 +80,7 @@ class FinancialTransaction {
       destName: destName ?? this.destName,
       contactName: contactName ?? this.contactName,
       dueDate: dueDate ?? this.dueDate,
+      documentNo: documentNo ?? this.documentNo,
       attachmentUrl: clearAttachmentUrl ? null : (attachmentUrl ?? this.attachmentUrl),
       quantity: quantity ?? this.quantity,
       unit: unit ?? this.unit,
@@ -99,6 +103,7 @@ class FinancialTransaction {
       'dest_name': destName,
       'contact_name': contactName,
       'due_date': dueDate,
+      'document_no': documentNo,
       'quantity': quantity,
       'unit': unit ?? '',
     };
@@ -120,6 +125,7 @@ class FinancialTransaction {
       destName: map['dest_name'] ?? '',
       contactName: map['contact_name'] ?? '',
       dueDate: map['due_date'] ?? '',
+      documentNo: map['document_no'] ?? '',
       attachmentUrl: map['attachment'],
       quantity: map['quantity']?.toDouble(),
       unit: map['unit'],

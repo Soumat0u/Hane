@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import {
-  ArrowLeft, Pencil, Plus, MapPin, Building2, ChevronRight,
+  ArrowLeft, Pencil, Plus, MapPin, Building2, ChevronRight, ChevronDown,
   Truck, Grid3x3, BrickWall, Zap, Droplet, HardHat, Construction, Wrench,
   FileText, UploadCloud, Trash2, X,
 } from 'lucide-react'
@@ -164,7 +164,7 @@ export default function ProjectDetail() {
   }
 
   const harcamalar = useMemo(
-    () => projectTransactions.filter((t) => t.type === 'Gider'),
+    () => [...projectTransactions.filter((t) => t.type === 'Gider')].sort((a, b) => new Date(b.date) - new Date(a.date)),
     [projectTransactions],
   )
 
@@ -188,6 +188,10 @@ export default function ProjectDetail() {
     () => (selectedCategory === 'Tümü' ? harcamalar : harcamalar.filter((t) => t.category === selectedCategory)),
     [harcamalar, selectedCategory],
   )
+
+  const EXPENSE_DISPLAY_LIMIT = 10
+  const [showAllExpenses, setShowAllExpenses] = useState(false)
+  const displayedExpenses = showAllExpenses ? filtered : filtered.slice(0, EXPENSE_DISPLAY_LIMIT)
 
   const spendingData = useMemo(() => {
     const sums = new Map()
@@ -283,6 +287,44 @@ export default function ProjectDetail() {
         </div>
       </div>
 
+      {/* Proje Detayları */}
+      <div className="summary-box" style={{ marginBottom: '1.5rem' }}>
+        <h2 className="detail-section-title" style={{ marginBottom: '1.25rem' }}>PROJE DETAYLARI</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem' }}>
+          <div className="detail-stat" style={{ alignItems: 'flex-start' }}>
+            <span className="detail-stat-label">Bağımsız Bölüm</span>
+            <span className="detail-stat-value">{project.total_independent_sections > 0 ? project.total_independent_sections : '-'}</span>
+          </div>
+          <div className="detail-stat" style={{ alignItems: 'flex-start' }}>
+            <span className="detail-stat-label">Konut Sayısı</span>
+            <span className="detail-stat-value">{project.unit_count > 0 ? project.unit_count : '-'}</span>
+          </div>
+          <div className="detail-stat" style={{ alignItems: 'flex-start' }}>
+            <span className="detail-stat-label">İşyeri Sayısı</span>
+            <span className="detail-stat-value">{project.shop_count > 0 ? project.shop_count : '-'}</span>
+          </div>
+          <div className="detail-stat" style={{ alignItems: 'flex-start' }}>
+            <span className="detail-stat-label">Başlangıç Tarihi</span>
+            <span className="detail-stat-value">{project.start_date || '-'}</span>
+          </div>
+          <div className="detail-stat" style={{ alignItems: 'flex-start' }}>
+            <span className="detail-stat-label">Tahmini Bitiş</span>
+            <span className="detail-stat-value">{project.end_date || '-'}</span>
+          </div>
+          <div className="detail-stat" style={{ alignItems: 'flex-start' }}>
+            <span className="detail-stat-label">Öngörülen Gelir</span>
+            <span className="detail-stat-value">{formatCurrency(project.estimated_total_revenue)}</span>
+          </div>
+        </div>
+        {project.description && (
+          <>
+            <div style={{ borderTop: '1px solid var(--color-border)', margin: '1.25rem 0' }} />
+            <span className="detail-stat-label">AÇIKLAMA</span>
+            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-main)', marginTop: '0.4rem', lineHeight: 1.5 }}>{project.description}</p>
+          </>
+        )}
+      </div>
+
       {/* Harcamalar başlığı */}
       <div className="detail-section-head">
         <h2 className="detail-section-title">HARCAMALAR</h2>
@@ -312,7 +354,7 @@ export default function ProjectDetail() {
       )}
 
       {/* Harcama tablosu */}
-      <div className="expense-table">
+      <div className="expense-table" style={filtered.length > EXPENSE_DISPLAY_LIMIT ? { marginBottom: 0 } : undefined}>
         <div className="expense-row expense-header">
           <span className="col-category">KATEGORİ</span>
           <span className="col-desc">AÇIKLAMA</span>
@@ -327,7 +369,7 @@ export default function ProjectDetail() {
             <span>Bu kategoriye ait harcama bulunamadı.</span>
           </div>
         ) : (
-          filtered.map((t, i) => {
+          displayedExpenses.map((t, i) => {
             const Icon = categoryIcon(t.category)
             return (
               <div className="expense-row" key={t.id ?? i} onClick={() => navigate(`/dashboard/transactions/${t.id}`)} style={{ cursor: 'pointer' }}>
@@ -345,6 +387,25 @@ export default function ProjectDetail() {
           })
         )}
       </div>
+      {filtered.length > EXPENSE_DISPLAY_LIMIT && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '-18px', marginBottom: '2rem', position: 'relative', zIndex: 1 }}>
+          <button
+            className="icon-btn"
+            title={showAllExpenses ? 'Daha Az Göster' : `Daha Fazla Göster (${filtered.length})`}
+            onClick={() => setShowAllExpenses((v) => !v)}
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'transform 0.2s ease',
+              transform: showAllExpenses ? 'rotate(180deg)' : 'none',
+            }}
+          >
+            <ChevronDown size={20} color="var(--color-primary)" />
+          </button>
+        </div>
+      )}
 
       {/* Özet kartları */}
       <div className="detail-summary">
@@ -370,9 +431,6 @@ export default function ProjectDetail() {
           <div className="spending-card" style={{ marginTop: 0, height: '100%' }}>
             <div className="spending-head">
               <h2 className="detail-section-title" style={{ margin: 0 }}>Harcama Dağılımı</h2>
-              <span className="btn-inline-text" style={{ color: 'var(--color-primary)', cursor: 'default' }}>
-                Tümünü Gör <ChevronRight size={14} />
-              </span>
             </div>
 
             {spendingData.length === 0 ? (

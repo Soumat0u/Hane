@@ -166,7 +166,7 @@ export function DataProvider({ children }) {
    * `category: 'Borçlanma'` bir işlem kaydı oluştur. Sonra veriyi tazele.
    */
   const addDebt = useCallback(
-    async ({ amount, contactName, dueDate = '', projectId = null, description = '' }) => {
+    async ({ amount, contactName, dueDate = '', projectId = null, description = '', invoiceNo = '' }) => {
       const name = (contactName || '').trim()
 
       let contact = contacts.find(
@@ -190,6 +190,7 @@ export function DataProvider({ children }) {
         contact: contact?.id ?? null,
         source_name: name,
         description,
+        document_no: invoiceNo,
       })
 
       await load()

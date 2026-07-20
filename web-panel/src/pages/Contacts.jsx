@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { UserPlus, X } from 'lucide-react'
 import { useData } from '../context/DataContext'
@@ -41,7 +42,7 @@ export function ContactFormModal({ contact, onClose, onSave }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -88,7 +89,8 @@ export function ContactFormModal({ contact, onClose, onSave }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

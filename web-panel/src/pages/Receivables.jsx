@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowDownToLine, Plus, X, Banknote, ChevronRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num, parseMoneyInput, formatAmountForDisplay } from '../utils'
@@ -44,7 +45,7 @@ function CollectModal({ receivable, accounts, onClose, onCollect }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -82,7 +83,8 @@ function CollectModal({ receivable, accounts, onClose, onCollect }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -125,7 +127,7 @@ function NewReceivableModal({ projects, onClose, onSave }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -175,7 +177,8 @@ function NewReceivableModal({ projects, onClose, onSave }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

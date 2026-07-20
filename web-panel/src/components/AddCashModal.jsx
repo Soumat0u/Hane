@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { num, parseMoneyInput } from '../utils'
@@ -45,7 +46,7 @@ export default function AddCashModal({ cashAccounts, onClose }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -76,6 +77,7 @@ export default function AddCashModal({ cashAccounts, onClose }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

@@ -122,6 +122,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   final TextEditingController _borclanilanKisiController = TextEditingController();
   final TextEditingController _borclanmaTutarController = TextEditingController();
   final TextEditingController _borclanmaAciklamaController = TextEditingController();
+  final TextEditingController _borclanmaFaturaNoController = TextEditingController();
   final List<String> _borclanmaKategorileri = ['Tedarikçi Borcu', 'Banka Kredisi', 'Ortaklara Borçlar', 'Diğer'];
 
   // --- Kredi Kullanimi Form States ---
@@ -155,15 +156,15 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       final accounts = _accountNames;
       final banks = _bankNames;
 
-      // Tarih alanları bugüne varsayılansın.
-      final today = _formatDate(DateTime.now());
-      _dateController.text = today;
-      _transferTarih = today;
-      _borclanmaTarih = today;
-      _krediTarih = today;
-      _satisTarih = today;
-
       if (widget.initialTransaction == null) {
+        // Tarih alanları bugüne varsayılansın (yalnızca yeni kayıtta — düzenlemede
+        // initState() zaten işlemin gerçek tarihini set etmişti, burada ezilmemeli).
+        final today = _formatDate(DateTime.now());
+        _dateController.text = today;
+        _transferTarih = today;
+        _borclanmaTarih = today;
+        _krediTarih = today;
+        _satisTarih = today;
         // Varsayılan olarak proje seçili gelmesin — kullanıcı genel (projesiz)
         // bir harcama girmek isteyebilir; proje seçimi isteğe bağlı bırakılır.
         _selectedProject = widget.initialProject ?? kNoProjectOption;
@@ -173,9 +174,11 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       if (widget.initialTransaction != null) {
         final t = widget.initialTransaction!;
         _selectedSource = t.sourceName.isNotEmpty ? t.sourceName : (t.destName.isNotEmpty ? t.destName : first(accounts));
-        // Kategoriyi eşleştir
+        // Kategoriyi eşleştir — aynı isimde hem gelir hem gider kategorisi olabileceğinden
+        // (örn. "Diğer"), önce işlemin türüne (gelir/gider) uyanı tercih ediyoruz.
         final fp = Provider.of<FinanceProvider>(context, listen: false);
-        final matchingCat = fp.categories.where((c) => c.name == t.category).firstOrNull;
+        final matchingCat = fp.categories.where((c) => c.name == t.category && c.isIncome == _isIncome).firstOrNull ??
+            fp.categories.where((c) => c.name == t.category).firstOrNull;
         if (matchingCat != null) {
           if (matchingCat.isMain) {
             _selectedMainCategory = matchingCat;
@@ -213,6 +216,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     _borclanilanKisiController.dispose();
     _borclanmaTutarController.dispose();
     _borclanmaAciklamaController.dispose();
+    _borclanmaFaturaNoController.dispose();
     
     _krediTutarController.dispose();
     _krediVadeController.dispose();
@@ -479,6 +483,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                        contactId: contact.id, // Cari bağlantısı
                        sourceName: source,
                        description: _borclanmaAciklamaController.text,
+                       documentNo: _borclanmaFaturaNoController.text.trim(),
                      );
 
                       try {
@@ -1296,6 +1301,13 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                 ],
               ),
             ),
+          ),
+        ),
+        _buildFormRow(
+          label: 'FATURA NO',
+          child: _buildTextField(
+            controller: _borclanmaFaturaNoController,
+            hintText: 'Fatura / belge numarası',
           ),
         ),
         _buildFormRow(

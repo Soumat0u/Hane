@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, History, Pencil, Trash2, X } from 'lucide-react'
 import { useData } from '../context/DataContext'
@@ -19,7 +20,7 @@ function DeleteAccountModal({ isCard, onClose, onConfirm }) {
       setDeleting(false)
     }
   }
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 340 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header" style={{ padding: '1rem 1.25rem' }}>
@@ -39,7 +40,8 @@ function DeleteAccountModal({ isCard, onClose, onConfirm }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

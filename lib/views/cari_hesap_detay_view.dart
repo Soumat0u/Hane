@@ -193,7 +193,10 @@ class CariHesapDetayView extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(t.date, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                Text(
+                  t.documentNo.isNotEmpty ? '${t.date} · Fatura No: ${t.documentNo}' : t.date,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
               ],
             ),
           ),

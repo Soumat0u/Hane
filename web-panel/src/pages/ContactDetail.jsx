@@ -128,7 +128,9 @@ export default function ContactDetail() {
                 </div>
                 <div className="list-item-content">
                   <div className="list-item-title">{t.description || t.category || t.type}</div>
-                  <div className="list-item-subtitle">{fmtDate(t.date)}</div>
+                  <div className="list-item-subtitle">
+                    {fmtDate(t.date)}{t.document_no ? ` · Fatura No: ${t.document_no}` : ''}
+                  </div>
                 </div>
                 <div className="list-item-value" style={{ color: color2 }}>
                   {isIncome ? '+' : '-'}{formatCurrency(t.amount)}

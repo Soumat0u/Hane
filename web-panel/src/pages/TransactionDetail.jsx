@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, MoreHorizontal, Pencil, Trash2, X,
@@ -47,7 +48,7 @@ function DeleteModal({ onClose, onConfirm }) {
       setDeleting(false)
     }
   }
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 340 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header" style={{ padding: '1rem 1.25rem' }}>
@@ -67,7 +68,8 @@ function DeleteModal({ onClose, onConfirm }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -223,6 +225,7 @@ export default function TransactionDetail() {
             <DetailRow icon={Wallet} label="Ödeme Kaynağı" value={account || '-'} />
             <DetailRow icon={Banknote} label="Tutar" value={formatCurrency(t.amount)} valueColor={color} />
             {t.due_date && <DetailRow icon={CalendarClock} label="Vade" value={fmtDate(t.due_date)} />}
+            {t.document_no && <DetailRow icon={FileText} label="Fatura No" value={t.document_no} />}
           </div>
         </div>
 

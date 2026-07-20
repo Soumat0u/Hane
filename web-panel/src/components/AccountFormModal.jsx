@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Landmark, Banknote, CreditCard, ChevronDown } from 'lucide-react'
 import BankLogo from './BankLogo'
 import MoneyInput from './MoneyInput'
@@ -194,12 +195,11 @@ export default function AccountFormModal({ account, initialType = 'Banka', lockT
       onClose()
     } catch {
       setErr('Kayıt başarısız oldu. Lütfen tekrar deneyin.')
-    } finally {
       setSaving(false)
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -323,6 +323,7 @@ export default function AccountFormModal({ account, initialType = 'Banka', lockT
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

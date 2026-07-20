@@ -201,6 +201,10 @@ class _HareketDetayViewState extends State<HareketDetayView> {
                     _divider(context),
                     _detailRow(context, Icons.event_outlined, 'Vade', _fmtDate(t.dueDate)),
                   ],
+                  if (t.documentNo.isNotEmpty) ...[
+                    _divider(context),
+                    _detailRow(context, Icons.description_outlined, 'Fatura No', t.documentNo),
+                  ],
                 ]),
 
                 if (t.attachmentUrl != null && t.attachmentUrl!.isNotEmpty) ...[
@@ -288,6 +292,7 @@ class _HareketDetayViewState extends State<HareketDetayView> {
       MaterialPageRoute(
         builder: (ctx) => YeniIslemScreen(
           initialTransaction: t,
+          onBack: () => Navigator.pop(ctx),
         ),
       ),
     );

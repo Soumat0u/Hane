@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import {
   Receipt, Wallet, HardHat, Plus, ChevronRight, X, Trash2,
@@ -15,6 +16,7 @@ function NewDebtModal({ projects, onClose, onSave }) {
   const [dueDate, setDueDate] = useState('')
   const [projectId, setProjectId] = useState('')
   const [description, setDescription] = useState('')
+  const [invoiceNo, setInvoiceNo] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -33,6 +35,7 @@ function NewDebtModal({ projects, onClose, onSave }) {
         dueDate,
         projectId: projectId ? Number(projectId) : null,
         description,
+        invoiceNo,
       })
       onClose()
     } catch {
@@ -42,7 +45,7 @@ function NewDebtModal({ projects, onClose, onSave }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -71,6 +74,12 @@ function NewDebtModal({ projects, onClose, onSave }) {
             </div>
 
             <div className="input-group">
+              <label className="input-label">Fatura No (opsiyonel)</label>
+              <input className="input-field" type="text" value={invoiceNo}
+                onChange={(e) => setInvoiceNo(e.target.value)} placeholder="Fatura / belge numarası" />
+            </div>
+
+            <div className="input-group">
               <label className="input-label">Proje (opsiyonel)</label>
               <select className="input-field" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
                 <option value="">Proje seçilmedi</option>
@@ -94,7 +103,8 @@ function NewDebtModal({ projects, onClose, onSave }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -122,7 +132,7 @@ function PayDebtModal({ kind, target, accounts, onClose, onPay }) {
     }
   }
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -160,7 +170,8 @@ function PayDebtModal({ kind, target, accounts, onClose, onPay }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
