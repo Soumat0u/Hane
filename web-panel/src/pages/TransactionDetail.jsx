@@ -133,7 +133,11 @@ export default function TransactionDetail() {
 
   const handleDelete = async () => {
     await deleteTransaction(t.id)
-    navigate('/dashboard/transactions')
+    if (window.history.length > 2) {
+      navigate(-1)
+    } else {
+      navigate('/dashboard/transactions')
+    }
   }
 
   return (
