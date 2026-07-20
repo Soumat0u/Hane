@@ -12,6 +12,13 @@ class KategoriYonetimiView extends StatefulWidget {
   State<KategoriYonetimiView> createState() => _KategoriYonetimiViewState();
 }
 
+class _CategoryGroup {
+  final String groupName;
+  final String type;
+  final List<Category> cats;
+  _CategoryGroup(this.groupName, this.type, this.cats);
+}
+
 class _KategoriYonetimiViewState extends State<KategoriYonetimiView> {
   String _filterType = 'all'; // 'all' | 'cost' | 'income'
   String _searchQuery = '';
@@ -21,6 +28,58 @@ class _KategoriYonetimiViewState extends State<KategoriYonetimiView> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _openGroupFormSheet(BuildContext context, String groupName, String type) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _KategoriGrupFormSheet(
+        groupName: groupName,
+        type: type,
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteGroup(BuildContext context, String groupName, String type) async {
+    final fp = context.read<FinanceProvider>();
+    final catsInGroup = fp.categories.where((c) => (c.group.isEmpty ? 'Diğer' : c.group) == groupName && c.type == type && c.parentId == null).toList();
+    final allCatsCount = fp.categories.where((c) => (c.group.isEmpty ? 'Diğer' : c.group) == groupName && c.type == type).length;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Grubu Sil'),
+        content: Text(
+          '"$groupName" grubunu ve altındaki TÜM kategorileri ($allCatsCount adet) silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: context.colors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sil', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (ok == true) {
+      for (var cat in catsInGroup) {
+        if (cat.id != null) {
+          await fp.deleteCategory(cat.id!);
+        }
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('"$groupName" grubu silindi.')),
+        );
+      }
+    }
   }
 
   void _openFormSheet(BuildContext context, {Category? category, int? defaultParentId}) {
@@ -94,6 +153,18 @@ class _KategoriYonetimiViewState extends State<KategoriYonetimiView> {
 
       return matchesName || matchesGroup || matchesSub;
     }).toList();
+
+    final groupedCategories = <String, _CategoryGroup>{};
+    for (var c in rootCategories) {
+      final g = c.group.isEmpty ? 'Diğer' : c.group;
+      final key = '${c.type}_$g';
+      if (!groupedCategories.containsKey(key)) {
+        groupedCategories[key] = _CategoryGroup(g, c.type, []);
+      }
+      groupedCategories[key]!.cats.add(c);
+    }
+    final sortedGroups = groupedCategories.values.toList()
+      ..sort((a, b) => a.groupName.compareTo(b.groupName));
 
     return Scaffold(
       backgroundColor: context.colors.scaffold,
@@ -180,7 +251,7 @@ class _KategoriYonetimiViewState extends State<KategoriYonetimiView> {
 
           // List Body
           Expanded(
-            child: rootCategories.isEmpty
+            child: sortedGroups.isEmpty
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
@@ -193,12 +264,63 @@ class _KategoriYonetimiViewState extends State<KategoriYonetimiView> {
                 : ListView.builder(
                     padding: centeredPagePadding(context, maxContentWidth: 700, horizontal: 16, top: 16, bottom: 24),
                     physics: const BouncingScrollPhysics(),
-                    itemCount: rootCategories.length,
+                    itemCount: sortedGroups.length,
                     itemBuilder: (context, index) {
-                      final root = rootCategories[index];
-                      final subcats = allCats.where((sc) => sc.parentId == root.id).toList();
+                      final group = sortedGroups[index];
+                      final isIncomeGroup = group.type == 'income';
+                      final groupColor = isIncomeGroup ? context.colors.success : context.colors.danger;
 
-                      return _buildRootCategoryCard(context, root, subcats);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 24.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Group Header
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: groupColor.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    isIncomeGroup ? 'GELİR GRUBU' : 'GİDER GRUBU',
+                                    style: TextStyle(color: groupColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    group.groupName,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: context.colors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.edit_outlined, color: context.colors.textSecondary, size: 20),
+                                  tooltip: 'Grubu Düzenle',
+                                  onPressed: () => _openGroupFormSheet(context, group.groupName, group.type),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete_outline_rounded, color: context.colors.danger, size: 20),
+                                  tooltip: 'Grubu Sil',
+                                  onPressed: () => _confirmDeleteGroup(context, group.groupName, group.type),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // Group Categories
+                            ...group.cats.map((root) {
+                              final subcats = allCats.where((sc) => sc.parentId == root.id).toList();
+                              return _buildRootCategoryCard(context, root, subcats);
+                            }),
+                          ],
+                        ),
+                      );
                     },
                   ),
           ),
@@ -271,26 +393,29 @@ class _KategoriYonetimiViewState extends State<KategoriYonetimiView> {
                 color: context.colors.textPrimary,
               ),
             ),
-            subtitle: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(4),
+            subtitle: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      isIncome ? 'Gelir' : 'Gider',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+                    ),
                   ),
-                  child: Text(
-                    isIncome ? 'Gelir' : 'Gider',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
-                  ),
-                ),
-                if (root.group.isNotEmpty) ...[
+                  if (root.group.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Text('• ${root.group}', style: TextStyle(fontSize: 11, color: context.colors.textSecondary)),
+                  ],
                   const SizedBox(width: 6),
-                  Text('• ${root.group}', style: TextStyle(fontSize: 11, color: context.colors.textSecondary)),
+                  Text('• ${subcats.length} Alt', style: TextStyle(fontSize: 11, color: context.colors.textSecondary)),
                 ],
-                const SizedBox(width: 6),
-                Text('• ${subcats.length} Alt', style: TextStyle(fontSize: 11, color: context.colors.textSecondary)),
-              ],
+              ),
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -358,6 +483,164 @@ class _KategoriYonetimiViewState extends State<KategoriYonetimiView> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Category Group Form BottomSheet for Editing
+class _KategoriGrupFormSheet extends StatefulWidget {
+  final String groupName;
+  final String type;
+
+  const _KategoriGrupFormSheet({
+    required this.groupName,
+    required this.type,
+  });
+
+  @override
+  State<_KategoriGrupFormSheet> createState() => _KategoriGrupFormSheetState();
+}
+
+class _KategoriGrupFormSheetState extends State<_KategoriGrupFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late TextEditingController _nameController;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.groupName);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    final newName = _nameController.text.trim();
+    if (newName.isEmpty) return;
+
+    setState(() => _saving = true);
+    
+    try {
+      final fp = context.read<FinanceProvider>();
+      final catsInGroup = fp.categories.where((c) => (c.group.isEmpty ? 'Diğer' : c.group) == widget.groupName && c.type == widget.type).toList();
+      
+      for (var cat in catsInGroup) {
+        if (cat.id != null) {
+          await fp.updateCategory(
+            id: cat.id!,
+            name: cat.name,
+            type: cat.type,
+            group: newName,
+            parentId: cat.parentId,
+          );
+        }
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Grup güncellendi.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: context.colors.danger),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500),
+          decoration: BoxDecoration(
+            color: context.colors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Grup Düzenle',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: context.colors.textPrimary,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            labelText: 'Yeni Grup Adı',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Zorunlu alan' : null,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: ElevatedButton(
+                      onPressed: _saving ? null : _save,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: context.colors.brand,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: _saving
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Kaydet', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
