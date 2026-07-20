@@ -41,6 +41,18 @@ function formatIban(rawInput, prevDigitsBeforeCursor) {
   return { formatted, cursor: newOffset }
 }
 
+function formatCardNumber(rawInput) {
+  let text = rawInput.replace(/ /g, '').replace(/\D/g, '')
+  if (text.length > 16) text = text.slice(0, 16)
+  
+  let formatted = ''
+  for (let i = 0; i < text.length; i++) {
+    if (i > 0 && i % 4 === 0) formatted += ' '
+    formatted += text[i]
+  }
+  return formatted
+}
+
 const MOBILE_TYPES = ['Banka', 'Kredi Kartı', 'Nakit']
 const TYPE_ICONS = { 'Banka': Landmark, 'Kredi Kartı': CreditCard, 'Nakit': Banknote }
 const HAS_LIMIT = new Set(['Kredi Kartı', 'BCH', 'Esnek'])
@@ -115,9 +127,16 @@ export default function AccountFormModal({ account, initialType = 'Banka', lockT
     if (account?.type === 'Banka' && account.account_details) return formatIban(account.account_details, 26).formatted
     return 'TR'
   })
-  const [cardLast4, setCardLast4] = useState(() => {
-    const m = account?.account_details?.match(/(\d{4})$/)
-    return m ? m[1] : ''
+  const [cardNumber, setCardNumber] = useState(() => {
+    if (account?.type === 'Kredi Kartı' && account.account_details) {
+      const clean = account.account_details.replace(/ /g, '')
+      if (clean.length === 16 && !clean.includes('*')) {
+        return formatCardNumber(clean)
+      } else {
+        return clean.includes('*') ? '' : clean
+      }
+    }
+    return ''
   })
   const [accountDetails, setAccountDetails] = useState(account?.account_details || '') // BCH/Esnek gibi mobil-dışı türler için serbest alan
   const [saving, setSaving] = useState(false)
@@ -133,7 +152,7 @@ export default function AccountFormModal({ account, initialType = 'Banka', lockT
     setCreditLimit('0')
     setDebt('0')
     setIban('TR')
-    setCardLast4('')
+    setCardNumber('')
     setBankErr('')
   }
 
@@ -174,7 +193,7 @@ export default function AccountFormModal({ account, initialType = 'Banka', lockT
         details = iban.replace(/ /g, '')
       } else if (type === 'Kredi Kartı') {
         openingBalance = -parseMoneyInput(debt)
-        details = `**** **** **** ${cardLast4}`
+        details = cardNumber.replace(/ /g, '')
       } else if (type === 'Nakit') {
         openingBalance = parseMoneyInput(balance)
       } else {
@@ -275,14 +294,15 @@ export default function AccountFormModal({ account, initialType = 'Banka', lockT
             {type === 'Kredi Kartı' && (
               <>
                 <div className="form-group">
-                  <label className="form-label">Kart Numarası (Son 4 Hane)</label>
+                  <label className="form-label">Kart Numarası (16 Hane)</label>
                   <input
                     className="form-input"
                     type="text"
                     inputMode="numeric"
-                    maxLength={4}
-                    value={cardLast4}
-                    onChange={(e) => setCardLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    maxLength={19} // 16 digits + 3 spaces
+                    value={cardNumber}
+                    onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                    style={{ letterSpacing: '0.05em' }}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '1rem' }}>
