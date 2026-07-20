@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowUpRight, ArrowDownLeft, ArrowLeftRight, History, Pencil
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 import { exportTransactionsToPDF, exportTransactionsToExcel } from '../utils/exportUtils'
+import ExportDropdown from '../components/ExportDropdown'
 import AccountFormModal from '../components/AccountFormModal'
 import BankLogo from '../components/BankLogo'
 
@@ -141,8 +142,10 @@ export default function AccountDetail() {
         )}
         <h1 className="detail-title">{account.name}</h1>
         <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
-          <button className="icon-btn" onClick={() => exportTransactionsToPDF(relatedTx, `${account.name}_Ekstre`)} title="PDF İndir"><FileDown size={18} /></button>
-          <button className="icon-btn" onClick={() => exportTransactionsToExcel(relatedTx, `${account.name}_Ekstre`)} title="Excel İndir" style={{ color: 'var(--color-success)' }}><FileDown size={18} /></button>
+          <ExportDropdown
+            onExportPDF={() => exportTransactionsToPDF(relatedTx, `${account.name}_Ekstre`)}
+            onExportExcel={() => exportTransactionsToExcel(relatedTx, `${account.name}_Ekstre`)}
+          />
           <div style={{ width: 1, height: 24, background: 'var(--color-border)', margin: 'auto 4px' }} />
           <button className="icon-btn" onClick={() => setEditOpen(true)} title="Düzenle"><Pencil size={18} /></button>
           <button className="icon-btn" onClick={() => setDeleteOpen(true)} style={{ color: 'var(--color-danger)' }} title="Sil"><Trash2 size={18} /></button>

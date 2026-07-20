@@ -5,6 +5,7 @@ import { Search, X, SearchX, ChevronRight, Building2, Wallet, CheckCircle, Circl
 import { useData } from '../context/DataContext'
 import { formatCurrency, num } from '../utils'
 import { exportTransactionsToPDF, exportTransactionsToExcel } from '../utils/exportUtils'
+import ExportDropdown from '../components/ExportDropdown'
 import { txVisuals, INCOME_TYPES } from '../txVisuals'
 
 const dateFmt = (raw) => {
@@ -304,22 +305,11 @@ export default function Transactions() {
             ) : (
               filtered.length > 0 && (
                 <>
-                  <button
-                    className="btn-inline-text"
-                    onClick={() => exportTransactionsToPDF(filtered, 'Hareketler')}
-                    style={{ padding: '6px', minWidth: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                    title="PDF İndir"
-                  >
-                    <FileDown size={16} /> <span style={{ fontSize: '0.8rem', marginLeft: 4 }}>PDF</span>
-                  </button>
-                  <button
-                    className="btn-inline-text"
-                    onClick={() => exportTransactionsToExcel(filtered, 'Hareketler')}
-                    style={{ padding: '6px', minWidth: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                    title="Excel İndir"
-                  >
-                    <FileDown size={16} /> <span style={{ fontSize: '0.8rem', marginLeft: 4 }}>Excel</span>
-                  </button>
+                  <ExportDropdown
+                    btnClassName="btn-inline-text"
+                    onExportPDF={() => exportTransactionsToPDF(filtered, 'Hareketler')}
+                    onExportExcel={() => exportTransactionsToExcel(filtered, 'Hareketler')}
+                  />
                   <button
                     className="btn-inline-text"
                     onClick={handleToggleEditMode}

@@ -10,6 +10,7 @@ import {
 import { useData } from '../context/DataContext'
 import { formatCurrency, formatNumber, num, projectImage } from '../utils'
 import { exportProjectToPDF, exportProjectToExcel } from '../utils/exportUtils'
+import ExportDropdown from '../components/ExportDropdown'
 import SaleFormModal from '../components/SaleFormModal'
 import ProjectFormModal from '../components/ProjectFormModal'
 import NewTransactionFormModal from '../components/NewTransactionFormModal'
@@ -253,8 +254,10 @@ export default function ProjectDetail() {
         </button>
         <h1 className="detail-title">{project.name}</h1>
         <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
-          <button className="icon-btn" onClick={() => exportProjectToPDF(project.name, [{ category: 'Genel', budgeted: num(project.estimated_total_cost), actual: totalGider, remaining: kalanButce }], harcamalar)} title="PDF İndir"><FileDown size={18} /></button>
-          <button className="icon-btn" onClick={() => exportProjectToExcel(project.name, [{ category: 'Genel', budgeted: num(project.estimated_total_cost), actual: totalGider, remaining: kalanButce }], harcamalar)} title="Excel İndir" style={{ color: 'var(--color-success)' }}><FileDown size={18} /></button>
+          <ExportDropdown
+            onExportPDF={() => exportProjectToPDF(project.name, [{ category: 'Genel', budgeted: num(project.estimated_total_cost), actual: totalGider, remaining: kalanButce }], harcamalar)}
+            onExportExcel={() => exportProjectToExcel(project.name, [{ category: 'Genel', budgeted: num(project.estimated_total_cost), actual: totalGider, remaining: kalanButce }], harcamalar)}
+          />
           <div style={{ width: 1, height: 24, background: 'var(--color-border)', margin: 'auto 4px' }} />
           <button className="icon-btn" title="Düzenle" onClick={handleEditClick}>
             <Pencil size={18} />
