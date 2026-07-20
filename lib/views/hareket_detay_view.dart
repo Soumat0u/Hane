@@ -47,10 +47,6 @@ class _HareketDetayViewState extends State<HareketDetayView> {
                 : null)
             : null;
         final account = t.sourceName.isNotEmpty ? t.sourceName : t.destName;
-        final DateTime? tDate = DateTime.tryParse(t.date);
-        final bool isPastMonth = tDate != null &&
-            (tDate.year < DateTime.now().year ||
-                (tDate.year == DateTime.now().year && tDate.month < DateTime.now().month));
 
         return Scaffold(
           backgroundColor: context.colors.scaffold,
@@ -66,16 +62,7 @@ class _HareketDetayViewState extends State<HareketDetayView> {
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.bold, color: context.colors.textPrimary)),
             actions: [
-              if (isPastMonth)
-                Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: Tooltip(
-                    message: 'Geçmiş aylara ait hareketler değiştirilemez.',
-                    child: Icon(Icons.lock_outline_rounded, color: context.colors.textSecondary, size: 24),
-                  ),
-                )
-              else
-                PopupMenuButton<String>(
+              PopupMenuButton<String>(
                   icon: Icon(Icons.more_horiz_rounded, color: context.colors.textPrimary, size: 28),
                   color: context.colors.surface,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

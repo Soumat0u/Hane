@@ -264,7 +264,7 @@ export default function Categories() {
                     borderRadius: 'var(--radius-md)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.02em' }}>{group.groupName}</h3>
+                      <h3 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.02em' }}>{group.groupName}</h3>
                       <span style={{ 
                         padding: '0.2rem 0.6rem', 
                         borderRadius: '12px', 

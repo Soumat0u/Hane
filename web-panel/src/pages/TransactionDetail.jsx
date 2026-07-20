@@ -93,15 +93,6 @@ export default function TransactionDetail() {
     return p ? p.name : null
   }, [t, projects])
 
-  const isPastMonth = useMemo(() => {
-    if (!t || !t.date) return false
-    const td = new Date(t.date)
-    const now = new Date()
-    return td.getFullYear() < now.getFullYear() || (td.getFullYear() === now.getFullYear() && td.getMonth() < now.getMonth())
-  }, [t])
-
-
-
   if (loading && !loaded) {
     return (
       <div className="page-loader">
