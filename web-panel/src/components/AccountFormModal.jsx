@@ -222,14 +222,18 @@ export default function AccountFormModal({ account, initialType = 'Banka', lockT
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <span className="modal-title">{isEditing ? 'Hesabı Düzenle' : 'Yeni Hesap Ekle'}</span>
+          <span className="modal-title">
+            {isEditing 
+              ? `${account.name} Düzenle` 
+              : (lockType ? `Yeni ${initialType} Ekle` : 'Yeni Hesap Ekle')}
+          </span>
           <button className="modal-close" onClick={onClose} title="Kapat"><X size={20} /></button>
         </div>
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             {err && <div className="error-message">{err}</div>}
 
-            {lockType ? null : !isEditing || isMobileType ? (
+            {!lockType && !isEditing ? (
               <div className="form-group">
                 <label className="form-label">Hesap Türü</label>
                 <div className="type-chip-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
@@ -249,12 +253,7 @@ export default function AccountFormModal({ account, initialType = 'Banka', lockT
                   })}
                 </div>
               </div>
-            ) : (
-              <div className="form-group">
-                <label className="form-label">Hesap Türü</label>
-                <div className="form-input" style={{ color: 'var(--color-text-muted)' }}>{type}</div>
-              </div>
-            )}
+            ) : null}
 
             {requiresBank && (
               <BankPicker value={selectedBank} onChange={(b) => { setSelectedBank(b); setBankErr('') }} error={bankErr} />
