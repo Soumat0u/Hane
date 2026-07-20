@@ -1,5 +1,5 @@
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { formatCurrency } from '../utils';
 
@@ -70,7 +70,7 @@ export const exportTransactionsToPDF = (transactions, title = 'Hareketler') => {
     doc.setFontSize(11);
     doc.text('Bu kritere uyan islem bulunamadi.', 14, 32);
   } else {
-    doc.autoTable({
+    autoTable(doc, {
       startY: 28,
       head: [transactionHeaders.map(sanitizeTR)],
       body: data,
@@ -118,7 +118,7 @@ export const exportProjectToPDF = (projectName, budgetLines, transactions) => {
       formatCurrency(b.remaining)
     ]));
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: currentY,
       head: [['Kategori', 'Planlanan', 'Gerceklesen', 'Kalan']],
       body: budgetData,
@@ -127,7 +127,7 @@ export const exportProjectToPDF = (projectName, budgetLines, transactions) => {
       headStyles: { fillColor: [44, 62, 80] }
     });
     
-    currentY = doc.lastAutoTable.finalY + 12;
+    currentY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 12 : currentY + 30;
   }
 
   // Transactions
@@ -141,7 +141,7 @@ export const exportProjectToPDF = (projectName, budgetLines, transactions) => {
     doc.setFontSize(11);
     doc.text('Bu projeye ait harcama bulunamadi.', 14, currentY);
   } else {
-    doc.autoTable({
+    autoTable(doc, {
       startY: currentY,
       head: [transactionHeaders.map(sanitizeTR)],
       body: data,
