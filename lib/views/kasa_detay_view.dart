@@ -40,9 +40,15 @@ class KasaDetayView extends StatelessWidget {
       ),
       body: Consumer<FinanceProvider>(
         builder: (context, fp, child) {
-          // Find related transactions
+          // FK'lı işlemler (fromAccountId/toAccountId == account.id) VE eski
+          // isim-bazlı işlemler (sourceName/destName == account.name) birlikte
+          // dahil edilir — aksi halde yalnızca FK ile bağlı işlemler (ör. kredi/
+          // çek ödemesi) bu ekranda hiç görünmez (bkz. Account.recalculate_balance
+          // backend'deki aynı hibrit mantık).
           final relatedTx = fp.allTransactions.where((t) {
-            return t.sourceName == account.name || t.destName == account.name;
+            final fkMatch = t.fromAccountId == account.id || t.toAccountId == account.id;
+            final nameMatch = t.sourceName == account.name || t.destName == account.name;
+            return fkMatch || nameMatch;
           }).toList();
 
           // Sort by date descending
@@ -204,10 +210,16 @@ class KasaDetayView extends StatelessWidget {
                         separatorBuilder: (context, index) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final t = relatedTx[index];
+                          final isFkDest = t.toAccountId != null && t.toAccountId == account.id;
+                          final isFkSource = t.fromAccountId != null && t.fromAccountId == account.id;
                           bool isIncome = false;
                           if (t.type == 'Transfer') {
-                            if (t.destName == account.name) isIncome = true;
-                            if (t.sourceName == account.name) isIncome = false;
+                            if (isFkDest || t.destName == account.name) isIncome = true;
+                            if (isFkSource || t.sourceName == account.name) isIncome = false;
+                          } else if (isFkDest) {
+                            isIncome = true;
+                          } else if (isFkSource) {
+                            isIncome = false;
                           } else if (t.type == 'Gelir' || t.type == 'Tahsilat' || t.type == 'Satış' || t.type == 'Borçlanma' || t.type == 'Sermaye' || t.type == 'Kredi Kullanımı') {
                             isIncome = true;
                           } else {
@@ -246,6 +258,9 @@ class KasaDetayView extends StatelessWidget {
     }
 
     String counterpartyText = isIncome ? t.sourceName : t.destName;
+    if (counterpartyText.isEmpty) counterpartyText = t.contactName;
+    if (counterpartyText.isEmpty) counterpartyText = t.description;
+    if (counterpartyText.isEmpty) counterpartyText = t.category;
     if (counterpartyText.isEmpty && t.projectId != null) {
       counterpartyText = 'Proje ${t.projectId}';
     } else if (counterpartyText.isEmpty) {

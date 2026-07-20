@@ -53,11 +53,15 @@ const fmtDate = (raw) => {
 }
 
 /** Bir işlemin bu hesaba göre gelir mi gider mi olduğunu belirler (mobil `kasa_detay_view` ile aynı mantık). */
-function resolveIsIncome(t, accountName) {
+function resolveIsIncome(t, account) {
+  const isFkDest = t.to_account != null && t.to_account === account.id
+  const isFkSource = t.from_account != null && t.from_account === account.id
   if (t.type === 'Transfer') {
-    if (t.dest_name === accountName) return true
-    if (t.source_name === accountName) return false
+    if (isFkDest || t.dest_name === account.name) return true
+    if (isFkSource || t.source_name === account.name) return false
   }
+  if (isFkDest) return true
+  if (isFkSource) return false
   if (t.type === 'Gelir' || t.type === 'Tahsilat' || t.type === 'Satış' || t.type === 'Borçlanma' || t.type === 'Sermaye' || t.type === 'Kredi Kullanımı') {
     return true
   }
@@ -78,7 +82,14 @@ export default function AccountDetail() {
 
   const relatedTx = useMemo(() => {
     if (!account) return []
-    const list = transactions.filter((t) => t.source_name === account.name || t.dest_name === account.name)
+    // FK'lı işlemler (from_account/to_account == account.id) VE eski isim-bazlı
+    // işlemler (source_name/dest_name == account.name) birlikte dahil edilir —
+    // aksi halde yalnızca FK ile bağlı işlemler (ör. kredi/çek ödemesi) bu
+    // ekranda hiç görünmez (bkz. Account.recalculate_balance'daki aynı hibrit mantık).
+    const list = transactions.filter((t) =>
+      t.from_account === account.id || t.to_account === account.id ||
+      t.source_name === account.name || t.dest_name === account.name,
+    )
     return [...list].sort((a, b) => new Date(b.date) - new Date(a.date))
   }, [transactions, account])
 
@@ -180,12 +191,12 @@ export default function AccountDetail() {
       ) : (
         <div className="list-group">
           {relatedTx.map((t) => {
-            const isIncome = resolveIsIncome(t, account.name)
+            const isIncome = resolveIsIncome(t, account)
             const isTransfer = t.type === 'Transfer'
             const Icon = isTransfer ? ArrowLeftRight : (isIncome ? ArrowDownLeft : ArrowUpRight)
             const color = isTransfer ? 'var(--color-accent)' : (isIncome ? 'var(--color-success)' : 'var(--color-danger)')
 
-            let counterparty = isIncome ? t.source_name : t.dest_name
+            let counterparty = (isIncome ? t.source_name : t.dest_name) || t.contact_name || t.description || t.category
             if (!counterparty && t.project_id != null) counterparty = projectNames[t.project_id] || `Proje ${t.project_id}`
             if (!counterparty) counterparty = 'Bilinmeyen'
 

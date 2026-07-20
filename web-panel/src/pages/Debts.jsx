@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import {
-  Receipt, Wallet, HardHat, Plus, ChevronRight, X, Trash2,
+  Receipt, Wallet, HardHat, Plus, ChevronRight, X, Trash2, Link2, FileText,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num, parseMoneyInput, formatAmountForDisplay } from '../utils'
@@ -17,6 +17,8 @@ function NewDebtModal({ projects, onClose, onSave }) {
   const [projectId, setProjectId] = useState('')
   const [description, setDescription] = useState('')
   const [invoiceNo, setInvoiceNo] = useState('')
+  const [invoiceFile, setInvoiceFile] = useState(null)
+  const invoiceFileRef = useRef(null)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
 
@@ -36,6 +38,7 @@ function NewDebtModal({ projects, onClose, onSave }) {
         projectId: projectId ? Number(projectId) : null,
         description,
         invoiceNo,
+        invoiceFile,
       })
       onClose()
     } catch {
@@ -77,6 +80,34 @@ function NewDebtModal({ projects, onClose, onSave }) {
               <label className="input-label">Fatura No (opsiyonel)</label>
               <input className="input-field" type="text" value={invoiceNo}
                 onChange={(e) => setInvoiceNo(e.target.value)} placeholder="Fatura / belge numarası" />
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">Fatura Görseli (opsiyonel)</label>
+              <input
+                ref={invoiceFileRef}
+                type="file"
+                accept="image/*,.pdf"
+                hidden
+                onChange={(e) => setInvoiceFile(e.target.files?.[0] || null)}
+              />
+              {invoiceFile ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  {/\.(png|jpe?g|gif|webp|bmp)$/i.test(invoiceFile.name) ? (
+                    <img src={URL.createObjectURL(invoiceFile)} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover' }} />
+                  ) : (
+                    <FileText size={20} className="text-primary" />
+                  )}
+                  <span style={{ fontSize: '0.85rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{invoiceFile.name}</span>
+                  <button type="button" className="icon-btn" onClick={() => setInvoiceFile(null)} title="Kaldır">
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className="btn-secondary" style={{ width: 'auto', marginTop: 0 }} onClick={() => invoiceFileRef.current?.click()}>
+                  <Link2 size={16} /> Dosya Seç
+                </button>
+              )}
             </div>
 
             <div className="input-group">

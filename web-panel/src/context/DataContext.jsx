@@ -166,7 +166,7 @@ export function DataProvider({ children }) {
    * `category: 'Borçlanma'` bir işlem kaydı oluştur. Sonra veriyi tazele.
    */
   const addDebt = useCallback(
-    async ({ amount, contactName, dueDate = '', projectId = null, description = '', invoiceNo = '' }) => {
+    async ({ amount, contactName, dueDate = '', projectId = null, description = '', invoiceNo = '', invoiceFile = null }) => {
       const name = (contactName || '').trim()
 
       let contact = contacts.find(
@@ -180,7 +180,7 @@ export function DataProvider({ children }) {
       }
 
       const today = new Date().toISOString().split('T')[0]
-      await api.post('/transactions/', {
+      const body = {
         project_id: projectId,
         type: 'Gider',
         amount,
@@ -191,7 +191,17 @@ export function DataProvider({ children }) {
         source_name: name,
         description,
         document_no: invoiceNo,
-      })
+      }
+      if (invoiceFile) {
+        const formData = new FormData()
+        Object.entries(body).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) formData.append(key, value)
+        })
+        formData.append('attachment', invoiceFile)
+        await api.postFile('/transactions/', formData)
+      } else {
+        await api.post('/transactions/', body)
+      }
 
       await load()
     },

@@ -487,7 +487,11 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                      );
 
                       try {
-                        await fp.addTransaction(t);
+                        if (_pickedAttachment != null) {
+                          await fp.addTransactionWithAttachment(t, _pickedAttachment!.path);
+                        } else {
+                          await fp.addTransaction(t);
+                        }
 
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -1031,64 +1035,68 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
 
-        // FATURA EKLE File Attach Row
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 120,
-                child: Text(
-                  'FATURA EKLE',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: context.colors.textSecondary,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              if (_pickedAttachment != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Image.file(File(_pickedAttachment!.path), width: 32, height: 32, fit: BoxFit.cover),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(Icons.close_rounded, color: context.colors.textSecondary, size: 18),
-                  onPressed: () => setState(() => _pickedAttachment = null),
-                ),
-              ] else if (!_removeExistingAttachment &&
-                  widget.initialTransaction?.attachmentUrl != null &&
-                  widget.initialTransaction!.attachmentUrl!.isNotEmpty) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Image.network(
-                    widget.initialTransaction!.attachmentUrl!,
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stack) =>
-                        Icon(Icons.description_outlined, size: 24, color: context.colors.brand),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: Icon(Icons.close_rounded, color: context.colors.textSecondary, size: 18),
-                  onPressed: () => setState(() => _removeExistingAttachment = true),
-                ),
-              ] else
-                IconButton(
-                  icon: Icon(Icons.link_rounded, color: context.colors.brand, size: 22),
-                  onPressed: () async {
-                    await _pickAttachment();
-                    if (mounted) setState(() => _removeExistingAttachment = false);
-                  },
-                ),
-            ],
-          ),
-        ),
+        _buildAttachmentRow(),
       ],
+    );
+  }
+
+  // FATURA EKLE File Attach Row — hem Ödeme/Tahsilat hem Borçlanma formunda kullanılır.
+  Widget _buildAttachmentRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              'FATURA EKLE',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: context.colors.textSecondary,
+              ),
+            ),
+          ),
+          const Spacer(),
+          if (_pickedAttachment != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.file(File(_pickedAttachment!.path), width: 32, height: 32, fit: BoxFit.cover),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(Icons.close_rounded, color: context.colors.textSecondary, size: 18),
+              onPressed: () => setState(() => _pickedAttachment = null),
+            ),
+          ] else if (!_removeExistingAttachment &&
+              widget.initialTransaction?.attachmentUrl != null &&
+              widget.initialTransaction!.attachmentUrl!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Image.network(
+                widget.initialTransaction!.attachmentUrl!,
+                width: 32,
+                height: 32,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stack) =>
+                    Icon(Icons.description_outlined, size: 24, color: context.colors.brand),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(Icons.close_rounded, color: context.colors.textSecondary, size: 18),
+              onPressed: () => setState(() => _removeExistingAttachment = true),
+            ),
+          ] else
+            IconButton(
+              icon: Icon(Icons.link_rounded, color: context.colors.brand, size: 22),
+              onPressed: () async {
+                await _pickAttachment();
+                if (mounted) setState(() => _removeExistingAttachment = false);
+              },
+            ),
+        ],
+      ),
     );
   }
 
@@ -1316,6 +1324,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
             controller: _borclanmaAciklamaController,
           ),
         ),
+        _buildAttachmentRow(),
       ],
     );
   }

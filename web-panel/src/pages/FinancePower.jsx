@@ -93,19 +93,45 @@ export default function FinancePower() {
               </div>
             ) : (
               <div className="list-group">
-                {creditCardAccounts.map((a) => (
-                  <div className="list-item" key={a.id} onClick={() => goToAccount(a)} style={{ cursor: 'pointer' }}>
-                    <div className="list-icon-box"><BankLogo bankName={a.bank_logo_painter || a.name} width={34} height={34} /></div>
-                    <div className="list-item-content">
-                      <div className="list-item-title">{a.name}</div>
-                      <div className="list-item-subtitle">Kullanılabilir</div>
+                {creditCardAccounts.map((a, i) => {
+                  const totalLimit = num(a.credit_limit)
+                  const remainingLimit = num(a.available_limit)
+                  const usedLimit = totalLimit - remainingLimit
+                  const usedPct = totalLimit > 0 ? Math.min(Math.max(usedLimit / totalLimit, 0), 1) * 100 : 0
+                  return (
+                    <div
+                      key={a.id}
+                      onClick={() => goToAccount(a)}
+                      style={{
+                        cursor: 'pointer',
+                        padding: '1rem',
+                        borderBottom: i < creditCardAccounts.length - 1 ? '1px solid var(--color-border)' : 'none',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                        <BankLogo bankName={a.bank_logo_painter || a.name} width={30} height={30} />
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)' }}>{a.name}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                        <div>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Toplam Limit</div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)' }}>{formatCurrency(totalLimit)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Kullanılan</div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)' }}>{formatCurrency(usedLimit)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Kalan Limit</div>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)' }}>{formatCurrency(remainingLimit)}</div>
+                        </div>
+                      </div>
+                      <div style={{ height: 6, borderRadius: 3, background: 'var(--color-border)', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${usedPct}%`, borderRadius: 3, background: 'var(--color-primary)' }} />
+                      </div>
                     </div>
-                    <div className="list-item-value-box">
-                      <div className="list-item-value">{formatCurrency(a.available_limit)}</div>
-                    </div>
-                    <ArrowRight size={14} className="text-muted" style={{ marginLeft: '1rem' }} />
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
