@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import {
-  Receipt, Wallet, HardHat, Plus, ChevronRight, X, Trash2, Link2, FileText,
+  Receipt, Wallet, HardHat, Plus, ChevronRight, ChevronDown, X, Trash2, Link2, FileText,
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { formatCurrency, num, parseMoneyInput, formatAmountForDisplay } from '../utils'
@@ -10,17 +10,69 @@ import LoanFormModal from '../components/LoanFormModal'
 import ChequeFormModal from '../components/ChequeFormModal'
 import MoneyInput from '../components/MoneyInput'
 
-function NewDebtModal({ projects, onClose, onSave }) {
+function NewDebtModal({ projects, categories = [], onClose, onSave, onAddCategory }) {
   const [amount, setAmount] = useState('')
   const [contactName, setContactName] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [projectId, setProjectId] = useState('')
+  const [category, setCategory] = useState('')
   const [description, setDescription] = useState('')
-  const [invoiceNo, setInvoiceNo] = useState('')
   const [invoiceFile, setInvoiceFile] = useState(null)
   const invoiceFileRef = useRef(null)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
+  const [expandedGroups, setExpandedGroups] = useState({})
+  const [catSearch, setCatSearch] = useState('')
+  const [addingCategory, setAddingCategory] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [newCatGroup, setNewCatGroup] = useState('')
+  const [catSaving, setCatSaving] = useState(false)
+
+  const mainCategories = useMemo(
+    () => (categories || []).filter((c) => !c.parent && c.type === 'cost'),
+    [categories],
+  )
+
+  const filteredGroupedCategories = useMemo(() => {
+    const groups = {}
+    const query = catSearch.trim().toLowerCase()
+    for (const c of mainCategories) {
+      const matchesMain = c.name.toLowerCase().includes(query)
+      const matchesGroup = (c.group || 'Diğer').toLowerCase().includes(query)
+      if (!query || matchesMain || matchesGroup) {
+        const g = c.group || 'Diğer'
+        if (!groups[g]) groups[g] = []
+        groups[g].push(c)
+      }
+    }
+    return groups
+  }, [mainCategories, catSearch])
+
+  const toggleGroup = (groupName) => {
+    setExpandedGroups((prev) => ({ ...prev, [groupName]: !prev[groupName] }))
+  }
+
+  const handleAddCategory = async () => {
+    const name = newCatName.trim()
+    if (!name || !onAddCategory) return
+    setCatSaving(true)
+    try {
+      await onAddCategory({
+        name,
+        type: 'cost',
+        group: newCatGroup.trim() || 'Diğer',
+        parent: null,
+      })
+      setCategory(name)
+      setNewCatName('')
+      setNewCatGroup('')
+      setAddingCategory(false)
+    } catch {
+      setErr('Kategori eklenemedi.')
+    } finally {
+      setCatSaving(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -36,8 +88,8 @@ function NewDebtModal({ projects, onClose, onSave }) {
         contactName,
         dueDate,
         projectId: projectId ? Number(projectId) : null,
+        category: category || 'Borçlanma',
         description,
-        invoiceNo,
         invoiceFile,
       })
       onClose()
@@ -76,11 +128,6 @@ function NewDebtModal({ projects, onClose, onSave }) {
                 onChange={(e) => setDueDate(e.target.value)} />
             </div>
 
-            <div className="input-group">
-              <label className="input-label">Fatura No (opsiyonel)</label>
-              <input className="input-field" type="text" value={invoiceNo}
-                onChange={(e) => setInvoiceNo(e.target.value)} placeholder="Fatura / belge numarası" />
-            </div>
 
             <div className="input-group">
               <label className="input-label">Fatura Görseli (opsiyonel)</label>
@@ -118,6 +165,168 @@ function NewDebtModal({ projects, onClose, onSave }) {
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
+            </div>
+
+            <div className="input-group">
+              <label className="input-label">Kategori Seçimi</label>
+
+              {addingCategory ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem', border: '1px solid var(--color-accent)', borderRadius: '8px', marginBottom: '0.5rem', backgroundColor: 'var(--color-surface-variant)' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-accent)' }}>Yeni Kategori</div>
+                  <input
+                    type="text"
+                    className="input-field"
+                    autoFocus
+                    placeholder="Kategori adı (örn. Taşımacılık)"
+                    style={{ height: '36px', fontSize: '0.85rem' }}
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory() } }}
+                  />
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="Grup adı (opsiyonel, örn. Hane)"
+                    style={{ height: '36px', fontSize: '0.85rem' }}
+                    value={newCatGroup}
+                    onChange={(e) => setNewCatGroup(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory() } }}
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" className="btn-secondary" style={{ flex: 1, marginTop: 0, padding: '0.4rem' }}
+                      onClick={() => { setAddingCategory(false); setNewCatName(''); setNewCatGroup('') }}>
+                      İptal
+                    </button>
+                    <button type="button" className="btn-primary" style={{ flex: 1, marginTop: 0, padding: '0.4rem' }}
+                      disabled={catSaving || !newCatName.trim()}
+                      onClick={handleAddCategory}>
+                      {catSaving ? <span className="loader" /> : 'Ekle'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    className="input-field"
+                    style={{ flex: 1, height: '36px', fontSize: '0.85rem', marginBottom: 0 }}
+                    placeholder="Kategori ara..."
+                    value={catSearch}
+                    onChange={(e) => setCatSearch(e.target.value)}
+                  />
+                  <button type="button" className="btn-secondary"
+                    style={{ width: 'auto', marginTop: 0, padding: '0 0.75rem', height: '36px', whiteSpace: 'nowrap', fontSize: '0.82rem' }}
+                    onClick={() => setAddingCategory(true)}>
+                    + Kategori
+                  </button>
+                </div>
+              )}
+
+              <div style={{
+                border: '1px solid var(--color-border)',
+                borderRadius: '10px',
+                padding: '0.5rem',
+                backgroundColor: 'var(--color-surface)',
+                maxHeight: '220px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem'
+              }}>
+                {Object.keys(filteredGroupedCategories).length === 0 ? (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem' }}>
+                    Kategori bulunamadı.
+                  </div>
+                ) : (
+                  Object.entries(filteredGroupedCategories).map(([groupName, cats]) => {
+                    const isExpanded = catSearch.trim().length > 0 || !!expandedGroups[groupName]
+                    const selectedCat = cats.find((c) => c.name === category)
+
+                    return (
+                      <div key={groupName} style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div
+                          onClick={() => toggleGroup(groupName)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0.45rem 0.65rem',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            backgroundColor: selectedCat ? 'rgba(59,130,246,0.08)' : 'transparent',
+                            border: selectedCat ? '1px solid rgba(59,130,246,0.25)' : '1px solid transparent',
+                            fontWeight: 600,
+                            fontSize: '0.82rem',
+                            color: selectedCat ? 'var(--color-accent)' : 'var(--color-text-main)',
+                            userSelect: 'none',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                            <span>{groupName}</span>
+                          </div>
+                          {selectedCat && !isExpanded && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              color: 'white',
+                              fontWeight: 600,
+                              backgroundColor: 'var(--color-accent)',
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '20px',
+                              maxWidth: '110px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              ✓ {selectedCat.name}
+                            </span>
+                          )}
+                        </div>
+
+                        {isExpanded && (
+                          <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '0.35rem',
+                            padding: '0.4rem 0.4rem 0.4rem 1.2rem',
+                            animation: 'fadeIn 0.15s ease'
+                          }}>
+                            {cats.map((c) => {
+                              const isSelected = c.name === category
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => setCategory(isSelected ? '' : c.name)}
+                                  style={{
+                                    padding: '0.3rem 0.75rem',
+                                    borderRadius: '20px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: isSelected ? 700 : 400,
+                                    cursor: 'pointer',
+                                    backgroundColor: isSelected ? 'var(--color-accent)' : 'var(--color-surface-variant)',
+                                    color: isSelected ? '#fff' : 'var(--color-text-main)',
+                                    border: `1.5px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                                    boxShadow: isSelected ? '0 2px 8px rgba(59,130,246,0.3)' : 'none',
+                                    transition: 'all 0.15s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem'
+                                  }}
+                                >
+                                  {isSelected && <span style={{ fontSize: '0.75rem' }}>✓</span>}
+                                  {c.name}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
             </div>
 
             <div className="input-group">
@@ -265,7 +474,7 @@ function DebtSection({ title, items, icon: Icon, onNew, onItemClick, onDelete, o
 export default function Debts() {
   const navigate = useNavigate()
   const {
-    loans, accounts, cheques, contacts, projects, addDebt,
+    loans, accounts, cheques, contacts, projects, categories, addDebt, addCategory,
     addLoan, updateLoan, deleteLoan, addCheque, updateCheque, deleteCheque,
     payDebt, loading, loaded,
   } = useData()
@@ -401,8 +610,10 @@ export default function Debts() {
       {modalOpen && (
         <NewDebtModal
           projects={projects}
+          categories={categories}
           onClose={() => setModalOpen(false)}
           onSave={addDebt}
+          onAddCategory={addCategory}
         />
       )}
 

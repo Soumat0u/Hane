@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:hane/views/widgets/zeynep_logo.dart';
 import 'package:hane/views/ayarlar_view.dart';
+import 'package:hane/views/kategori_yonetimi_view.dart';
 import 'package:hane/views/cari_hesaplar_view.dart';
 import 'package:hane/views/tekrarlanan_islemler_view.dart';
 
@@ -28,6 +29,7 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
     DrawerItemData(title: 'Hareketler', activeIcon: Icons.receipt_long_rounded, inactiveIcon: Icons.receipt_long_outlined, tabIndex: 3),
     DrawerItemData(title: 'Cari Hesaplar', activeIcon: Icons.groups_rounded, inactiveIcon: Icons.groups_outlined, tabIndex: -1),
     DrawerItemData(title: 'Tekrarlayan İşlemler', activeIcon: Icons.repeat_rounded, inactiveIcon: Icons.repeat_outlined, tabIndex: -1),
+    DrawerItemData(title: 'Kategoriler', activeIcon: Icons.account_tree_rounded, inactiveIcon: Icons.account_tree_outlined, tabIndex: -1),
     DrawerItemData(title: 'Ayarlar', activeIcon: Icons.settings_rounded, inactiveIcon: Icons.settings_outlined, tabIndex: -1),
   ];
 
@@ -65,6 +67,8 @@ class _ZeynepDrawerState extends State<ZeynepDrawer> {
                                   Navigator.pop(context); // Close drawer
                                   if (item.title == 'Ayarlar') {
                                     Navigator.push(context, MaterialPageRoute(builder: (_) => const AyarlarView()));
+                                  } else if (item.title == 'Kategoriler') {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const KategoriYonetimiView()));
                                   } else if (item.title == 'Cari Hesaplar') {
                                     Navigator.push(context, MaterialPageRoute(builder: (_) => const CariHesaplarView()));
                                   } else if (item.title == 'Tekrarlayan İşlemler') {

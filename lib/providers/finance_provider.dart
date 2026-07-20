@@ -160,6 +160,51 @@ class FinanceProvider extends ChangeNotifier {
     return temp;
   }
 
+  /// Varolan bir kategoriyi günceller.
+  Future<void> updateCategory({
+    required int id,
+    required String name,
+    required String type,
+    int? parentId,
+    String group = '',
+  }) async {
+    final idx = _categories.indexWhere((c) => c.id == id);
+    if (idx == -1) return;
+    final snapshot = List<Category>.from(_categories);
+    final updated = Category(
+      id: id,
+      name: name,
+      type: type,
+      parentId: parentId,
+      group: group,
+    );
+    _categories[idx] = updated;
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.updateCategory(
+        id: id,
+        name: name,
+        type: type,
+        parentId: parentId,
+        group: group,
+      ),
+      rollback: () => _categories = snapshot,
+      errorLabel: 'Kategori güncellenemedi',
+    ));
+  }
+
+  /// Varolan bir kategoriyi ve varsa bağlı alt kategorilerini siler.
+  Future<void> deleteCategory(int id) async {
+    final snapshot = List<Category>.from(_categories);
+    _categories.removeWhere((c) => c.id == id || c.parentId == id);
+    notifyListeners();
+    unawaited(_runSync(
+      () => ApiService.instance.deleteCategory(id),
+      rollback: () => _categories = snapshot,
+      errorLabel: 'Kategori silinemedi',
+    ));
+  }
+
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 

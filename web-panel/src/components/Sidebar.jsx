@@ -16,6 +16,7 @@ import {
   FileCheck2,
   Users,
   Repeat,
+  FolderTree,
 } from 'lucide-react'
 import appIcon from '../assets/icon.png'
 import NewTransactionFormModal from './NewTransactionFormModal'
@@ -50,6 +51,7 @@ export default function Sidebar() {
         { name: 'Finansman Gücü', path: '/dashboard/finance-power', icon: Shield },
         { name: 'Hareketler', path: '/dashboard/transactions', icon: ArrowRightLeft },
         { name: 'Tekrarlayan İşlemler', path: '/dashboard/recurring', icon: Repeat },
+        { name: 'Kategoriler', path: '/dashboard/categories', icon: FolderTree },
       ],
     },
   ]

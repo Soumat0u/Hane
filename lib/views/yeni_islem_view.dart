@@ -117,13 +117,11 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   // --- Borclanma Form States ---
   String _borclanmaTarih = '';
   String _borclanmaVade = 'Seçiniz';
-  String _borclanmaKategori = 'Tedarikçi Borcu';
+  String _borclanmaKategori = '';
   String _borclanmaProje = '';
   final TextEditingController _borclanilanKisiController = TextEditingController();
   final TextEditingController _borclanmaTutarController = TextEditingController();
   final TextEditingController _borclanmaAciklamaController = TextEditingController();
-  final TextEditingController _borclanmaFaturaNoController = TextEditingController();
-  final List<String> _borclanmaKategorileri = ['Tedarikçi Borcu', 'Banka Kredisi', 'Ortaklara Borçlar', 'Diğer'];
 
   // --- Kredi Kullanimi Form States ---
   String _krediTarih = '';
@@ -216,7 +214,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     _borclanilanKisiController.dispose();
     _borclanmaTutarController.dispose();
     _borclanmaAciklamaController.dispose();
-    _borclanmaFaturaNoController.dispose();
     
     _krediTutarController.dispose();
     _krediVadeController.dispose();
@@ -455,7 +452,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                      );
                      await fp.addLoan(l);
                   } else if (_selectedType == 'Borçlanma') {
-                     category = 'Borçlanma';
+                     category = _borclanmaKategori.isNotEmpty ? _borclanmaKategori : 'Borçlanma';
                      source = _borclanilanKisiController.text;
                      date = _isoDate(_borclanmaVade);
                      
@@ -483,7 +480,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                        contactId: contact.id, // Cari bağlantısı
                        sourceName: source,
                        description: _borclanmaAciklamaController.text,
-                       documentNo: _borclanmaFaturaNoController.text.trim(),
                      );
 
                       try {
@@ -1231,14 +1227,43 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
         ),
         _buildFormRow(
           label: 'KATEGORİ',
-          child: _buildSimpleDropdown(
-            value: _borclanmaKategori,
-            items: _borclanmaKategorileri,
-            onChanged: (val) {
-              setState(() {
-                _borclanmaKategori = val!;
-              });
+          child: InkWell(
+            onTap: () async {
+              final selected = await _showCategorySheet(
+                title: 'Borçlanma Kategorisi Seçin',
+                isIncome: false,
+              );
+              if (selected != null) {
+                setState(() {
+                  _borclanmaKategori = selected.name;
+                });
+              }
             },
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              height: 44,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: context.colors.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _borclanmaKategori.isNotEmpty ? _borclanmaKategori : 'Kategori Seçin',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: _borclanmaKategori.isEmpty ? context.colors.textSecondary : context.colors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(Icons.folder_open_rounded, color: context.colors.textSecondary, size: 20),
+                ],
+              ),
+            ),
           ),
         ),
         _buildFormRow(
@@ -1249,10 +1274,10 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           ),
         ),
         _buildFormRow(
-          label: 'PROJE',
+          label: 'PROJE (Opsiyonel)',
           child: _buildSimpleDropdown(
             value: _borclanmaProje,
-            items: _projectNames,
+            items: [kNoProjectOption, ..._projectNames],
             emptyHint: 'Önce proje ekleyin',
             onChanged: (val) {
               setState(() {
@@ -1309,13 +1334,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                 ],
               ),
             ),
-          ),
-        ),
-        _buildFormRow(
-          label: 'FATURA NO',
-          child: _buildTextField(
-            controller: _borclanmaFaturaNoController,
-            hintText: 'Fatura / belge numarası',
           ),
         ),
         _buildFormRow(

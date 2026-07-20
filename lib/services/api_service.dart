@@ -456,6 +456,34 @@ class ApiService {
     }
   }
 
+  /// Varolan bir kategoriyi backend üzerinde günceller.
+  Future<Category> updateCategory({
+    required int id,
+    required String name,
+    required String type,
+    int? parentId,
+    String group = '',
+  }) async {
+    final headers = await _getHeaders();
+    final response = await _client.put(
+      Uri.parse('$baseUrl/categories/$id/'),
+      headers: headers,
+      body: jsonEncode({
+        'name': name,
+        'type': type,
+        'parent': parentId,
+        'group': group,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return Category.fromMap(jsonDecode(utf8.decode(response.bodyBytes)));
+    } else {
+      throw Exception(
+        'Kategori güncellenemedi: ${utf8.decode(response.bodyBytes)}',
+      );
+    }
+  }
+
   Future<void> deleteCategory(int id) async {
     final headers = await _getHeaders();
     final response = await _client.delete(

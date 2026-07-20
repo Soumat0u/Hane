@@ -8,6 +8,7 @@ import 'package:hane/services/pin_service.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:hane/theme/responsive.dart';
 import 'package:hane/views/auth/pin_setup_view.dart';
+import 'package:hane/views/kategori_yonetimi_view.dart';
 
 class AyarlarView extends StatefulWidget {
   const AyarlarView({super.key});
@@ -89,6 +90,44 @@ class _AyarlarViewState extends State<AyarlarView> {
             Icons.dark_mode_outlined,
             settings.isDark,
             (val) => context.read<SettingsProvider>().setDarkMode(val),
+          ),
+
+          const SizedBox(height: 24),
+          _buildSectionTitle('Veri ve Yönetim'),
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.colors.border),
+            ),
+            child: ListTile(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const KategoriYonetimiView()),
+              ),
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: context.colors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.account_tree_outlined, color: context.colors.brand, size: 20),
+              ),
+              title: Text(
+                'Kategori Yönetimi',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: context.colors.textPrimary,
+                ),
+              ),
+              subtitle: Text(
+                'Ana ve alt kategorileri düzenle, sil veya ekle',
+                style: TextStyle(fontSize: 12, color: context.colors.textSecondary),
+              ),
+              trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: context.colors.textSecondary),
+            ),
           ),
 
           const SizedBox(height: 24),

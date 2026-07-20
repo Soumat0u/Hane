@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:hane/theme/app_theme.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/views/ayarlar_view.dart';
-import 'package:hane/views/widgets/zeynep_drawer.dart' show DrawerItemData;
+import 'package:hane/views/kategori_yonetimi_view.dart';
+import 'package:hane/views/widgets/zeynep_drawer.dart';
 import 'package:hane/views/widgets/zeynep_logo.dart';
 
 /// Geniş ekran (masaüstü/web) için kalıcı sol kenar menüsü.
@@ -37,6 +38,7 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
     DrawerItemData(title: 'Genel Bakış', activeIcon: Icons.home_rounded, inactiveIcon: Icons.home_outlined, tabIndex: 0),
     DrawerItemData(title: 'Projeler', activeIcon: Icons.construction_rounded, inactiveIcon: Icons.construction_outlined, tabIndex: 1),
     DrawerItemData(title: 'Hareketler', activeIcon: Icons.receipt_long_rounded, inactiveIcon: Icons.receipt_long_outlined, tabIndex: 3),
+    DrawerItemData(title: 'Kategoriler', activeIcon: Icons.account_tree_rounded, inactiveIcon: Icons.account_tree_outlined, tabIndex: -2),
     DrawerItemData(title: 'Profil', activeIcon: Icons.person_rounded, inactiveIcon: Icons.person_outline_rounded, tabIndex: 4),
     DrawerItemData(title: 'Ayarlar', activeIcon: Icons.settings_rounded, inactiveIcon: Icons.settings_outlined, tabIndex: -1),
   ];
@@ -106,6 +108,8 @@ class _DesktopSidebarState extends State<DesktopSidebar> {
         onTap: () {
           if (item.tabIndex == -1) {
             Navigator.push(context, MaterialPageRoute(builder: (_) => const AyarlarView()));
+          } else if (item.tabIndex == -2) {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const KategoriYonetimiView()));
           } else {
             widget.onItemSelected(item.tabIndex);
           }

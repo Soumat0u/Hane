@@ -184,6 +184,59 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
   const [debtDueDate, setDebtDueDate] = useState('')
   const [debtProject, setDebtProject] = useState('')
   const [debtDesc, setDebtDesc] = useState('')
+  const [debtCategory, setDebtCategory] = useState('')
+  const [expandedDebtGroups, setExpandedDebtGroups] = useState({})
+  const [debtCatSearch, setDebtCatSearch] = useState('')
+  const [addingDebtCategory, setAddingDebtCategory] = useState(false)
+  const [newDebtCatName, setNewDebtCatName] = useState('')
+  const [newDebtCatGroup, setNewDebtCatGroup] = useState('')
+  const [debtCatSaving, setDebtCatSaving] = useState(false)
+
+  const debtMainCategories = useMemo(
+    () => categories.filter((c) => !c.parent && c.type === 'cost'),
+    [categories],
+  )
+
+  const filteredDebtCategories = useMemo(() => {
+    const groups = {}
+    const query = debtCatSearch.trim().toLowerCase()
+    for (const c of debtMainCategories) {
+      const matchesMain = c.name.toLowerCase().includes(query)
+      const matchesGroup = (c.group || 'Diğer').toLowerCase().includes(query)
+      if (!query || matchesMain || matchesGroup) {
+        const g = c.group || 'Diğer'
+        if (!groups[g]) groups[g] = []
+        groups[g].push(c)
+      }
+    }
+    return groups
+  }, [debtMainCategories, debtCatSearch])
+
+  const toggleDebtGroup = (groupName) => {
+    setExpandedDebtGroups((prev) => ({ ...prev, [groupName]: !prev[groupName] }))
+  }
+
+  const handleAddDebtCategory = async () => {
+    const name = newDebtCatName.trim()
+    if (!name) return
+    setDebtCatSaving(true)
+    try {
+      await addCategory({
+        name,
+        type: 'cost',
+        group: newDebtCatGroup.trim() || 'Diğer',
+        parent: null,
+      })
+      setDebtCategory(name)
+      setNewDebtCatName('')
+      setNewDebtCatGroup('')
+      setAddingDebtCategory(false)
+    } catch {
+      setErr('Kategori eklenemedi.')
+    } finally {
+      setDebtCatSaving(false)
+    }
+  }
 
   // --- Kredi Kullanımı ---
   const [krediDate, setKrediDate] = useState(today())
@@ -267,6 +320,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
         const p = projects.find(x => x.id === t.project_id)
         if (p) setDebtProject(p.name)
         setDebtDesc(t.description || '')
+        if (t.category) setDebtCategory(t.category)
       } else if (type === 'Kredi Kullanımı') {
         setKrediDate(dateStr)
         setKrediBank(t.source_name || '')
@@ -353,6 +407,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
             contact_name: debtContact,
             due_date: debtDueDate,
             description: debtDesc,
+            category: debtCategory || 'Borçlanma',
           })
         } else {
           await addDebt({
@@ -360,6 +415,7 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
             contactName: debtContact,
             dueDate: debtDueDate,
             projectId: projectIdByName(debtProject),
+            category: debtCategory || 'Borçlanma',
             description: debtDesc,
           })
         }
@@ -801,6 +857,169 @@ export default function NewTransactionFormModal({ type: rawType, onClose, initia
     if (type === 'Borçlanma') {
       return (
         <>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Kategori Seçimi</label>
+
+              {addingDebtCategory ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem', border: '1px solid var(--color-accent)', borderRadius: '8px', marginBottom: '0.5rem', backgroundColor: 'var(--color-surface-variant)' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-accent)' }}>Yeni Kategori</div>
+                  <input
+                    type="text"
+                    className="form-input"
+                    autoFocus
+                    placeholder="Kategori adı (örn. Taşımacılık)"
+                    style={{ height: '36px', fontSize: '0.85rem' }}
+                    value={newDebtCatName}
+                    onChange={(e) => setNewDebtCatName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddDebtCategory() } }}
+                  />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Grup adı (opsiyonel, örn. Hane)"
+                    style={{ height: '36px', fontSize: '0.85rem' }}
+                    value={newDebtCatGroup}
+                    onChange={(e) => setNewDebtCatGroup(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddDebtCategory() } }}
+                  />
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" className="btn-secondary" style={{ flex: 1, marginTop: 0, padding: '0.4rem' }}
+                      onClick={() => { setAddingDebtCategory(false); setNewDebtCatName(''); setNewDebtCatGroup('') }}>
+                      İptal
+                    </button>
+                    <button type="button" className="btn-primary" style={{ flex: 1, marginTop: 0, padding: '0.4rem' }}
+                      disabled={debtCatSaving || !newDebtCatName.trim()}
+                      onClick={handleAddDebtCategory}>
+                      {debtCatSaving ? <span className="loader" /> : 'Ekle'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ flex: 1, height: '36px', fontSize: '0.85rem', marginBottom: 0 }}
+                    placeholder="Kategori ara..."
+                    value={debtCatSearch}
+                    onChange={(e) => setDebtCatSearch(e.target.value)}
+                  />
+                  <button type="button" className="btn-secondary"
+                    style={{ width: 'auto', marginTop: 0, padding: '0 0.75rem', height: '36px', whiteSpace: 'nowrap', fontSize: '0.82rem' }}
+                    onClick={() => setAddingDebtCategory(true)}>
+                    + Kategori
+                  </button>
+                </div>
+              )}
+
+              <div style={{
+                border: '1px solid var(--color-border)',
+                borderRadius: '10px',
+                padding: '0.5rem',
+                backgroundColor: 'var(--color-surface)',
+                maxHeight: '220px',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem'
+              }}>
+                {Object.keys(filteredDebtCategories).length === 0 ? (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '1rem' }}>
+                    Kategori bulunamadı.
+                  </div>
+                ) : (
+                  Object.entries(filteredDebtCategories).map(([groupName, cats]) => {
+                    const isExpanded = debtCatSearch.trim().length > 0 || !!expandedDebtGroups[groupName]
+                    const selectedCat = cats.find((c) => c.name === debtCategory)
+
+                    return (
+                      <div key={groupName} style={{ display: 'flex', flexDirection: 'column' }}>
+                        {/* Grup Başlığı */}
+                        <div
+                          onClick={() => toggleDebtGroup(groupName)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0.45rem 0.65rem',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            backgroundColor: selectedCat ? 'rgba(59,130,246,0.08)' : 'transparent',
+                            border: selectedCat ? '1px solid rgba(59,130,246,0.25)' : '1px solid transparent',
+                            fontWeight: 600,
+                            fontSize: '0.82rem',
+                            color: selectedCat ? 'var(--color-accent)' : 'var(--color-text-main)',
+                            userSelect: 'none',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                            <span>{groupName}</span>
+                          </div>
+                          {selectedCat && !isExpanded && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              color: 'white',
+                              fontWeight: 600,
+                              backgroundColor: 'var(--color-accent)',
+                              padding: '0.15rem 0.5rem',
+                              borderRadius: '20px',
+                              maxWidth: '110px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              ✓ {selectedCat.name}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Grup Elemanları */}
+                        {isExpanded && (
+                          <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '0.35rem',
+                            padding: '0.4rem 0.4rem 0.4rem 1.2rem',
+                            animation: 'fadeIn 0.15s ease'
+                          }}>
+                            {cats.map((c) => {
+                              const isSelected = c.name === debtCategory
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => setDebtCategory(isSelected ? '' : c.name)}
+                                  style={{
+                                    padding: '0.3rem 0.75rem',
+                                    borderRadius: '20px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: isSelected ? 700 : 400,
+                                    cursor: 'pointer',
+                                    backgroundColor: isSelected ? 'var(--color-accent)' : 'var(--color-surface-variant)',
+                                    color: isSelected ? '#fff' : 'var(--color-text-main)',
+                                    border: `1.5px solid ${isSelected ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                                    boxShadow: isSelected ? '0 2px 8px rgba(59,130,246,0.3)' : 'none',
+                                    transition: 'all 0.15s ease',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem'
+                                  }}
+                                >
+                                  {isSelected && <span style={{ fontSize: '0.75rem' }}>✓</span>}
+                                  {c.name}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+          </div>
           <div className="form-group">
             <label className="form-label">Borçlanılan Kişi / Firma</label>
             <input type="text" className="form-input" value={debtContact} onChange={(e) => setDebtContact(e.target.value)} placeholder="Tedarikçi / taşeron adı" />

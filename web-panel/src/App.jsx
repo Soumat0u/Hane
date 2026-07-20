@@ -42,6 +42,7 @@ function App() {
           <Route path="recurring" element={<RecurringTransactions />} />
           <Route path="settings" element={<Settings />} />
           <Route path="settings/categories" element={<Categories />} />
+          <Route path="categories" element={<Categories />} />
         </Route>
       </Routes>
     </BrowserRouter>
