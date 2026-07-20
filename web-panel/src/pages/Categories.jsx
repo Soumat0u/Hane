@@ -256,19 +256,26 @@ export default function Categories() {
               
               return (
                 <div key={`${group.type}_${group.groupName}`} style={{ marginBottom: '2rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', padding: '0 0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                    marginBottom: '1rem', padding: '1rem 1.25rem',
+                    backgroundColor: isGroupIncome ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)',
+                    borderLeft: `4px solid ${isGroupIncome ? 'var(--color-success)' : 'var(--color-danger)'}`,
+                    borderRadius: 'var(--radius-md)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main)', letterSpacing: '-0.02em' }}>{group.groupName}</h3>
                       <span style={{ 
-                        padding: '0.15rem 0.6rem', 
-                        borderRadius: '20px', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 700, 
-                        backgroundColor: isGroupIncome ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)', 
-                        color: isGroupIncome ? 'var(--color-success)' : 'var(--color-danger)' 
+                        padding: '0.2rem 0.6rem', 
+                        borderRadius: '12px', 
+                        fontSize: '0.7rem', 
+                        fontWeight: 800, 
+                        letterSpacing: '0.05em',
+                        backgroundColor: isGroupIncome ? 'var(--color-success)' : 'var(--color-danger)', 
+                        color: '#fff' 
                       }}>
-                        {isGroupIncome ? 'GELİR GRUBU' : 'GİDER GRUBU'}
+                        {isGroupIncome ? 'GELİR' : 'GİDER'}
                       </span>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-text-main)' }}>{group.groupName}</h3>
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button type="button" className="icon-btn" onClick={() => handleOpenGroup(group.groupName, group.type)} title="Grubu Düzenle">
