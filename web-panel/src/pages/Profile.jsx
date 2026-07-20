@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import {
   User, Copy, Check, Phone, Mail, MapPin, Plus, Pencil, AlertTriangle,
-  CreditCard, Building, ChevronDown, ChevronUp, Globe, Camera
+  CreditCard, Building, ChevronDown, ChevronUp, Globe, Camera, Trash2
 } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import BankLogo from '../components/BankLogo'
@@ -16,6 +16,7 @@ export default function Profile() {
     accounts,
     addAccount,
     updateAccount,
+    deleteAccount,
     loading
   } = useData()
 
@@ -447,8 +448,20 @@ export default function Profile() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <button className="icon-btn" onClick={() => setAccountModal({ account: acc })} style={{ width: '32px', height: '32px', border: 'none' }}>
+                        <button className="icon-btn" onClick={() => setAccountModal({ account: acc })} style={{ width: '32px', height: '32px', border: 'none' }} title="Düzenle">
                           <Pencil size={16} color="var(--color-accent)" />
+                        </button>
+                        <button 
+                          className="icon-btn" 
+                          onClick={() => {
+                            if (window.confirm(`${acc.name} banka hesabını silmek istediğinize emin misiniz?`)) {
+                              deleteAccount(acc.id)
+                            }
+                          }} 
+                          style={{ width: '32px', height: '32px', border: 'none' }} 
+                          title="Sil"
+                        >
+                          <Trash2 size={16} color="var(--color-danger)" />
                         </button>
                         {(acc.account_details || acc.iban) && (
                           <button className="icon-btn" onClick={() => handleCopy(acc.account_details || acc.iban, `bank-${idx}`)} style={{ width: '32px', height: '32px', border: 'none' }}>
@@ -502,8 +515,20 @@ export default function Profile() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center' }}>
-                        <button className="icon-btn" onClick={() => setAccountModal({ account: acc })} style={{ width: '32px', height: '32px', border: 'none' }}>
+                        <button className="icon-btn" onClick={() => setAccountModal({ account: acc })} style={{ width: '32px', height: '32px', border: 'none' }} title="Düzenle">
                           <Pencil size={16} color="var(--color-accent)" />
+                        </button>
+                        <button 
+                          className="icon-btn" 
+                          onClick={() => {
+                            if (window.confirm(`${acc.name} kredi kartını silmek istediğinize emin misiniz?`)) {
+                              deleteAccount(acc.id)
+                            }
+                          }} 
+                          style={{ width: '32px', height: '32px', border: 'none' }} 
+                          title="Sil"
+                        >
+                          <Trash2 size={16} color="var(--color-danger)" />
                         </button>
                         {acc.account_details && (
                           <button className="icon-btn" onClick={() => handleCopy(acc.account_details, `card-${idx}`)} style={{ width: '32px', height: '32px', border: 'none' }}>
