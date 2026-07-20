@@ -5,8 +5,8 @@ import 'package:provider/provider.dart';
 import 'package:hane/utils/formatters.dart';
 import 'package:hane/providers/finance_provider.dart';
 import 'package:hane/models/account.dart';
-import 'package:hane/views/yeni_islem_view.dart';
 import 'package:hane/views/kasa_detay_view.dart';
+import 'package:hane/views/yeni_hesap_view.dart';
 import 'package:hane/views/widgets/bank_logo.dart';
 
 class FinansmanGucuView extends StatelessWidget {
@@ -95,9 +95,9 @@ class FinansmanGucuView extends StatelessWidget {
                   const SizedBox(height: 24),
 
                   // KULLANILABİLİR BCH
-                  _buildSectionHeader(context, 'KULLANILABİLİR BCH', onNewTap: () {
-                    _showNewTransaction(context);
-                  }),
+                  // BCH hesapları yalnızca web panelinden eklenebilir (mobil hesap
+                  // ekleme formu bilerek yalnızca Banka/Kredi Kartı/Nakit destekliyor).
+                  _buildSectionHeader(context, 'KULLANILABİLİR BCH', unavailableHint: 'Web panelinden eklenebilir'),
                   _buildGroupList(
                     context,
                     bchAccounts
@@ -108,16 +108,15 @@ class FinansmanGucuView extends StatelessWidget {
                   const SizedBox(height: 24),
 
                   // KART LİMİTLERİ
-                  _buildSectionHeader(context, 'KART LİMİTLERİ', onNewTap: () {
-                    _showNewTransaction(context);
+                  _buildSectionHeader(context, 'KART LİMİTLERİ', newLabel: 'Yeni Kredi Kartı', onNewTap: () {
+                    _openNewAccount(context, type: 'Kredi Kartı');
                   }),
                   _buildCardLimits(context, cardAccounts),
                   const SizedBox(height: 24),
 
                   // ESNEK HESAPLAR
-                  _buildSectionHeader(context, 'ESNEK HESAPLAR', onNewTap: () {
-                    _showNewTransaction(context);
-                  }),
+                  // Esnek hesaplar da yalnızca web panelinden eklenebilir (bkz. yukarıdaki not).
+                  _buildSectionHeader(context, 'ESNEK HESAPLAR', unavailableHint: 'Web panelinden eklenebilir'),
                   _buildGroupList(
                     context,
                     esnekAccounts
@@ -190,14 +189,11 @@ class FinansmanGucuView extends StatelessWidget {
     );
   }
 
-  void _showNewTransaction(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => Scaffold(
-      appBar: AppBar(title: const Text('Yeni İşlem')),
-      body: YeniIslemScreen(initialType: 'Gelir', onBack: () => Navigator.pop(context)),
-    )));
+  void _openNewAccount(BuildContext context, {required String type}) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => YeniHesapView(initialType: type, lockType: true)));
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, {required VoidCallback onNewTap}) {
+  Widget _buildSectionHeader(BuildContext context, String title, {VoidCallback? onNewTap, String? newLabel, String? unavailableHint}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
@@ -212,27 +208,36 @@ class FinansmanGucuView extends StatelessWidget {
               letterSpacing: 0.5,
             ),
           ),
-          InkWell(
-            onTap: onNewTap,
-            borderRadius: BorderRadius.circular(4),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-              child: Row(
-                children: [
-                  Icon(Icons.add, size: 16, color: context.colors.brand),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Yeni İşlem',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: context.colors.brand,
+          if (onNewTap != null)
+            InkWell(
+              onTap: onNewTap,
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.add, size: 16, color: context.colors.brand),
+                    const SizedBox(width: 4),
+                    Text(
+                      newLabel ?? 'Yeni Ekle',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: context.colors.brand,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+            )
+          else if (unavailableHint != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              child: Text(
+                unavailableHint,
+                style: TextStyle(fontSize: 11, color: context.colors.textSecondary),
               ),
             ),
-          ),
         ],
       ),
     );

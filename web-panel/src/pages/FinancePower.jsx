@@ -1,13 +1,15 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Shield, Plus, PiggyBank, ArrowRight } from 'lucide-react'
 import { useData } from '../context/DataContext'
 import { num } from '../utils'
 import BankLogo from '../components/BankLogo'
+import AccountFormModal from '../components/AccountFormModal'
 
 export default function FinancePower() {
   const navigate = useNavigate()
-  const { accounts } = useData()
+  const { accounts, addAccount } = useData()
+  const [newType, setNewType] = useState(null)
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val)
@@ -48,8 +50,8 @@ export default function FinancePower() {
           <div>
             <div className="section-header">
               <span className="section-title">KULLANILABİLİR BCH</span>
-              <button className="btn-inline-text">
-                <Plus size={16} /> Yeni Limit
+              <button className="btn-inline-text" onClick={() => setNewType('BCH')}>
+                <Plus size={16} /> Yeni BCH Limiti
               </button>
             </div>
             {bchAccounts.length === 0 ? (
@@ -81,8 +83,8 @@ export default function FinancePower() {
           <div>
             <div className="section-header">
               <span className="section-title">KART LİMİTLERİ</span>
-              <button className="btn-inline-text" disabled>
-                <Plus size={16} /> Yeni Limit
+              <button className="btn-inline-text" onClick={() => setNewType('Kredi Kartı')}>
+                <Plus size={16} /> Yeni Kredi Kartı
               </button>
             </div>
             {creditCardAccounts.length === 0 ? (
@@ -140,8 +142,8 @@ export default function FinancePower() {
           <div>
             <div className="section-header">
               <span className="section-title">ESNEK HESAPLAR</span>
-              <button className="btn-inline-text">
-                <Plus size={16} /> Yeni Limit
+              <button className="btn-inline-text" onClick={() => setNewType('Esnek')}>
+                <Plus size={16} /> Yeni Esnek Hesap
               </button>
             </div>
             {esnekAccounts.length === 0 ? (
@@ -197,6 +199,15 @@ export default function FinancePower() {
         </div>
 
       </div>
+
+      {newType && (
+        <AccountFormModal
+          initialType={newType}
+          lockType
+          onClose={() => setNewType(null)}
+          onSave={addAccount}
+        />
+      )}
     </div>
   )
 }
