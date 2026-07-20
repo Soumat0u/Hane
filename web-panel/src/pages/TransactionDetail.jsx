@@ -147,24 +147,14 @@ export default function TransactionDetail() {
           </button>
           
           <div style={{ position: 'relative' }}>
-            {isPastMonth ? (
-              <span 
-                className="status-badge-inline" 
-                style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.8rem', padding: '0.4rem 0.8rem', borderRadius: '6px' }}
-                title="Geçmiş aylara ait hareketler kilitlidir."
-              >
-                Kilitli
-              </span>
-            ) : (
-              <button 
-                className="icon-btn" 
-                onClick={() => setMenuOpen((o) => !o)} 
-                style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none' }}
-              >
-                <MoreHorizontal size={20} />
-              </button>
-            )}
-            {!isPastMonth && menuOpen && (
+            <button
+              className="icon-btn"
+              onClick={() => setMenuOpen((o) => !o)}
+              style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: 'none' }}
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            {menuOpen && (
               <>
                 <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />
                 <div
