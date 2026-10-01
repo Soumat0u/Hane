@@ -7,6 +7,32 @@ from .models import (
 )
 
 
+class OwnedModelSerializer(serializers.ModelSerializer):
+    """Yazılabilir ilişki alanlarını (FK id'leri) isteği yapan kullanıcının kayıtlarıyla sınırlar.
+
+    Aksi halde DRF'nin varsayılan PrimaryKeyRelatedField'ı tüm tabloyu kabul eder ve bir
+    kullanıcı başka bir kullanıcının hesabına/projesine/carisine bağlı kayıt oluşturabilir
+    (örn. `to_account` ile başkasının bakiyesini değiştirebilir). Başkasına ait bir id
+    gönderildiğinde DRF standart "geçersiz pk" doğrulama hatasıyla 400 döner.
+    """
+
+    def get_fields(self):
+        fields = super().get_fields()
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        for field in fields.values():
+            relation = getattr(field, 'child_relation', field)
+            if not isinstance(relation, serializers.RelatedField) or relation.read_only:
+                continue
+            if relation.queryset is None:
+                continue
+            if user is None or not user.is_authenticated:
+                relation.queryset = relation.queryset.none()
+            elif any(f.name == 'user' for f in relation.queryset.model._meta.fields):
+                relation.queryset = relation.queryset.filter(user=user)
+        return fields
+
+
 class RegisterSerializer(serializers.Serializer):
     """Serializer for user registration."""
     email = serializers.EmailField()
@@ -45,7 +71,7 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'email', 'date_joined']
 
 
-class CompanyProfileSerializer(serializers.ModelSerializer):
+class CompanyProfileSerializer(OwnedModelSerializer):
     class Meta:
         model = CompanyProfile
         fields = [
@@ -57,7 +83,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(OwnedModelSerializer):
     balance = serializers.FloatField(read_only=True)
 
     class Meta:
@@ -66,7 +92,7 @@ class ContactSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'balance']
 
 
-class CategorySerializer(serializers.ModelSerializer):
+class CategorySerializer(OwnedModelSerializer):
     child_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -85,7 +111,7 @@ class CategorySerializer(serializers.ModelSerializer):
         return value
 
 
-class AccountSerializer(serializers.ModelSerializer):
+class AccountSerializer(OwnedModelSerializer):
     available_limit = serializers.FloatField(read_only=True)
     bank_logo_painter = serializers.CharField(required=False, allow_blank=True, default='')
     account_details = serializers.CharField(required=False, allow_blank=True, default='')
@@ -123,7 +149,7 @@ class AccountSerializer(serializers.ModelSerializer):
         return account
 
 
-class ProjectSerializer(serializers.ModelSerializer):
+class ProjectSerializer(OwnedModelSerializer):
     class Meta:
         model = Project
         fields = [
@@ -135,7 +161,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class BudgetLineSerializer(serializers.ModelSerializer):
+class BudgetLineSerializer(OwnedModelSerializer):
     actual_amount = serializers.SerializerMethodField()
 
     class Meta:
@@ -179,7 +205,7 @@ def apply_legacy_balance(user, transaction, sign):
         _adjust_account_balance(user, t.dest_name, t.amount * sign)
 
 
-class FinancialTransactionSerializer(serializers.ModelSerializer):
+class FinancialTransactionSerializer(OwnedModelSerializer):
     project_id = serializers.IntegerField(source='project.id', read_only=True, allow_null=True)
     loan = serializers.PrimaryKeyRelatedField(read_only=True)
     cheque = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -250,7 +276,7 @@ class FinancialTransactionSerializer(serializers.ModelSerializer):
         return instance
 
 
-class LoanSerializer(serializers.ModelSerializer):
+class LoanSerializer(OwnedModelSerializer):
     remaining = serializers.FloatField(read_only=True)
 
     class Meta:
@@ -263,7 +289,7 @@ class LoanSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'remaining']
 
 
-class ChequeSerializer(serializers.ModelSerializer):
+class ChequeSerializer(OwnedModelSerializer):
     class Meta:
         model = Cheque
         fields = [
@@ -273,7 +299,7 @@ class ChequeSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class SaleSerializer(serializers.ModelSerializer):
+class SaleSerializer(OwnedModelSerializer):
     remaining = serializers.FloatField(read_only=True)
     collected = serializers.SerializerMethodField()
 
@@ -290,7 +316,7 @@ class SaleSerializer(serializers.ModelSerializer):
         return obj.collected()
 
 
-class ReceivableSerializer(serializers.ModelSerializer):
+class ReceivableSerializer(OwnedModelSerializer):
     remaining = serializers.FloatField(read_only=True)
 
     class Meta:
@@ -303,7 +329,7 @@ class ReceivableSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'remaining']
 
 
-class RecurringTransactionSerializer(serializers.ModelSerializer):
+class RecurringTransactionSerializer(OwnedModelSerializer):
     class Meta:
         model = RecurringTransaction
         fields = [
@@ -313,14 +339,14 @@ class RecurringTransactionSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
-class ProjectDocumentSerializer(serializers.ModelSerializer):
+class ProjectDocumentSerializer(OwnedModelSerializer):
     class Meta:
         model = ProjectDocument
         fields = ['id', 'project', 'name', 'file', 'uploaded_at']
         read_only_fields = ['id', 'uploaded_at']
 
 
-class TodoSerializer(serializers.ModelSerializer):
+class TodoSerializer(OwnedModelSerializer):
     class Meta:
         model = Todo
         fields = ['id', 'title', 'is_done', 'scope', 'project', 'created_at']

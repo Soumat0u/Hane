@@ -7,6 +7,7 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from rest_framework.exceptions import ValidationError
 
 from .models import (
     User, CompanyProfile, Contact, Category, Account, Project, BudgetLine,
@@ -21,6 +22,18 @@ from .serializers import (
     SaleSerializer, ReceivableSerializer, RecurringTransactionSerializer, apply_legacy_balance,
     ProjectDocumentSerializer, TodoSerializer,
 )
+
+
+def _own_account_id(request, account_id):
+    """İstekte gelen hesap id'sinin isteği yapan kullanıcıya ait olduğunu doğrular.
+
+    Boşsa None döner; başkasına ait ya da geçersizse ValidationError (400) fırlatır.
+    """
+    if account_id in (None, ''):
+        return None
+    if not Account.objects.filter(id=account_id, user=request.user).exists():
+        raise ValidationError({'from_account': 'Geçersiz hesap.'})
+    return account_id
 
 
 # ── Auth Views ──────────────────────────────────────────────────────────────
@@ -181,7 +194,7 @@ class LoanViewSet(_UserOwnedViewSet):
         amount = float(request.data.get('amount') or 0)
         if amount <= 0:
             return Response({'detail': 'Geçersiz tutar.'}, status=status.HTTP_400_BAD_REQUEST)
-        from_account_id = request.data.get('from_account')
+        from_account_id = _own_account_id(request, request.data.get('from_account'))
         date = request.data.get('date') or None
         with db_transaction.atomic():
             loan.paid_amount = (loan.paid_amount or 0) + amount
@@ -214,7 +227,7 @@ class ChequeViewSet(_UserOwnedViewSet):
         amount = float(request.data.get('amount') or cheque.amount or 0)
         if amount <= 0:
             return Response({'detail': 'Geçersiz tutar.'}, status=status.HTTP_400_BAD_REQUEST)
-        from_account_id = request.data.get('from_account')
+        from_account_id = _own_account_id(request, request.data.get('from_account'))
         date = request.data.get('date') or None
         with db_transaction.atomic():
             cheque.status = Cheque.GIVEN
