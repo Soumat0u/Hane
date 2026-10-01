@@ -44,8 +44,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedType = widget.initialTransaction?.type ?? widget.initialType;
-    _isIncome = _selectedType == 'Tahsilat' || _selectedType == 'Gelir' || _selectedType == 'Satış';
+    _applyType(widget.initialTransaction?.type ?? widget.initialType);
     
     if (widget.initialTransaction != null) {
       final t = widget.initialTransaction!;
@@ -82,10 +81,23 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.initialType != oldWidget.initialType) {
       setState(() {
-        _selectedType = widget.initialType;
-        _isIncome = _selectedType == 'Tahsilat' || _selectedType == 'Gelir';
+        _applyType(widget.initialType);
         _updateCategoriesForType(_isIncome);
       });
+    }
+  }
+
+  /// Kayıtlı işlem türlerini formun türlerine eşler. 'Gelir' ve 'Gider' ayrı bir
+  /// form değil, Ödeme formunun iki yönüdür: bunlar 'Ödeme' + [_isIncome] olarak
+  /// tutulur. Aksi halde kaydetme mantığı bu türleri tanımıyor ve kategori, hesap,
+  /// tarih, cari ve açıklama bilgisini atıp işlemi "Diğer" olarak kaydediyordu.
+  void _applyType(String type) {
+    if (type == 'Gelir' || type == 'Gider') {
+      _selectedType = 'Ödeme';
+      _isIncome = type == 'Gelir';
+    } else {
+      _selectedType = type;
+      _isIncome = type == 'Tahsilat' || type == 'Satış';
     }
   }
 
@@ -171,7 +183,13 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
       
       if (widget.initialTransaction != null) {
         final t = widget.initialTransaction!;
-        _selectedSource = t.sourceName.isNotEmpty ? t.sourceName : (t.destName.isNotEmpty ? t.destName : first(accounts));
+        final fkAccountId = t.fromAccountId ?? t.toAccountId;
+        final fkAccountName = fkAccountId == null
+            ? null
+            : Provider.of<FinanceProvider>(context, listen: false).accounts.where((a) => a.id == fkAccountId).firstOrNull?.name;
+        _selectedSource = t.sourceName.isNotEmpty
+            ? t.sourceName
+            : (t.destName.isNotEmpty ? t.destName : (fkAccountName ?? first(accounts)));
         // Kategoriyi eşleştir — aynı isimde hem gelir hem gider kategorisi olabileceğinden
         // (örn. "Diğer"), önce işlemin türüne (gelir/gider) uyanı tercih ediyoruz.
         final fp = Provider.of<FinanceProvider>(context, listen: false);
@@ -387,7 +405,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     selectedProjectName = _krediProje;
                   } else if (_selectedType == 'Satış') {
                     selectedProjectName = _satisProje;
-                  } else if (_selectedType == 'Ödeme' || _selectedType == 'Tahsilat' || _selectedType == 'Gider' || _selectedType == 'Gelir') {
+                  } else if (_selectedType == 'Ödeme' || _selectedType == 'Tahsilat') {
                     selectedProjectName = _selectedProject;
                   }
 
@@ -497,7 +515,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    '$_selectedType başarıyla kaydedildi!',
+                                    '${_selectedType == 'Ödeme' ? (_isIncome ? 'Gelir' : 'Gider') : _selectedType} başarıyla kaydedildi!',
                                     style: const TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                 ),
@@ -1713,9 +1731,12 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
     required bool isIncome,
   }) {
     final Set<String> expandedGroups = {};
-    final searchController = TextEditingController();
-    
-    final result = showModalBottomSheet<Category>(
+    // Arama metni bir controller yerine düz değişkende tutulur: sheet kapanırken
+    // TextField kapanış animasyonu boyunca ekranda kalır ve dispose edilmiş bir
+    // controller'a erişip uygulamayı çökertiyordu.
+    var searchText = '';
+
+    return showModalBottomSheet<Category>(
       context: context,
       isScrollControlled: true,
       backgroundColor: context.colors.surface,
@@ -1725,7 +1746,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
           final fp = ctx.watch<FinanceProvider>();
           // Her rebuild'de canlı olarak kategorileri alıyoruz
           final grouped = fp.mainCategoriesByGroup(income: isIncome);
-          final query = searchController.text.trim().toLowerCase();
+          final query = searchText.trim().toLowerCase();
           
           final filteredGrouped = <String, List<Category>>{};
           for (final entry in grouped.entries) {
@@ -1756,7 +1777,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                     children: [
                       Expanded(
                         child: TextField(
-                          controller: searchController,
                           decoration: InputDecoration(
                             hintText: 'Kategori ara...',
                             prefixIcon: Icon(Icons.search, size: 20, color: context.colors.textSecondary),
@@ -1768,7 +1788,7 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
                             fillColor: context.colors.scaffold,
                           ),
                           onChanged: (val) {
-                            setSheetState(() {});
+                            setSheetState(() => searchText = val);
                           },
                         ),
                       ),
@@ -1859,8 +1879,6 @@ class _YeniIslemScreenState extends State<YeniIslemScreen> {
         }
       ),
     );
-    // Sheet kapandıktan sonra controller'ı güvenle dispose ediyoruz
-    return result.whenComplete(() => searchController.dispose());
   }
 
   void _showAddMainCategoryDialog(BuildContext ctx, bool isIncome, VoidCallback onCreated) {
