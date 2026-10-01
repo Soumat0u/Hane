@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import appIcon from '../assets/icon.png'
 import NewTransactionFormModal from './NewTransactionFormModal'
+import SaleFormModal from './SaleFormModal'
+import { useData } from '../context/DataContext'
 
 const NEW_TRANSACTION_TYPES = [
   { name: 'Ödeme', icon: ArrowUpFromLine },
@@ -32,6 +34,7 @@ const NEW_TRANSACTION_TYPES = [
 export default function Sidebar() {
   const navigate = useNavigate()
   const [activeTxType, setActiveTxType] = useState(null)
+  const { projects, contacts, accounts, addSale } = useData()
 
   const navGroups = [
     {
@@ -111,7 +114,16 @@ export default function Sidebar() {
 
 
 
-      {activeTxType && (
+      {activeTxType === 'Satış' && (
+        <SaleFormModal
+          projects={projects}
+          contacts={contacts}
+          accounts={accounts}
+          onClose={() => setActiveTxType(null)}
+          onSaveSale={addSale}
+        />
+      )}
+      {activeTxType && activeTxType !== 'Satış' && (
         <NewTransactionFormModal
           type={activeTxType}
           onClose={() => setActiveTxType(null)}

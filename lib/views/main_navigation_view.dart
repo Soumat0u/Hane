@@ -14,6 +14,7 @@ import 'package:hane/views/widgets/desktop_sidebar.dart';
 import 'package:hane/views/widgets/zeynep_drawer.dart';
 import 'package:hane/views/widgets/new_transaction_panel.dart';
 import 'package:hane/views/yeni_proje_view.dart';
+import 'package:hane/views/yeni_satis_view.dart';
 
 class MainNavigationPage extends StatefulWidget {
   const MainNavigationPage({super.key});
@@ -108,6 +109,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> with WidgetsBin
       barrierColor: Colors.black.withValues(alpha: 0.2),
       builder: (context) => NewTransactionPanel(
         onTypeSelected: (type) {
+          // Satış, işlem formundan değil kendi ekranından girilir: satış kaydı,
+          // taksit/alacak planı ve peşinat tahsilatı tek istekte oluşturulur.
+          if (type == 'Satış') {
+            Navigator.push(this.context, MaterialPageRoute(builder: (_) => const YeniSatisView()));
+            return;
+          }
           setState(() {
             _selectedTransactionType = type == 'Borç' ? 'Borçlanma' : type;
             _transactionFormKey++;

@@ -408,7 +408,9 @@ class Sale(models.Model):
         return f'{self.get_unit_type_display()} {self.unit_no} - {self.sale_price}'
 
     def collected(self):
-        return self.receivables.aggregate(s=Sum('collected_amount'))['s'] or 0
+        # Peşinat satış anında tahsil edilmiş sayılır; alacak satırları yalnızca kalan
+        # bedeli (sale_price - down_payment) taşır.
+        return (self.down_payment or 0) + (self.receivables.aggregate(s=Sum('collected_amount'))['s'] or 0)
 
     @property
     def remaining(self):

@@ -286,6 +286,7 @@ class Sale {
   final int installmentCount;
   final String firstDueDate; // yalnızca oluşturma isteğinde gönderilir, saklanmaz
   final bool createReceivable; // yalnızca oluşturma isteğinde gönderilir, saklanmaz
+  final int? downPaymentAccountId; // peşinatın yatırıldığı hesap; yalnızca oluşturmada gönderilir
   final bool isCompleted;
 
   Sale({
@@ -302,6 +303,7 @@ class Sale {
     this.installmentCount = 0,
     this.firstDueDate = '',
     this.createReceivable = true,
+    this.downPaymentAccountId,
     this.isCompleted = false,
   });
 
@@ -335,6 +337,7 @@ class Sale {
         'installment_count': installmentCount,
         if (firstDueDate.isNotEmpty) 'first_due_date': firstDueDate,
         'create_receivable': createReceivable,
+        if (downPaymentAccountId != null) 'down_payment_account': downPaymentAccountId,
       };
 
   Sale withId(int? newId) => Sale(

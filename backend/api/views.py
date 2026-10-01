@@ -24,7 +24,7 @@ from .serializers import (
 )
 
 
-def _own_account_id(request, account_id):
+def _own_account_id(request, account_id, field='from_account'):
     """İstekte gelen hesap id'sinin isteği yapan kullanıcıya ait olduğunu doğrular.
 
     Boşsa None döner; başkasına ait ya da geçersizse ValidationError (400) fırlatır.
@@ -32,7 +32,7 @@ def _own_account_id(request, account_id):
     if account_id in (None, ''):
         return None
     if not Account.objects.filter(id=account_id, user=request.user).exists():
-        raise ValidationError({'from_account': 'Geçersiz hesap.'})
+        raise ValidationError({field: 'Geçersiz hesap.'})
     return account_id
 
 
@@ -269,11 +269,33 @@ class SaleViewSet(_UserOwnedViewSet):
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        down_payment_account_id = _own_account_id(
+            request, request.data.get('down_payment_account'), field='down_payment_account')
         with db_transaction.atomic():
             sale = serializer.save(user=request.user)
             self._generate_installments(sale, request.data)
+            self._record_down_payment(sale, down_payment_account_id)
         sale.refresh_from_db()
         return Response(self.get_serializer(sale).data, status=status.HTTP_201_CREATED)
+
+    def _record_down_payment(self, sale, account_id):
+        """Peşinatı seçilen hesaba Tahsilat olarak işler (hesap verilmediyse yalnızca
+        satış üzerinde tutulur). Bakiye, FK'lı işlemlerde post_save sinyaliyle güncellenir."""
+        if not account_id or (sale.down_payment or 0) <= 0:
+            return
+        unit_label = f'{sale.get_unit_type_display()} {sale.unit_no}'.strip()
+        FinancialTransaction.objects.create(
+            user=sale.user,
+            type='Tahsilat',
+            amount=sale.down_payment,
+            date=sale.sale_date or timezone.now().date().isoformat(),
+            category='Tahsilat',
+            description=f'{unit_label} peşinatı'.strip(),
+            project=sale.project,
+            contact=sale.buyer,
+            contact_name=sale.buyer.name if sale.buyer else '',
+            to_account_id=account_id,
+        )
 
     def _generate_installments(self, sale, data):
         create_receivable = data.get('create_receivable', True)

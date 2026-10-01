@@ -6,7 +6,12 @@ import { parseMoneyInput } from '../utils'
 
 const UNIT_TYPES = { apartment: 'Daire', shop: 'Dükkan', land: 'Arsa', other: 'Diğer' }
 
-export default function SaleFormModal({ projectId, projectName, contacts, onClose, onSaveSale }) {
+// projectId verilirse proje sabittir (proje detayı); verilmezse `projects` listesinden seçilir
+// (kenar çubuğundaki genel "Satış"). Peşinat, `accounts` içinden seçilen hesaba Tahsilat olarak
+// işlenir (bkz. SaleViewSet._record_down_payment).
+export default function SaleFormModal({ projectId, projectName, projects = [], contacts, accounts = [], onClose, onSaveSale }) {
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId ? String(projectId) : '')
+  const [downPaymentAccountId, setDownPaymentAccountId] = useState('')
   const [unitType, setUnitType] = useState('apartment')
   const [unitNo, setUnitNo] = useState('')
   const [salePrice, setSalePrice] = useState('')
@@ -26,19 +31,29 @@ export default function SaleFormModal({ projectId, projectName, contacts, onClos
       setErr('Lütfen geçerli bir satış fiyatı girin.')
       return
     }
+    if (!selectedProjectId) {
+      setErr('Lütfen satışın yapıldığı projeyi seçin.')
+      return
+    }
+    const down = parseMoneyInput(downPayment) || 0
+    if (down > price) {
+      setErr('Peşinat, satış fiyatından büyük olamaz.')
+      return
+    }
     setSaving(true)
     setErr('')
     try {
       // Satış ve varsa taksit planı (Receivable satırları) sunucuda tek atomik
       // istekte, doğru `sale` bağlantısıyla oluşturulur (bkz. SaleViewSet.create).
       await onSaveSale({
-        project: projectId,
+        project: Number(selectedProjectId),
         buyer: buyerId ? Number(buyerId) : null,
         unit_type: unitType,
         unit_no: unitNo,
         sale_price: price,
         sale_date: saleDate,
-        down_payment: parseMoneyInput(downPayment) || 0,
+        down_payment: down,
+        ...(down > 0 && downPaymentAccountId ? { down_payment_account: Number(downPaymentAccountId) } : {}),
         installment_count: installmentCount ? Number(installmentCount) : 0,
         first_due_date: firstDueDate || saleDate,
         create_receivable: createReceivable,
@@ -61,9 +76,21 @@ export default function SaleFormModal({ projectId, projectName, contacts, onClos
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
             {err && <div className="error-message">{err}</div>}
-            <div style={{ marginBottom: '1rem', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
-              Proje: <strong>{projectName}</strong>
-            </div>
+            {projectId ? (
+              <div style={{ marginBottom: '1rem', color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+                Proje: <strong>{projectName}</strong>
+              </div>
+            ) : (
+              <div className="form-group">
+                <label className="form-label">Proje</label>
+                <select className="form-input" value={selectedProjectId} onChange={(e) => setSelectedProjectId(e.target.value)}>
+                  <option value="">Proje seçin</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Birim Türü</label>
               <select className="form-input" value={unitType} onChange={(e) => setUnitType(e.target.value)}>
@@ -95,6 +122,21 @@ export default function SaleFormModal({ projectId, projectName, contacts, onClos
               <label className="form-label">Satış Tarihi</label>
               <input className="form-input" type="date" value={saleDate} onChange={(e) => setSaleDate(e.target.value)} />
             </div>
+            <div className="form-group">
+              <label className="form-label">Peşinat (opsiyonel)</label>
+              <MoneyInput value={downPayment} onChange={setDownPayment} placeholder="0" />
+            </div>
+            {accounts.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Peşinatın yatırıldığı hesap</label>
+                <select className="form-input" value={downPaymentAccountId} onChange={(e) => setDownPaymentAccountId(e.target.value)}>
+                  <option value="">Hesaba yatırılmadı</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', marginTop: '0.5rem' }}>
               <input type="checkbox" checked={createReceivable} onChange={(e) => setCreateReceivable(e.target.checked)} />
               Satış bedeli için alacak oluştur
@@ -103,10 +145,6 @@ export default function SaleFormModal({ projectId, projectName, contacts, onClos
             {createReceivable && (
               <>
                 <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Peşinat (opsiyonel)</label>
-                  <MoneyInput value={downPayment} onChange={setDownPayment} placeholder="0" />
-                </div>
-                <div className="form-group">
                   <label className="form-label">Taksit Sayısı (opsiyonel)</label>
                   <input
                     className="form-input"

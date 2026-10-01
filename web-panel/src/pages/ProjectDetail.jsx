@@ -95,7 +95,7 @@ export default function ProjectDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const {
-    projects, transactions, contacts, projectDocuments, sales, loading, loaded, error,
+    projects, transactions, contacts, accounts, projectDocuments, sales, loading, loaded, error,
     updateProject, deleteProject, uploadProjectImage,
     addSale,
     addProjectDocument, deleteProjectDocument, renameProjectDocument,
@@ -612,6 +612,7 @@ export default function ProjectDetail() {
           projectId={project.id}
           projectName={project.name}
           contacts={contacts}
+          accounts={accounts}
           onClose={() => setSaleModalOpen(false)}
           onSaveSale={addSale}
         />

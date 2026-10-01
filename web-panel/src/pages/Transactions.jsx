@@ -149,7 +149,9 @@ export default function Transactions() {
   }, [transactions, type, proje, kategori, dateFrom, dateTo, search, projectNames])
 
   const toplamGelir = useMemo(
-    () => filtered.filter((t) => INCOME_TYPES.has(t.type)).reduce((s, t) => s + num(t.amount), 0),
+    // Satış türü satış bedelini (tahakkuk) taşır; tahsil edilen kısım ayrıca Tahsilat
+    // olarak kaydedildiğinden nakit gelir toplamına katılmaz.
+    () => filtered.filter((t) => INCOME_TYPES.has(t.type) && t.type !== 'Satış').reduce((s, t) => s + num(t.amount), 0),
     [filtered],
   )
   const toplamGider = useMemo(

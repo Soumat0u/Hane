@@ -65,3 +65,50 @@ class CrossUserRelationTests(APITestCase):
         self.assertEqual(res.status_code, 201)
         own.refresh_from_db()
         self.assertEqual(own.balance, 250)
+
+
+class SaleDownPaymentTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(email='seller@example.com', password='Seller-pass-123')
+        self.account = Account.objects.create(user=self.user, name='Ana Hesap', type='Banka', opening_balance=0)
+        self.account.recalculate_balance()
+        self.project = Project.objects.create(
+            user=self.user, name='Proje', status='Planlama', status_color_hex='#000', status_bg_color_hex='#fff',
+            location='Ankara',
+        )
+        token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+
+    def _sell(self, **extra):
+        payload = {
+            'project': self.project.id, 'unit_type': 'apartment', 'unit_no': 'A-5',
+            'sale_price': 1000000, 'sale_date': '2026-10-01', 'down_payment': 200000,
+        }
+        payload.update(extra)
+        return self.client.post('/api/sales/', payload, format='json')
+
+    def test_down_payment_goes_to_account_and_counts_as_collected(self):
+        res = self._sell(down_payment_account=self.account.id)
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data['collected'], 200000)
+        self.assertEqual(res.data['remaining'], 800000)
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.balance, 200000)
+        receivables = self.client.get('/api/receivables/').data
+        self.assertEqual(sum(r['total_amount'] for r in receivables), 800000)
+        tx = self.client.get('/api/transactions/').data
+        self.assertEqual([(t['type'], t['amount'], t['to_account'], t['project_id']) for t in tx],
+                         [('Tahsilat', 200000, self.account.id, self.project.id)])
+
+    def test_without_account_down_payment_is_not_booked(self):
+        res = self._sell()
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(res.data['remaining'], 800000)
+        self.assertEqual(self.client.get('/api/transactions/').data, [])
+
+    def test_foreign_down_payment_account_rejected(self):
+        other = User.objects.create_user(email='x@example.com', password='Other-pass-123')
+        foreign = Account.objects.create(user=other, name='X', type='Banka', opening_balance=0)
+        res = self._sell(down_payment_account=foreign.id)
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(self.client.get('/api/sales/').data, [])

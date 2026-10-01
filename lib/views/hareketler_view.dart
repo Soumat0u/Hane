@@ -32,7 +32,10 @@ typedef _HareketlerDeps = (List<Project> projects, List<FinancialTransaction> tr
   }
 }
 
-const _incomeTypes = {'Gelir', 'Tahsilat', 'Satış'};
+// Gelir toplamı nakit girişini gösterir. 'Satış' türü eski kayıtlarda satış bedelini
+// (tahakkuk) taşır; tahsil edilen kısım ayrıca Tahsilat olarak kaydedildiği için
+// toplama katılırsa aynı para iki kez sayılır.
+const _cashIncomeTypes = {'Gelir', 'Tahsilat'};
 
 class HareketlerView extends StatefulWidget {
   const HareketlerView({super.key});
@@ -128,7 +131,7 @@ class _HareketlerViewState extends State<HareketlerView> with AutomaticKeepAlive
 
           final filtered = _applyFilters(fp.allTransactions, projectNames);
           final toplamGelir = filtered
-              .where((t) => _incomeTypes.contains(t.type))
+              .where((t) => _cashIncomeTypes.contains(t.type))
               .fold(0.0, (s, t) => s + t.amount);
           final toplamGider = filtered
               .where((t) => t.type == 'Gider')
